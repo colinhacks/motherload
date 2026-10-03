@@ -1,0 +1,4 @@
+kind: Service
+---
+kind: Deployment
+replicas: 2

@@ -1,0 +1,6 @@
+{
+  unquoted: 'single quotes',
+  hex: 0x10,
+  infinite: Infinity,
+  list: [1, 2, 3,],
+}

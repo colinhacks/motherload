@@ -1,0 +1,1 @@
+{ "compilerOptions": { "target": "esnext", "module": "nodenext", "lib": ["esnext"], "types": ["node"], "strict": true, "noEmit": true, "skipLibCheck": true }, "contentMappers": [ { "package": "universal-toml", "extensions": ["bunfig.toml"] } ], "include": ["import-bunfig.ts"] }

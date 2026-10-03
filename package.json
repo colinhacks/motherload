@@ -1,0 +1,65 @@
+{
+  "name": "motherload",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env) as typed modules, and .schema.json as a type and a validator. TypeScript 7.1 content mappers.",
+  "license": "MIT",
+  "author": "Colin McDonnell",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./register": "./src/register.ts",
+    "./esbuild": "./src/esbuild.ts"
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "src/mapper.ts"
+      ],
+      "compilerOptions": []
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc -p lab/universal/app/tsconfig.json --noEmit --runExternalCode && tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode",
+    "test": "node --test 'tests/**/*.test.ts'"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "json5": "^2.2.3",
+    "jsonc-parser": "^3.3.1",
+    "smol-toml": "^1.9.0",
+    "yaml": "^2.9.1"
+  },
+  "peerDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "json-schema-to-typescript": "^16.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ajv": {
+      "optional": true
+    },
+    "ajv-formats": {
+      "optional": true
+    },
+    "json-schema-to-typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.1",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "esbuild": "^0.28.2",
+    "json-schema-to-typescript": "^16.0.0",
+    "motherload": "link:.",
+    "typescript": "7.1.0-dev.20261002.1",
+    "universal-toml": "link:lab/universal/plugin",
+    "universal-toml-2": "link:lab/universal/plugin",
+    "unplugin": "^3.4.0"
+  }
+}

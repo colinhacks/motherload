@@ -1,0 +1,29 @@
+{
+  "name": "universal-toml",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./plugin.ts",
+    "./universal": "./universal.ts",
+    "./register": "./register.ts",
+    "./esbuild": "./esbuild.ts",
+    "./unplugin": "./unplugin.ts",
+    "./turbopack-loader": "./turbopack-loader.ts"
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "mapper.ts"
+      ],
+      "compilerOptions": []
+    }
+  },
+  "nub": {
+    "preload": "./register",
+    "extensions": [
+      ".toml"
+    ]
+  }
+}

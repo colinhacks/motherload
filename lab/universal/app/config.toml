@@ -1,0 +1,8 @@
+# Demo config for the universal plugin lab.
+name = "demo"
+port = 8080
+debug = true
+tags = ["a", "b"]
+
+[server]
+host = "localhost"

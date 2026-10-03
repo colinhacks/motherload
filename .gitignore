@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+coverage/
+
+# Local agent / loop state, not part of the repository
+.claude/
+.frizz/
+
+# Lab emit output
+lab/**/dist/

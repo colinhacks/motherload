@@ -1,0 +1,5 @@
+{
+  // Comments and trailing commas are allowed.
+  "editor.fontSize": 14,
+  "files.exclude": ["dist", "node_modules",],
+}

@@ -1,0 +1,8 @@
+# Merge keys (<<) are read, as docker-compose files use them.
+defaults: &defaults
+  retries: 3
+  timeout: 1.5
+production:
+  <<: *defaults
+  host: example.com
+yes_is_a_string: yes

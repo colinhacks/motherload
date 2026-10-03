@@ -1,0 +1,4 @@
+{
+  // The plugin's preload, resolved through the package's exports map.
+  "preload": ["universal-toml/register"]
+}

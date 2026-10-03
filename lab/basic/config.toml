@@ -1,0 +1,13 @@
+# A TOML file with each kind of value.
+name = "demo"
+port = 8080
+ratio = 0.5
+debug = true
+tags = ["a", "b"]
+mixed = [1, "two"]
+big = 9007199254740993
+started = 1979-05-27T07:32:00Z
+day = 1979-05-27
+
+[server]
+host = "localhost"
