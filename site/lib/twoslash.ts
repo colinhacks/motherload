@@ -12,7 +12,8 @@ function motherloadFiles(repo: string): Record<string, string> {
   const files: Record<string, string> = {
     'node_modules/motherload/package.json': readFileSync(path.join(repo, 'package.json'), 'utf8'),
   };
-  const pending = ['src/index.ts'];
+  // client.d.ts types `?raw` imports; the compiler options below list it, as a project's tsconfig does.
+  const pending = ['src/index.ts', 'src/client.d.ts'];
   for (let file = pending.pop(); file; file = pending.pop()) {
     const key = `node_modules/motherload/${file}`;
     if (key in files) continue;
@@ -35,6 +36,8 @@ export function motherloadTwoslash() {
       compilerOptions: {
         // `./config.toml` resolves to the hidden `config.d.toml.ts`.
         allowArbitraryExtensions: true,
+        // `process.env` in the .env example, and `?raw` imports.
+        types: ['node', 'motherload/client'],
         // Motherload's source imports its own modules with their .ts extension, as the
         // repository's tsconfig allows; nothing on the site uses twoslash's emit.
         allowImportingTsExtensions: true,

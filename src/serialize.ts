@@ -1,6 +1,5 @@
 // A parsed value as JavaScript source (for the module the runtime and the bundlers load) and as
-// TypeScript type text (for the module the type check reads), in two granularities: widened, the
-// way `resolveJsonModule` types a `.json` import, and literal, the way `as const` would.
+// TypeScript type text (for the module the type check reads), typed the way `as const` would.
 
 /** What the parsers hand over, after `normalize` in each format: JSON's values plus the few that JSON lacks. */
 export type Value = null | boolean | number | bigint | string | Date | readonly Value[] | { readonly [key: string]: Value };
@@ -43,7 +42,7 @@ export function assertValue(value: unknown): asserts value is Value {
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 /** A property name in an object type or literal: bare when it can be, quoted otherwise. */
-const key = (name: string) => (IDENT.test(name) ? name : JSON.stringify(name));
+export const propertyName = (name: string) => (IDENT.test(name) ? name : JSON.stringify(name));
 
 function number(value: number): string {
   if (Number.isNaN(value)) return "NaN";
@@ -68,28 +67,6 @@ export function toJs(value: Value): string {
   return `{${entries.join(", ")}}`;
 }
 
-const union = (members: string[]) => {
-  const unique = [...new Set(members)];
-  return unique.length === 1 ? unique[0]! : unique.join(" | ");
-};
-
-/** The type `resolveJsonModule` would give: literals widen to their primitive, arrays to an array of the union of their items. */
-export function widened(value: Value): string {
-  if (value === null) return "null";
-  if (value instanceof Date) return "Date";
-  if (Array.isArray(value)) {
-    if (value.length === 0) return "never[]";
-    const item = union(value.map(widened));
-    return item.includes(" | ") ? `(${item})[]` : `${item}[]`;
-  }
-  if (typeof value === "object") {
-    const object = value as { readonly [key: string]: Value };
-    const names = Object.keys(object);
-    return names.length === 0 ? "{}" : `{ ${names.map((name) => `${key(name)}: ${widened(object[name]!)}`).join("; ")} }`;
-  }
-  return typeof value;
-}
-
 /** The type `as const` would give: every primitive its literal type, arrays readonly tuples, objects readonly. */
 export function literal(value: Value): string {
   if (value === null) return "null";
@@ -105,5 +82,5 @@ export function literal(value: Value): string {
   if (Array.isArray(value)) return `readonly [${value.map(literal).join(", ")}]`;
   const object = value as { readonly [key: string]: Value };
   const names = Object.keys(object);
-  return names.length === 0 ? "{}" : `{ ${names.map((name) => `readonly ${key(name)}: ${literal(object[name]!)}`).join("; ")} }`;
+  return names.length === 0 ? "{}" : `{ ${names.map((name) => `readonly ${propertyName(name)}: ${literal(object[name]!)}`).join("; ")} }`;
 }

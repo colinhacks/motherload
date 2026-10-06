@@ -7,7 +7,7 @@ import path from 'node:path';
 // files: `config.d.toml.ts`, which `./config.toml` resolves to under allowArbitraryExtensions.
 // Every hover on the page is the mapper's real output for the file printed above it.
 
-type Node = { type: string; lang?: string | null; meta?: string | null; value?: string; children?: Node[] };
+type Node = { type: string; lang?: string | null; meta?: string | null; value?: string; data?: { tab?: string }; children?: Node[] };
 type Code = Node & { value: string };
 
 function codeBlocks(node: Node, out: Code[] = []): Code[] {
@@ -22,12 +22,14 @@ function declarationName(file: string): string {
   return `${file.slice(0, dot)}.d${file.slice(dot)}.ts`;
 }
 
-const titleOf = (node: Code) => /title="([^"]+)"/.exec(node.meta ?? '')?.[1];
+/** A block's file name: its `title`, or its `tab` in a group of code tabs (Fumadocs' remarkCodeTab moves `tab` into `data`). */
+const titleOf = (node: Code) => /title="([^"]+)"/.exec(node.meta ?? '')?.[1] ?? node.data?.tab;
 
 // The files Motherload reads, as in src/formats.ts.
-const DATA = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|(?:^|\/)\.env(?:\.[^/]+)?|\.env)$/;
+const DATA = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|\/)\.env(?:\.[^/]+)?|\.env)$/;
 
-const IMPORT = /\bfrom\s+["']\.\/([^"']+)["']/g;
+// `import config from "./config.toml"` and a bare `import "./.env"`.
+const IMPORT = /\b(?:from|import)\s+["']\.\/([^"']+)["']/g;
 
 export function remarkMapper() {
   // The build runs in site/. A schema's optional peers (ajv, json-schema-to-typescript) resolve
@@ -35,16 +37,25 @@ export function remarkMapper() {
   const site = process.cwd();
   return (tree: Node) => {
     // Each import is typed from the nearest block above it with the file's name, so a page can show
-    // a file twice, such as a working config.toml and then a broken one.
-    const shown = new Map<string, string>();
+    // a file twice, such as a working config.toml and then a broken one; failing that, from the
+    // first one below it, as in a group of tabs whose first tab is main.ts.
+    const blocks = codeBlocks(tree);
+    const fileAt = (name: string, index: number) => {
+      const isFile = (node: Code) => titleOf(node) === name;
+      const before = blocks.slice(0, index).findLast(isFile);
+      return (before ?? blocks.slice(index + 1).find(isFile))?.value;
+    };
     const typed: { node: Code; imports: { name: string; text: string }[] }[] = [];
-    for (const node of codeBlocks(tree)) {
-      const title = titleOf(node);
-      if (title && DATA.test(title)) shown.set(title, node.value);
-      if (node.lang !== 'ts' || !node.meta?.includes('twoslash')) continue;
-      const names = [...new Set([...node.value.matchAll(IMPORT)].map((m) => m[1]!))].filter((name) => shown.has(name));
-      if (names.length) typed.push({ node, imports: names.map((name) => ({ name, text: shown.get(name)! })) });
-    }
+    blocks.forEach((node, index) => {
+      if (node.lang !== 'ts' || !node.meta?.includes('twoslash')) return;
+      const imports = [...new Set([...node.value.matchAll(IMPORT)].map((m) => m[1]!))]
+        .filter((name) => DATA.test(name))
+        .flatMap((name) => {
+          const text = fileAt(name, index);
+          return text === undefined ? [] : [{ name, text }];
+        });
+      if (imports.length) typed.push({ node, imports });
+    });
     if (!typed.length) return;
 
     const key = (file: { name: string; text: string }) => `${file.name}\0${file.text}`;

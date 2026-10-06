@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <!-- Motherload's icon: a treasure chest, drawn for the project. Filled colours, not an outline,
-       so it reads on a light and on a dark background alike. The same drawing is public/motherload.svg. -->
+       so it reads on a light and on a dark background alike. The same drawing is app/icon.svg. -->
   <clipPath id="chest"><path d="M3 11a7 7 0 0 1 7-7h12a7 7 0 0 1 7 7v15a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></clipPath>
   <g clip-path="url(#chest)">
     <rect width="32" height="14" fill="#e88a45"/>

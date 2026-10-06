@@ -4,10 +4,14 @@ import { parse as parseToml, TomlDate, TomlError } from "smol-toml";
 import { parseAllDocuments } from "yaml";
 import JSON5 from "json5";
 import { parseTree, printParseErrorCode, type Node, type ParseError } from "jsonc-parser";
-import { parse as parseDotenv } from "dotenv";
+import { parseEnv } from "node:util";
+import { parse as parseCsv, CsvError } from "csv-parse/sync";
 import { assertValue, UnsupportedValue, type Value } from "./serialize.ts";
 
-export type Format = "toml" | "yaml" | "json5" | "jsonc" | "env" | "schema";
+export type Format = "toml" | "yaml" | "json5" | "jsonc" | "env" | "csv" | "tsv" | "txt" | "md" | "schema";
+
+/** The formats whose module is one value, the default export typed by `literal`. */
+export type ValueFormat = "toml" | "yaml" | "json5" | "jsonc";
 
 /** A problem in the source. `start` and `length` count UTF-16 code units, as JavaScript strings do; the mapper converts them to the UTF-8 bytes the protocol speaks. */
 export type Problem = { message: string; start: number; length: number; code: number };
@@ -18,7 +22,7 @@ export type Parsed = { ok: true; value: Value } | { ok: false; problems: Problem
 export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3, schema: 4 } as const;
 
 /** Every path a loader claims, in the order the longest suffix is tested first. `.env` files are matched by name: `.env`, `.env.local`, `prod.env`. */
-export const FILTER = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
+export const FILTER = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
 
 export function formatOf(path: string): Format | undefined {
   if (path.endsWith(".schema.json")) return "schema";
@@ -26,6 +30,10 @@ export function formatOf(path: string): Format | undefined {
   if (path.endsWith(".yaml") || path.endsWith(".yml")) return "yaml";
   if (path.endsWith(".json5")) return "json5";
   if (path.endsWith(".jsonc")) return "jsonc";
+  if (path.endsWith(".csv")) return "csv";
+  if (path.endsWith(".tsv")) return "tsv";
+  if (path.endsWith(".txt")) return "txt";
+  if (path.endsWith(".md")) return "md";
   if (FILTER.test(path)) return "env";
   return undefined;
 }
@@ -142,15 +150,112 @@ export const parseJsonFile = (source: string) => parseJsonLike(source, { allowTr
 
 // ---- .env ----------------------------------------------------------------------------------------
 
-/** dotenv's grammar, without expansion: every value is a string, and a line that is not an assignment is ignored, as dotenv ignores it. */
+/** Node's grammar (`util.parseEnv`), the one `process.loadEnvFile` reads the file with at run time: every value is a string, `${NAME}` is not expanded, and a line that is not an assignment is ignored. */
 export function parseEnvFile(source: string): Parsed {
-  const parsed = parseDotenv(source);
+  const parsed = parseEnv(source);
   const out: Record<string, string> = {};
   for (const key of Object.keys(parsed)) out[key] = parsed[key]!;
   return { ok: true, value: out };
 }
 
-export function parseFile(format: Exclude<Format, "schema">, source: string): Parsed {
+// ---- CSV and TSV ---------------------------------------------------------------------------------
+
+/** A table: its header's column names, in order, and one object per later row, keyed by them. Every value is a string. */
+export type ParsedTable = { ok: true; columns: string[]; rows: Record<string, string>[] } | { ok: false; problems: Problem[] };
+
+const BOM = "﻿";
+
+/**
+ * CSV (RFC 4180: quoted fields, doubled quotes, line breaks inside quotes) or TSV (IANA
+ * text/tab-separated-values: a tab between fields and no quoting, so `"` is an ordinary character),
+ * read with csv-parse. Rows end in CRLF or LF, mixed in one file. A blank line is not a row,
+ * wherever it is. The first row is the header; a row whose field count differs from the header's,
+ * and an empty or repeated column name, are problems placed at that row.
+ */
+function parseTable(text: string, delimiter: "," | "\t"): ParsedTable {
+  const skip = text.startsWith(BOM) ? 1 : 0;
+  const source = text.slice(skip);
+  // csv-parse counts UTF-8 bytes; every place it reports is a row's end, so a running count converts them.
+  const bytes = Buffer.from(source, "utf8");
+  let atByte = 0;
+  let atChar = 0;
+  const charOf = (byte: number) => {
+    atChar += bytes.toString("utf8", atByte, byte).length;
+    atByte = byte;
+    return atChar;
+  };
+  const records: { fields: string[]; start: number; end: number }[] = [];
+  let lastEnd = 0;
+  try {
+    parseCsv(source, {
+      delimiter,
+      quote: delimiter === "," ? '"' : false,
+      record_delimiter: ["\r\n", "\n"],
+      relax_column_count: true,
+      on_record: (fields: string[], context) => {
+        const start = lastEnd;
+        lastEnd = charOf(context.bytes);
+        records.push({ fields, start, end: lastEnd });
+        return null;
+      },
+    });
+  } catch (error) {
+    if (!(error instanceof CsvError)) throw error;
+    // Placed at the row that failed: where the previous row ended.
+    const line = source.slice(lastEnd).split(/\r?\n/, 1)[0]!;
+    return { ok: false, problems: [{ message: error.message.replace(/ at line \d+/, ""), start: skip + lastEnd, length: Math.max(line.length, 1), code: CODES.syntax }] };
+  }
+  const rowText = (r: { start: number; end: number }) => source.slice(r.start, r.end).replace(/\r?\n$/, "");
+  const rows = records.filter((r) => !(r.fields.length === 1 && rowText(r) === ""));
+  const [header, ...body] = rows;
+  if (!header) return { ok: true, columns: [], rows: [] };
+  const problems: Problem[] = [];
+  const at = (r: (typeof rows)[number], message: string) => problems.push({ message, start: skip + r.start, length: Math.max(rowText(r).length, 1), code: CODES.syntax });
+  const columns = header.fields;
+  const seen = new Set<string>();
+  columns.forEach((name, i) => {
+    if (name === "") at(header, `Column ${i + 1} of the header has no name.`);
+    else if (seen.has(name)) at(header, `The header names the column "${name}" twice.`);
+    seen.add(name);
+  });
+  for (const row of body) if (row.fields.length !== columns.length) at(row, `This row has ${row.fields.length} field${row.fields.length === 1 ? "" : "s"}; the header has ${columns.length}.`);
+  if (problems.length) return { ok: false, problems };
+  return { ok: true, columns, rows: body.map((row) => Object.fromEntries(columns.map((name, i) => [name, row.fields[i]!]))) };
+}
+
+export const parseCsvFile = (source: string) => parseTable(source, ",");
+export const parseTsvFile = (source: string) => parseTable(source, "\t");
+
+// ---- Markdown ------------------------------------------------------------------------------------
+
+export type ParsedMarkdown = { ok: true; frontmatter: Value; body: string } | { ok: false; problems: Problem[] };
+
+/**
+ * A Markdown file's YAML frontmatter and its body. The frontmatter is a `---` line at the very
+ * start of the file, closed by the next `---` line, read as a `.yaml` file is; the body is the text
+ * after the closing line. With no frontmatter, or an empty one, the frontmatter is `{}`.
+ */
+export function parseMarkdownFile(text: string): ParsedMarkdown {
+  const skip = text.startsWith(BOM) ? 1 : 0;
+  const open = /^---[ \t]*\r?\n/.exec(text.slice(skip));
+  if (!open) return { ok: true, frontmatter: {}, body: text };
+  const from = skip + open[0].length;
+  const close = /^---[ \t]*(?:\r?\n|$)/gm;
+  close.lastIndex = from;
+  const closed = close.exec(text);
+  if (!closed) return { ok: false, problems: [{ message: "The frontmatter that starts here has no closing --- line.", start: skip, length: 3, code: CODES.syntax }] };
+  const yaml = text.slice(from, closed.index);
+  const parsed = parseYamlFile(yaml);
+  // yaml's messages name a line and column inside the frontmatter, which the diagnostic's own place replaces.
+  if (!parsed.ok) return { ok: false, problems: parsed.problems.map((p) => ({ ...p, message: p.message.replace(/ at line \d+, column \d+$/, ""), start: from + p.start })) };
+  const value = parsed.value ?? {};
+  if (typeof value !== "object" || Array.isArray(value) || value instanceof Date) {
+    return { ok: false, problems: [{ message: "The frontmatter must be a YAML mapping of keys to values.", start: from, length: Math.max(yaml.replace(/\s+$/, "").length, 1), code: CODES.syntax }] };
+  }
+  return { ok: true, frontmatter: value, body: text.slice(closed.index + closed[0].length) };
+}
+
+export function parseFile(format: ValueFormat | "env", source: string): Parsed {
   switch (format) {
     case "toml":
       return parseTomlFile(source);

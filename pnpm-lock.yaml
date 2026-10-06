@@ -8,9 +8,9 @@ importers:
 
   .:
     dependencies:
-      dotenv:
-        specifier: ^18.0.5
-        version: 18.0.5
+      csv-parse:
+        specifier: ^7.0.3
+        version: 7.0.3
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -301,10 +301,8 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
-  dotenv@18.0.5:
-    resolution: {integrity: sha512-aBrGvt6KhjxbEnatqMWOMidftwsrCiCvqh1yNIGB9QyF0J+VcWkKDMsvYOEm7ZS82oiV+BT1sTOtIlAmUlTpwQ==}
-    engines: {node: '>=12'}
-    hasBin: true
+  csv-parse@7.0.3:
+    resolution: {integrity: sha512-YFd3QM/yo17vH91L1IOZuvl09zM0zEEtdfTcOCKWcMdM++MNaQSyp09slXyFCLaPXvHstQFx/xC8myiFHSMUvw==}
 
   esbuild@0.28.2:
     resolution: {integrity: sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==}
@@ -599,7 +597,7 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  dotenv@18.0.5: {}
+  csv-parse@7.0.3: {}
 
   esbuild@0.28.2:
     optionalDependencies:

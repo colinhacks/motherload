@@ -1,8 +1,8 @@
 import { source } from '@/lib/source';
-import { Header } from '@/components/header';
+import { TocFooter, TocHeader, TopRow } from '@/components/chrome';
 import { getMDXComponents } from '@/components/mdx';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import { DocsBody, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import type { Metadata } from 'next';
 import type { CSSProperties } from 'react';
 import { notFound } from 'next/navigation';
@@ -25,25 +25,27 @@ export default async function Page({ params }: Props) {
   const MDX = page.data.body;
 
   return (
-    // The bar above the layout takes the place Fumadocs reserves for a banner, so the sticky
-    // table of contents starts below it.
-    <div className="[--fd-banner-height:--spacing(14)]">
-      <Header />
-      <DocsLayout tree={source.getPageTree()} sidebar={{ enabled: false }} nav={{ enabled: false }} containerProps={{ style: LEFT_TOC }}>
-        <DocsPage
-          toc={page.data.toc}
-          tableOfContent={{ style: 'clerk', container: { className: 'justify-self-end ps-4' } }}
-          breadcrumb={{ enabled: false }}
-          footer={{ enabled: false }}
-        >
-          <DocsTitle>{page.data.title}</DocsTitle>
-          <DocsDescription>{page.data.description}</DocsDescription>
-          <DocsBody>
-            <MDX components={getMDXComponents()} />
-          </DocsBody>
-        </DocsPage>
-      </DocsLayout>
-    </div>
+    // No bar stays above the page: the name, the repository and the theme switch sit in the left
+    // column around the table of contents, or in `TopRow` where Fumadocs hides that column.
+    <DocsLayout tree={source.getPageTree()} sidebar={{ enabled: false }} nav={{ enabled: false }} containerProps={{ style: LEFT_TOC }}>
+      <TopRow />
+      <DocsPage
+        toc={page.data.toc}
+        tableOfContent={{
+          style: 'clerk',
+          header: <TocHeader />,
+          footer: <TocFooter />,
+          container: { className: 'justify-self-end ps-4 pt-8' },
+        }}
+        breadcrumb={{ enabled: false }}
+        footer={{ enabled: false }}
+      >
+        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsBody>
+          <MDX components={getMDXComponents()} />
+        </DocsBody>
+      </DocsPage>
+    </DocsLayout>
   );
 }
 

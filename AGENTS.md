@@ -2,7 +2,7 @@
 
 Read [PLAN.md](./PLAN.md) first: what Motherload is, what the maintainer decided, the content mapper facts and where each was confirmed, the steps, and what is open. [DESIGN.md](./DESIGN.md) holds one section per design decision with its alternatives and evidence; a change to a decision updates its section.
 
-The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env`) and `.schema.json` imports (a type plus a validator): a TypeScript 7.1 content mapper, a preload and bundler plugins. Its sibling products are dotsql (`~/Documents/projects/dotsql`, the `.sql` loader) and porg (`~/Documents/projects/lando`, the porg repository: the reactive Postgres driver, `pg_porg` and live queries). Read those repositories; do not write to them.
+The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env`, `.csv`, `.tsv`, `.txt`, `.md`) and `.schema.json` imports (a type plus a validator): a TypeScript 7.1 content mapper, a preload and bundler plugins. Its sibling products are dotsql (`~/Documents/projects/dotsql`, the `.sql` loader) and porg (`~/Documents/projects/lando`, the porg repository: the reactive Postgres driver, `pg_porg` and live queries). Read those repositories; do not write to them.
 
 ## Layout
 
@@ -10,11 +10,12 @@ The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5
 | --- | --- |
 | `src/formats.ts` | One parser per format, each returning a value or problems placed in the text |
 | `src/serialize.ts` | A parsed value as JavaScript, as a widened type and as a literal type |
-| `src/data.ts`, `src/schema.ts` | The module a data file and a `.schema.json` file become |
+| `src/data.ts`, `src/schema.ts` | The module a data file, a `.env` file and a `.schema.json` file become |
 | `src/plugin.ts` | The loader: each path to its format |
 | `src/universal.ts`, `src/rpc.ts` | The loader contract, its adapters (Node hooks, Bun, esbuild, the content mapper) and the JSON-RPC server, from the template |
 | `src/mapper.ts`, `src/register.ts`, `src/esbuild.ts` | The entry points: the content mapper process, the preload, the esbuild plugin |
 | `src/index.ts` | The types generated modules refer to (`Schema`, Standard Schema v1) |
+| `src/client.d.ts` | The ambient types of `?raw` imports, which a project lists in tsconfig's `types` as `motherload/client` |
 | `tests/` | The node tests, including the end-to-end checks of `lab/basic`; `tests/fixtures/errors` is a project of broken files |
 | `lab/basic/` | A project that imports every format, type-checked through the content mapper, run under the preload, bundled with esbuild |
 | `lab/universal/`, `docs/universal-plugin.md` | The loader template and its research note, copied from dotsql; kept as they were |
@@ -34,4 +35,4 @@ Prefer `nub` over `node`, `bun`, `npm`, `npx`, `pnpm` and `yarn`: run files with
 
 ## Writing conventions
 
-The product is Motherload, capitalized, in prose and in every message a user reads; `motherload` is the npm package, the import specifier, the diagnostic source and the Standard Schema vendor, always as code. Its icon is the pickaxe emoji (⛏️): the site's favicon and header, and the README's title. Never hard-wrap Markdown: every paragraph, list item and table row is one line. Never estimate developer time. Anything stated as fact traces to a file read or a command run; a guess goes in PLAN.md's Open section as a question. Call the repository at `~/Documents/projects/lando` the porg repository.
+The product is Motherload, capitalized, in prose and in every message a user reads; `motherload` is the npm package, the import specifier, the diagnostic source and the Standard Schema vendor, always as code. Its icon is a treasure chest, drawn as an SVG (`site/public/motherload.svg`, also the favicon `site/app/icon.svg`), because the Unicode 17 treasure chest emoji is missing from most systems' fonts: the site's favicon and the top of its left column, and the README's title. Never hard-wrap Markdown: every paragraph, list item and table row is one line. Never estimate developer time. Anything stated as fact traces to a file read or a command run; a guess goes in PLAN.md's Open section as a question. Call the repository at `~/Documents/projects/lando` the porg repository.

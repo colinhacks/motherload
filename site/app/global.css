@@ -91,6 +91,12 @@ button {
   @apply pb-3;
 }
 
+/* The page opens with its first paragraph right under the title. The body is a flex item, so its
+   first child's margin does not collapse into the page's 1rem gap; without this the two add up. */
+#nd-page .prose > :first-child {
+  margin-top: 0;
+}
+
 html .prose {
   font-weight: 400;
 
@@ -204,12 +210,34 @@ html .prose {
   color: var(--color-fd-headings);
 }
 
-/* An extension in the table of contents reads as text in mono, not as a code chip. */
-#nd-toc code {
-  background: none;
+/* An extension in the table of contents (and in its popover below xl) is a chip, like inline code
+   in the text but on a fainter wash, so the list stays quieter than the page. Fumadocs gives each
+   entry the `prose` class, which would otherwise paint the text's own wash and colour here. The
+   chip takes its entry's colour; the active entry's chip takes a stronger wash. */
+#nd-toc code,
+[data-toc-popover] code {
   border: none;
-  padding: 0;
-  font-size: 0.92em;
+  border-radius: 0.3125rem;
+  padding: 0.0625rem 0.3125rem;
+  font-size: 0.9em;
+  color: inherit;
+  background-color: color-mix(in oklab, var(--ore) 9%, transparent);
+  transition: background-color 120ms;
+}
+
+.dark #nd-toc code,
+.dark [data-toc-popover] code {
+  background-color: color-mix(in oklab, var(--ore) 10%, transparent);
+}
+
+#nd-toc a:hover code,
+[data-toc-popover] a:hover code {
+  background-color: color-mix(in oklab, var(--ore) 12%, transparent);
+}
+
+#nd-toc a[data-active='true'] code,
+[data-toc-popover] a[data-active='true'] code {
+  background-color: color-mix(in oklab, var(--ore) 16%, transparent);
 }
 
 ::selection {
@@ -259,7 +287,8 @@ html .prose {
 }
 
 /* A long type is one line: wrap it inside the popup instead of scrolling. */
-.fd-twoslash-popover figure.shiki pre {
+.fd-twoslash-popover figure.shiki pre,
+.twoslash-query-line figure.shiki pre {
   width: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -271,6 +300,28 @@ html .prose {
   color: var(--color-fd-muted-foreground);
 }
 
+/* A query's card is as wide as its type, up to the block's width, not the hover popup's fixed
+   20rem, which cut a long type off at the card's edge. */
 .twoslash-query-line .twoslash-popup-container {
+  width: fit-content;
+  max-width: 100%;
+  margin-right: 0;
   padding: 0.375rem 0.75rem;
+}
+
+/* A query is the last line of its block, and Twoslash leaves the empty line its `^?` comment was
+   on below the card: hide that line, so the block ends at the card plus its padding. */
+figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:empty))) {
+  display: none;
+}
+
+/* The note under the opening sentence: italic and muted, with its emphasis set upright so it
+   still stands out inside the italic. */
+#nd-page .prose .ml-lede {
+  font-style: italic;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .prose .ml-lede em {
+  font-style: normal;
 }

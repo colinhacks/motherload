@@ -3,14 +3,14 @@
     "target": "esnext",
     "module": "nodenext",
     "lib": ["esnext"],
-    "types": ["node"],
+    "types": ["node", "motherload/client"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".schema.json"] }
+    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".schema.json"] }
   ],
   "include": ["main.ts"]
 }

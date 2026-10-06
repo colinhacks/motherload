@@ -4,19 +4,18 @@ Each section is one decision: what was decided, the alternatives weighed, and th
 
 ## The module an import returns
 
-A data file (`.toml`, `.yaml`, `.yml`, `.json5`, `.jsonc`, `.env`) becomes a module with three exports:
+The maintainer's decisions of 2026-10-06: the default export is typed as `as const` types it, the file's text is a `?raw` import, and a `.env` file is imported for its effect.
 
 ```ts
-import config from "./app.toml";        // the data, widened: { port: number; name: string }
-import { literal } from "./app.toml";   // the same object, typed as `as const`: { readonly port: 8080; readonly name: "demo" }
-import { raw } from "./app.toml";       // the file's text: string
+import config from "./app.toml";        // the data: { readonly port: 8080; readonly name: "demo" }
+import text from "./app.toml?raw";      // the file's text: string
+import "./.env";                        // process.env.PORT: string, loaded when the module runs
 ```
 
-- **The default export is widened,** because that is how TypeScript's `resolveJsonModule` types a `.json` import, which users already know: `lab/basic/main.ts` checks that `import plain from "./plain.json" with { type: "json" }` is `{ port: number }`, and every Motherload default export follows the same rule (a literal widens to its primitive, an array to an array of the union of its items, `[]` to `never[]`). A package.json-like file typed `as const` is rarely wanted.
-- **The `literal` export is the opt-in for literal readonly types,** for a config file whose exact values matter. It is the same object as the default export, not a copy, so a module's data is held once; the readonly type is a view, as `as const` is. A copy, deep-frozen, was the alternative; it doubles what the preload holds for every data file.
-- **The `raw` export is the file's text, `string`,** the meaning of Vite's `?raw`. An unused `raw` costs nothing in a bundle: measured with the esbuild plugin, a bundle of `import config from "./config.toml"` holds none of the file's text, minified or not.
-- **No top-level keys as named exports.** Node's JSON modules export only `default`, and a key such as `raw` or `my-key` would collide with the exports above or not be an identifier.
-- **A `.env` module has no `literal`.** Its literal type would put each value, often a secret, into the type text, which editor hovers show, and with `--declaration` TypeScript writes declaration files from a mapped file's transformed content (the content mapper PR's text, quoted in the porg repository's `docs/prior-art.md` section 4c). `tests/data.test.ts` checks that no value reaches the type text.
+- **The default export is typed as `as const` would type it** (the maintainer's choice, replacing the first version's widened default and its `literal` export). A readonly array or tuple is not assignable to a mutable one: `const tags: string[] = config.tags` fails with `TS4104: The type 'readonly ["a", "b"]' is 'readonly' and cannot be assigned to the mutable type 'string[]'` (measured on `lab/basic`, which keeps that line under `@ts-expect-error`). Plain `.json`, which stays TypeScript's, is still widened by `resolveJsonModule`.
+- **`?raw` is the file's text,** the meaning of Vite's `?raw`, typed by ambient declarations in `src/client.d.ts` (`declare module "*.toml?raw"` and one per extension) that a project lists in tsconfig's `types` as `motherload/client`. TypeScript resolves no query to a file (below), so the mapper never sees these imports; the ambient declaration answers instead, which works because the type of a file's text does not depend on the file. The preload's hook and the esbuild plugin serve `?raw` (esbuild's `text` loader); any other query or hash goes to the next hook or plugin. Patterns per extension, not `*?raw`, so a project that also loads `vite/client` declares no module twice.
+- **No top-level keys as named exports.** Node's JSON modules export only `default`, and a key such as `my-key` would not be an identifier.
+- **A `.env` import loads the file into `process.env`;** see "The `.env` module" below.
 
 ## How an import chooses
 
@@ -28,12 +27,12 @@ The maintainer's idea was a query on the specifier, as in Vite (`./app.toml?raw`
 | Hash, `"./y.toml#raw"` | `TS2307` on both builds | Nothing |
 | Import attributes, `with { type: "text" }` or `with { as: "const" }` | Accepted, exit 0 | The transform request carries `fileName`, `content` and `projectHandle` only, so the attribute cannot change the module; one module per file |
 | Ambient wildcard, `declare module "*?raw" { const text: string; export default text }` | Accepted; the import is `string` (an `@ts-expect-error` assigning it to `number` is used) | Nothing; the ambient declaration answers, and it cannot see the file, so it cannot type `?const` |
-| Named exports (`literal`, `raw`) | Typed per file by the mapper | Everything; the mapper writes all three |
+| Named exports (`literal`, `raw`), the first version | Typed per file by the mapper | Everything; the mapper writes all three |
 
 At run time a query does reach the loaders: Node's module hooks resolve `./config.toml?raw` and the template's load hook loaded it (exit 0), and esbuild resolved it to `config.toml`, keeping `?raw` apart in its `suffix`. So a query works everywhere except in the type check, and a design TypeScript cannot type was not shipped.
 
-- **Decided: the import chooses by export name.** It is the one mechanism the type check, the preload and every bundler agree on.
-- **A query is left alone.** The preload's hook and the esbuild plugin pass an import with `?` or `#` to the next hook or plugin instead of loading the data module (`tests/adapters.test.ts`), so `./app.toml?raw` under Vite gets Vite's own `?raw`, typed by its own ambient declaration, and elsewhere fails plainly instead of returning data where a `string` was declared.
+- **Decided on 2026-10-03: the import chooses by export name** (`literal`, `raw`), the one mechanism the type check, the preload and every bundler agreed on.
+- **Revised on 2026-10-06:** with the default typed as `as const`, the one other form left is the text, whose type is `string` whatever the file holds, so an ambient wildcard can type it: `?raw` replaces the `raw` export. A query whose type depends on the file (`?const`, a widened view) still cannot be typed, because the mapper never receives it.
 - **Rejected: an option per tsconfig entry** (`options: { literal: true }`, or a second entry for a suffix such as `.const.toml`). Both choose per file or per suffix, not per import, and the second makes users rename files.
 
 ## The TOML parser: smol-toml
@@ -82,20 +81,69 @@ The json5 package, 2.2.3 (2022-12-31, 284 M weekly downloads, no dependencies), 
 
 The jsonc-parser package is the only candidate that parses JSONC itself and places its errors. Trailing commas are allowed (`allowTrailingComma: true`), since a hand-edited `.jsonc` file collects them; whether to refuse them is in [PLAN.md](./PLAN.md#open). The value is built from `parseTree`, not from the library's `parse`: `parse` assigns keys, and a `"__proto__"` key then sets the prototype instead of becoming a property (measured: `parse('{"__proto__": 1, ...}')` lost the key). The schema loader reads strict JSON with the same parser, comments and trailing commas off.
 
-## The `.env` parser: dotenv
+## The `.env` module
 
-The dotenv package, 18.0.5 (2026-09-30, 223 M weekly downloads, no dependencies), was compared with Node's built-in `util.parseEnv`: on sixteen lines covering plain, double-quoted (with `\n`), single-quoted, inline comments, multi-line, `export`, backticks, empty, spaced, `${A}`, a quoted `#`, `=` in a value, a key starting with a digit and a dotted key, both gave the same values (measured). dotenv was chosen because its version is pinned by the lockfile, while `util.parseEnv` changes with the Node that runs the type check.
+The maintainer's decision of 2026-10-06: a `.env` file is imported for its effect, `import "./.env"`, which sets its variables on `process.env` and types them there; no value is baked into a module or a bundle.
 
-- **No expansion:** `${A}` stays the text `${A}`, as in both parsers. nub expands `${VAR}` when it loads `.env` (nub's documentation); whether Motherload should is in [PLAN.md](./PLAN.md#open).
-- **Every value is a string,** so the type is `{ KEY: string }` with the file's keys.
+- **Types:** the module declares each key on `NodeJS.ProcessEnv` in a `declare global` block, typed `string`. A side-effect import puts the module in the program, so the declaration applies to the whole project: measured on `lab/basic`, `process.env.GREETING` is `string` with the import and `string | undefined` without it.
+- **Run time:** the module calls `process.loadEnvFile`, Node's own reader, so the type check and the run read one grammar: the keys come from `util.parseEnv`, which replaced dotenv (dotenv 18.0.5 and `util.parseEnv` gave the same values on sixteen lines covering plain, quoted, `export`, comments and multi-line values, measured on 2026-10-03). A variable the environment already sets keeps its value (measured: `PORT=9999` in the environment stayed `9999` after loading a file with `PORT=3000`).
+- **Which file:** under the preload the module's own URL is the file. In a bundle the module is inlined, so it reads the file's path relative to the working directory at build time, from the working directory when it runs; a missing file (`ENOENT`) loads nothing, as a deploy that sets its variables another way has none. `tests/lab.test.ts` checks that the esbuild bundle of `lab/basic` holds no value from its `.env` and prints one when run beside it.
+- **No expansion:** `${A}` stays the text `${A}`, as `process.loadEnvFile` leaves it. nub expands `${VAR}` when it loads `.env` (nub's documentation); whether Motherload should is in [PLAN.md](./PLAN.md#open).
 - **File names:** a `.env` entry in tsconfig matches a file named `.env` (measured: TypeScript transformed `./.env` for a probe mapper claiming `.env`) and, by the suffix rule, `prod.env`. `.env.local` ends in `.local`, which no `.env` entry reaches; the loaders recognise `.env.*` names if an entry claims their suffix.
-- **The module carries the values.** A `.env` imported into browser code puts its values in the bundle; the README says so.
+
+## The CSV and TSV parser: csv-parse
+
+| Candidate | Latest release | Weekly downloads | Spec | Synchronous | Notes |
+| --- | --- | --- | --- | --- | --- |
+| csv-parse | 7.0.3, 2026-09-25 | 25.1 M | No RFC claim in its README ("Support delimiters, quotes, escape characters and comments"); strict: a quote inside an unquoted field, or text after a closing quote, is an error (measured) | Yes, `csv-parse/sync` | No dependencies, 1.61 MB (CommonJS, ES module, IIFE and UMD builds), ships its types. An error carries a code, `lines` and a byte count; `on_record` gives each row's end in UTF-8 bytes; `quote: false` turns quoting off; `record_delimiter` takes a list |
+| papaparse | 5.7.0, 2026-08-24 | 19.9 M | "reliable and correct according to RFC 4180" (its README); lenient: `1,x"y` is the field `x"y`, with no error (measured) | Yes, `Papa.parse(text)` | No dependencies, 0.27 MB, types in @types/papaparse. An error carries a UTF-16 `index`. It detects one line break per file, so a CRLF file with an LF inside a quoted field fails (measured); its quoting cannot be turned off; it guesses the delimiter unless told |
+| d3-dsv | 3.0.1, 2021-06-05 | 27.2 M | "based on RFC 4180" (its README) | Yes, `csvParseRows` | Depends on commander, iconv-lite and rw (its command-line tools); reports no error: an unclosed quote makes the rest of the file one field (measured); no release since 2021 |
+| csv-string | 4.1.1, 2022-10-03 | 0.14 M | No claim | Yes, `parse` | No dependencies; an unclosed quote drops every row after the header, with no error (measured on `a,b\n1,2\n"x,y\n3,4\n`) |
+| @fast-csv/parse | 5.0.8, 2026-10-05 | 22.8 M | No claim in its README | No: `parse`, `parseString`, `parseFile` and `parseStream` all return a stream (its declarations) | |
+| csv-parser | 3.2.1, 2026-05-07 | 3.8 M | "compatibility with the csv-spectrum CSV acid test suite" (its README) | No: a stream | |
+
+Releases and sizes from the npm registry, weekly downloads from its downloads API, on 2026-10-06; each "measured" ran the candidate in a scratch directory. The preload's hook is synchronous, so the two stream parsers are out. Of the four left, csv-parse is the one that refuses every malformed quote (papaparse accepts a quote inside an unquoted field), serves TSV too (`quote: false`), takes CRLF and LF mixed in one file (`record_delimiter: ["\r\n", "\n"]`), ships its types, and is the most downloaded of the maintained ones. Its cost is size: 1.61 MB, against papaparse's 0.27 MB. Writing a parser was not needed.
+
+- **Positions:** each row's end comes from `on_record` in UTF-8 bytes, converted to UTF-16 with a running count, so a problem is placed at its row. An error csv-parse throws is placed at the start of the row that failed (where the last good row ended), not at its own `bytes` or `lines`: measured, `bytes` was sometimes the row's start and sometimes inside it, and an unclosed quote's `lines` names the last line of the file. The message drops csv-parse's "at line N", which the diagnostic's place replaces.
+
+## The `.csv` and `.tsv` module
+
+Decided on 2026-10-06, with the four formats below:
+
+```ts
+import users from "./users.csv";   // readonly { readonly name: string; readonly email: string; readonly zip: string }[]
+```
+
+- **The first row is the header; each later row is an object keyed by it,** and the default export is the array of rows.
+- **Every value is a string.** CSV has no types, and guessing numbers corrupts values such as the zip code `02134` (`lab/basic/users.csv` keeps its zero).
+- **The type is the column set, not each cell's literal:** a file of thousands of rows would otherwise be thousands of literal types in the checker and in every hover. A column name is a bare property name when it is an identifier and quoted otherwise, as `propertyName` writes one.
+- **A file with only a header** is `[]`, typed as its columns' array. **A file with no header** (empty, or only blank lines) is `[]` typed `readonly never[]`: it has no columns, and `never` says no row exists, where `readonly {}[]` would claim rows with no keys.
+- **A blank line is not a row,** wherever it is, as Python's `csv.DictReader` skips blank rows (measured: `a,b\n1,2\n\n3,4\n\n` gave two rows). So in a file of one column a blank line is not an empty value; a line holding `""` is.
+- **Problems:** a row whose field count differs from the header's is a problem at that row, every such row reported; an empty or repeated column name is a problem at the header; a quoting error is a problem at its row.
+- **CSV follows RFC 4180:** quoted fields, doubled quotes, line breaks inside quotes, and spaces kept as part of a field ("Spaces are considered part of a field and should not be ignored", RFC 4180 section 2). Beyond it: LF as well as CRLF, both in one file, and a byte order mark skipped.
+- **TSV follows the IANA text/tab-separated-values registration:** a tab between fields and no quoting, so `"` is an ordinary character and `"hi" she said` stays as written. The registration defines no quoting and no escapes: "Each record is represented as a single line", and "fields that contain tabs are not allowable in this encoding". csv-parse, papaparse and d3-dsv all apply CSV quoting to TSV by default (measured with csv-parse: `"x` opening a TSV field was "Quote Not Closed"), which misreads a field that starts with a quote, so Motherload turns it off. The backslash escapes of PostgreSQL's text format (`\t`, `\n`) stay text. Whether spreadsheet exports need CSV quoting in TSV is in [PLAN.md](./PLAN.md#open).
+
+## The `.txt` and `.md` modules
+
+```ts
+import notes from "./notes.txt";                  // string
+import post, { frontmatter } from "./post.md";    // string, and { readonly title: "Hello" }
+```
+
+- **A `.txt` file is its text,** exactly as `?raw` gives it, typed `string`: a literal type would put the whole file into every hover.
+- **A `.md` file's default export is its body without the frontmatter,** typed `string`. Motherload does not render Markdown: no Markdown parser is a dependency, and the body goes to whichever renderer the project uses. `?raw` is the whole file.
+- **`frontmatter` is a named export,** one fixed name, so it is an identifier whatever the file holds (the rule against top-level keys as named exports, above, is about names that come from the file).
+- **The frontmatter is a `---` line at the very start of the file, closed by the next `---` line;** trailing spaces on either line, CRLF, and a byte order mark before it are accepted. The body starts after the closing line. A `---` line anywhere else is body (a thematic break).
+- **It is read as a `.yaml` file is** (the same function: YAML 1.2's core schema, merge keys, a duplicate key an error) and typed as `as const` would type it. A YAML error is placed at its place in the file, offset by where the frontmatter starts, and yaml's "at line N, column M", which counts from the frontmatter, is dropped from the message.
+- **No frontmatter, or an empty one, is `{}`,** typed `{}`.
+- **A frontmatter that is not a mapping** (a list or a scalar) is a problem at the frontmatter: frontmatter is keys and values by convention, and `null` or a list would make every `frontmatter.title` an error.
+- **An opening `---` with no closing line is a problem at the opening line,** not a file that is all body: read as body, a forgotten closing line would hide the YAML in the text with no error. A file that starts with a thematic break and has no other `---` line gets the problem; a blank line before the break avoids it.
 
 ## The schema loader: types
 
 A `.schema.json` file becomes the type the schema describes plus a validator (the maintainer's decision). The types come from json-schema-to-typescript 16.0.0 (2026-08-28, 5.1 M weekly downloads), which compiles a schema to TypeScript declarations; json-schema-to-ts (type-level inference from a schema literal, 47 M weekly downloads, last release 2024-08-29) was the alternative, and it needs the schema as a literal type in user code and a library at type-check time. Writing a small emitter was the other alternative; it would cover fewer keywords and be Motherload's to maintain.
 
-- **An optional peer dependency, not a dependency.** Measured from the npm registry's unpacked sizes: the five parsers total 1.33 MB, and json-schema-to-typescript with its dependencies (prettier 9.96 MB, lodash, two js-yaml majors, @apidevtools/json-schema-ref-parser) 15.9 MB, 92 percent of the 17.2 MB Motherload would otherwise install. Only `.schema.json` imports need it, and they need ajv too, so both are installed together. Without it the schema's types are `any` and a diagnostic says what to install.
+- **An optional peer dependency, not a dependency.** Measured from the npm registry's unpacked sizes: the five parsers (smol-toml, yaml, json5, jsonc-parser and csv-parse, on 2026-10-06) total 2.88 MB, and json-schema-to-typescript with its dependencies (prettier 9.96 MB, lodash, two js-yaml majors, @apidevtools/json-schema-ref-parser) 15.9 MB, 85 percent of the 18.8 MB Motherload would otherwise install. Only `.schema.json` imports need it, and they need ajv too, so both are installed together. Without it the schema's types are `any` and a diagnostic says what to install.
 - **The root type is always `Type`:** the root `title` is removed before compiling, so `import { type Type as User }` works for every schema; nested definitions keep their titles and are exported too.
 - **A schema is one file:** `$ref` to another file or a URL is not followed (`$refOptions: { resolve: { file: false, http: false } }`), and is a diagnostic. Following file references needs the mapper to watch those files (`dynamicConfig`, below), which is in [PLAN.md](./PLAN.md#open).
 - **The schema itself is checked:** when ajv is installed, the type check compiles the schema and reports an invalid one (`tests/fixtures/errors`).
@@ -155,7 +203,7 @@ The sources in `src/` started from the loader template in [lab/universal](./lab/
 - **Two functions instead of one `load`:** `load` (synchronous JavaScript for the preload and bundlers, since Node's `registerHooks` is synchronous) and `types` (TypeScript for the checker, which may be asynchronous, since only the mapper calls it and json-schema-to-typescript is asynchronous).
 - **A RegExp `filter` instead of `extensions` and `test`:** the loaders match `.env` files by name, which an extension list cannot express; Bun and esbuild take a RegExp, and the pattern avoids lookaround for esbuild's RE2.
 - **UTF-8 diagnostic positions** and **option diagnostics** in the mapper adapter.
-- **Imports with a query are left to the next hook,** above.
+- **`?raw` is served and other queries are left to the next hook,** above.
 - **Problems instead of a thrown error inside `load`,** so one type serves both texts.
 
 ## What runs where
@@ -165,6 +213,7 @@ The sources in `src/` started from the loader template in [lab/universal](./lab/
 | TypeScript 7.1 content mapper (`tsc --runExternalCode`, the editor through the TypeScript 7 extension) | Built and tested: `lab/basic` type-checks with exact-type assertions; the editor was not run |
 | Node preload, `node --import motherload/register` | Built and tested |
 | nub, `nub --import motherload/register` | Run by hand on `lab/basic` (exit 0, the same output). nub's built-in data loaders export the parsed value as the default (nub's documentation), so `literal` and `raw` need Motherload's preload, whose hook runs before nub's (the template's finding, docs/universal-plugin.md section 3) |
-| esbuild, `motherload/esbuild` | Built and tested: a bundle with no `node_modules` input |
+| esbuild, `motherload/esbuild` | Built and tested: a bundle with no `node_modules` input. The default export is a function, `plugins: [motherload()]`, as the maintainer decided on 2026-10-06 for every plugin registered in code |
 | Bun (`bun --preload`, `Bun.build`) | The template's Bun branch is kept in `src/register.ts`; not run, because this repository's tooling rule runs nub in place of bun |
 | Vite, Rollup, webpack, Rspack, Turbopack | Not built. The template's unplugin and webpack-loader adapters are the route ([PLAN.md](./PLAN.md#steps)) |
+| Jest | Not built. A preload does not reach Jest's test code: measured with jest 30.5.2 under `node --import motherload/register`, the preload ran in Jest's process and its workers, but a test's `require("./config.toml")` was read and compiled by jest-runtime itself (`ReferenceError: server is not defined` for a file starting `[server]`), while plain Node under the same preload loaded it. Jest needs a transformer, as dotsql has |

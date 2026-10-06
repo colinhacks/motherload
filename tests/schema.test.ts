@@ -20,8 +20,8 @@ test("the module validates with ajv's standalone code and imports nothing", asyn
   const { code, problems } = schemaCode(SCHEMA, PATH);
   assert.deepEqual(problems, []);
   assert.doesNotMatch(code, /^import /m);
-  const { default: user, raw } = await evaluate(code);
-  assert.equal(raw, SCHEMA);
+  const { default: user, ...rest } = await evaluate(code);
+  assert.deepEqual(Object.keys(rest), []);
   assert.equal(user.is({ name: "Ada" }), true);
   assert.equal(user.is({ name: "" }), false);
   // uniqueItems over objects needs ajv's `equal` helper, which is inlined.

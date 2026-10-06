@@ -17,7 +17,7 @@ import { parseJsonFile, CODES, type Problem } from "./formats.ts";
 import { literal, toJs, type Value } from "./serialize.ts";
 import type { ModuleText } from "./data.ts";
 
-const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", "export declare const raw: string;", ""].join("\n");
+const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
 const problem = (message: string, code: number = CODES.schema): Problem => ({ message, start: 0, length: 1, code });
 
@@ -102,7 +102,6 @@ export async function schemaTypes(source: string, path: string): Promise<{ types
       declarations.trim(),
       `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
       "export default schema;",
-      "export declare const raw: string;",
       "",
     ].join("\n"),
     problems,
@@ -193,7 +192,7 @@ export function schemaCode(source: string, path: string): { code: string; proble
   }
   const entryFile = loaded.require.resolve("ajv");
   return {
-    code: [inline(standalone, entryFile), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, `export const raw = ${JSON.stringify(source)};`, ""].join("\n"),
+    code: [inline(standalone, entryFile), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, ""].join("\n"),
     problems: [],
   };
 }

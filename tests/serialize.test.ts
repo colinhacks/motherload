@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { literal, toJs, widened, assertValue, UnsupportedValue } from "../src/serialize.ts";
+import { literal, toJs, assertValue, UnsupportedValue } from "../src/serialize.ts";
 import { evaluate } from "./helpers.ts";
 
 test("toJs round-trips every value a module carries", async () => {
@@ -16,11 +16,6 @@ test("a __proto__ key stays a property and does not set the prototype", async ()
   assert.deepEqual(Object.keys(back), ["__proto__", "a"]);
   assert.equal(Object.getPrototypeOf(back), Object.prototype);
   assert.equal(({} as any).polluted, undefined);
-});
-
-test("widened types follow resolveJsonModule", () => {
-  assert.equal(widened({ a: 1, b: "x", c: [1, "y"], d: [], e: null, f: { "g-h": true } }), '{ a: number; b: string; c: (number | string)[]; d: never[]; e: null; f: { "g-h": boolean } }');
-  assert.equal(widened([{ a: 1 }, { a: 2 }]), "{ a: number }[]");
 });
 
 test("literal types follow as const", () => {
