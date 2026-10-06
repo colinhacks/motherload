@@ -64,7 +64,7 @@ Both pass the suite and are maintained. yaml was chosen for its error ranges (a 
 - **YAML 1.2's core schema,** the library's default, so `yes` is the string `"yes"`.
 - **Merge keys (`<<`) are read** (`merge: true`), so a file can share a block of settings between sections (`lab/basic/app.yaml`).
 - **A duplicate key is an error,** the library's default.
-- **Several documents (`---`) are the list of their values,** in order, typed as an array of their union; one document is its value; a file with no document is `null`. Refusing a multi-document file was the alternative; it would make a whole class of files unimportable. A single document whose value is a list reads the same as several documents, which is in [PLAN.md](./PLAN.md#open).
+- **Several documents (`---`) are the list of their values,** in order, typed as a readonly tuple of them; one document is its value; a file with no document is `null`. Refusing a multi-document file was the alternative; it would make a whole class of files unimportable. A single document whose value is a list reads the same as several documents; a `documents` export would tell them apart, and the maintainer kept the one shape on 2026-10-06, because each import is typed exactly from its file, so its author sees the shape it has.
 - A YAML value no module can carry (`!!binary`, `!!set`, a Map with object keys under YAML 1.1) is a diagnostic naming its path.
 
 ## The JSON5 parser: json5
