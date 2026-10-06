@@ -63,7 +63,7 @@ export function TocFooter() {
             <GitHubIcon className="size-3.5 shrink-0" />
             GitHub
           </a>
-          <div aria-hidden className="pointer-events-none absolute left-0 top-0 select-none text-[var(--ore)] opacity-70 dark:opacity-90">
+          <div aria-hidden className="pointer-events-none absolute left-0 top-0 select-none text-[var(--ore)] dark:opacity-90">
             <svg viewBox="0 0 120 100" fill="none" className="absolute left-0 top-0 h-[100px] w-[120px]">
               <path d="M44 62 C 34 56, 28 48, 32 38" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               <path d="M26 46 L 32 38 L 39 45" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
