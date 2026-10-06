@@ -8,8 +8,6 @@ Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML,
 <p className="ml-lede">It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.</p>
 
 ```ts twoslash tab="main.ts"
-declare const input: unknown;
-// ---cut---
 import plans from "./plans.toml";
 import team from "./team.yaml";
 import strings from "./strings.json5";
@@ -17,14 +15,6 @@ import posts from "./posts.csv";
 import notes, { frontmatter } from "./notes.md";
 import "./.env";
 import user from "./user.schema.json";
-
-plans.pro.price;
-team[0].role;
-strings.welcome;
-posts[0].title;
-frontmatter.tags;
-process.env.DATABASE_URL;
-user.parse(input);
 ```
 
 ```toml tab="plans.toml"
@@ -81,7 +71,7 @@ DATABASE_URL=postgres://localhost/app
 }
 ```
 
-Hover over a name to see its type. Each type comes from the file, in the type check and in the editor, and the same imports run under Node.js, Nub and esbuild.
+Hover over an import to see its type. Each type comes from the file, in the type check and in the editor, and the same imports run under Node.js, Nub and esbuild.
 
 ## How it works
 

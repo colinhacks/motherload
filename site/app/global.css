@@ -8,34 +8,36 @@
   --font-mono: var(--font-code), ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-/* ── Motherload: stone grays and one copper ───────────────────────────────────
-   The layout and type follow the dotsql site, which follows zod.dev (Inter,
-   ruled h1 and h2, borderless inline code tinted with the accent, mono tab
-   labels). The colours are Motherload's own: a warm stone scale for every
-   surface and rule, and a copper that marks links, the active table-of-contents
-   entry and inline code. In light mode the copper darkens wherever it carries
-   text, so it keeps its contrast on a pale background. ──────────────────── */
+/* ── Motherload: Lantern ───────────────────────────────────────────────────────
+   The layout follows the dotsql site, which follows zod.dev (ruled h1 and h2,
+   borderless inline code tinted with the accent, mono tab labels). The colours
+   are the maintainer's choice of 2026-10-06, "Lantern": by day, ash grays and
+   amber; by night, coal-black surfaces lit by amber, with a faint glow from the
+   top left. `--ore` is the amber that marks links, the active table-of-contents
+   entry and inline code; `--color-fd-primary` is a deeper amber wherever the
+   accent carries text. Code takes the same palette through Shiki's colour
+   replacements (lib/source.ts). ─────────────────────────────────────────── */
 
 :root {
-  --ore: hsl(24, 82%, 52%);
+  --ore: #C77700;
 
-  --color-fd-background: hsl(40, 20%, 99%);
-  --color-fd-foreground: hsl(30, 10%, 20%);
-  --color-fd-headings: hsl(30, 14%, 10%);
-  --color-fd-muted: hsl(36, 16%, 95%);
-  --color-fd-muted-foreground: hsl(30, 7%, 44%);
-  --color-fd-popover: hsl(0, 0%, 100%);
-  --color-fd-popover-foreground: hsl(30, 10%, 20%);
-  --color-fd-card: hsl(38, 18%, 97.5%);
-  --color-fd-card-foreground: hsl(30, 10%, 20%);
-  --color-fd-border: hsl(34, 14%, 88%);
-  --color-fd-primary: hsl(20, 75%, 36%);
-  --color-fd-primary-foreground: hsl(0, 0%, 100%);
-  --color-fd-secondary: hsl(36, 16%, 96%);
-  --color-fd-secondary-foreground: hsl(30, 10%, 20%);
-  --color-fd-accent: hsl(34, 16%, 93%);
-  --color-fd-accent-foreground: hsl(30, 14%, 10%);
-  --color-fd-ring: hsl(24, 82%, 52%);
+  --color-fd-background: #F7F6F3;
+  --color-fd-foreground: #262421;
+  --color-fd-headings: #121110;
+  --color-fd-muted: #EDEBE6;
+  --color-fd-muted-foreground: #625D54;
+  --color-fd-popover: #FFFFFF;
+  --color-fd-popover-foreground: #262421;
+  --color-fd-card: #F1EFEA;
+  --color-fd-card-foreground: #262421;
+  --color-fd-border: #DCD8CF;
+  --color-fd-primary: #8A5200;
+  --color-fd-primary-foreground: #FFFFFF;
+  --color-fd-secondary: #EFEDE8;
+  --color-fd-secondary-foreground: #262421;
+  --color-fd-accent: #E5E2DA;
+  --color-fd-accent-foreground: #121110;
+  --color-fd-ring: #C77700;
 
   --color-fd-info: hsl(212, 45%, 42%);
   --color-fd-warning: hsl(36, 90%, 34%);
@@ -44,30 +46,36 @@
 }
 
 .dark {
-  --ore: hsl(26, 88%, 62%);
+  --ore: #F5A524;
 
-  --color-fd-background: hsl(30, 8%, 8%);
-  --color-fd-foreground: hsl(36, 10%, 80%);
-  --color-fd-headings: hsl(40, 20%, 95%);
-  --color-fd-muted: hsl(30, 7%, 13%);
-  --color-fd-muted-foreground: hsl(34, 6%, 60%);
-  --color-fd-popover: hsl(30, 8%, 10%);
-  --color-fd-popover-foreground: hsl(36, 10%, 80%);
-  --color-fd-card: hsl(30, 7%, 10.5%);
-  --color-fd-card-foreground: hsl(36, 10%, 82%);
-  --color-fd-border: hsl(30, 6%, 19%);
-  --color-fd-primary: hsl(26, 88%, 62%);
-  --color-fd-primary-foreground: hsl(30, 8%, 8%);
-  --color-fd-secondary: hsl(30, 7%, 11%);
-  --color-fd-secondary-foreground: hsl(40, 20%, 95%);
-  --color-fd-accent: hsl(30, 6%, 16%);
-  --color-fd-accent-foreground: hsl(40, 20%, 95%);
-  --color-fd-ring: hsl(26, 88%, 62%);
+  --color-fd-background: #0D0E10;
+  --color-fd-foreground: #D0CCC4;
+  --color-fd-headings: #F6EEDF;
+  --color-fd-muted: #17191C;
+  --color-fd-muted-foreground: #97958F;
+  --color-fd-popover: #181A1E;
+  --color-fd-popover-foreground: #D0CCC4;
+  --color-fd-card: #14161A;
+  --color-fd-card-foreground: #D0CCC4;
+  --color-fd-border: #272A2F;
+  --color-fd-primary: #FFB940;
+  --color-fd-primary-foreground: #0D0E10;
+  --color-fd-secondary: #121417;
+  --color-fd-secondary-foreground: #D0CCC4;
+  --color-fd-accent: #212429;
+  --color-fd-accent-foreground: #F6EEDF;
+  --color-fd-ring: #F5A524;
 
   --color-fd-info: hsl(212, 60%, 70%);
   --color-fd-warning: hsl(40, 90%, 60%);
   --color-fd-success: hsl(150, 40%, 60%);
   --color-fd-error: hsl(2, 70%, 68%);
+}
+
+/* The lantern's glow: a faint amber light from the top left of the dark page. */
+.dark body {
+  background-image: radial-gradient(1200px 760px at 8% -12%, rgb(245 165 36 / 0.085), transparent 68%);
+  background-attachment: fixed;
 }
 
 button {
@@ -161,7 +169,7 @@ html .prose {
     background-color: var(--color-fd-accent);
   }
 
-  /* Links keep the text colour; the copper is the rule beneath the word. */
+  /* Links keep the text colour; the amber is the rule beneath the word. */
   a:not(.not-prose a) {
     font-weight: 500;
     text-decoration-line: underline;
@@ -174,7 +182,7 @@ html .prose {
     color: var(--color-fd-primary);
   }
 
-  /* Inline code: no outline, a faint copper wash. */
+  /* Inline code: no outline, a faint amber wash. */
   :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
     border: none;
     @apply px-1.5;
@@ -246,8 +254,14 @@ html .prose {
 
 /* ── Twoslash hovers ─────────────────────────────────────────────────────────
    A `ts twoslash` block shows the editor's hover for each name. The token whose
-   popup is open takes the links' copper rule; the popup is one stone card with
+   popup is open takes the links' amber rule; the popup is one plain card with
    the type as its text, not a code card (border, copy button) inside a card. */
+
+/* Every name with a hover keeps its dotted rule, not only while the pointer is over the block, so
+   a reader sees which names can be hovered. */
+.twoslash .twoslash-hover {
+  border-bottom-color: color-mix(in oklab, currentColor 45%, transparent);
+}
 
 .twoslash .twoslash-hover[data-popup-open] {
   border-bottom: 2px solid var(--ore);
