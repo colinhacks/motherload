@@ -1,6 +1,18 @@
-# <img src="site/public/motherload.svg" width="32" height="32" alt=""> Motherload
+<p align="center">
+  <h1 align="center">🪎<br/>Motherload</h1>
+  <p align="center">
+    Import a data file and get a typed module
+    <br/>
+    by <a href="https://x.com/colinhacks">@colinhacks</a>
+  </p>
+</p>
+<br/>
 
-Import a data file and get a typed module.
+<p align="center">
+<a href="https://github.com/colinhacks/motherload" rel="nofollow"><img src="https://img.shields.io/github/stars/colinhacks/motherload" alt="stars"></a>
+</p>
+
+<br/>
 
 ```ts
 import config from "./app.toml";           // { readonly port: 8080; readonly name: "demo" }

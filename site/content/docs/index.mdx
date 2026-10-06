@@ -486,24 +486,24 @@ import pkg from "./package.json";
 
 ## Errors
 
-A file that does not parse fails the type check at the line and column of the problem:
+Invalid data in a file is a type error. Each loader hands its parser's error to the TypeScript compiler with the file, line, column, span and message, so `tsc` and the editor report it where it is:
 
-```toml title="config.toml"
-port = 8080
-host = "localhost"
-port = 9090
+```ansi title="Terminal"
+$ tsc --noEmit --runExternalCode
+[96mconfig.toml[0m:[93m3[0m:[93m1[0m - [91merror[0m[90m motherload1: [0mInvalid TOML document: trying to redefine an already defined table or value
+
+[90m3[0m port = 9090
+[90m [0m [91m~[0m
+
+[96musers.csv[0m:[93m3[0m:[93m1[0m - [91merror[0m[90m motherload1: [0mThis row has 3 fields; the header has 2.
+
+[90m3[0m Grace,grace@example.com,extra
+[90m [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Found 2 errors in 2 files.
+
+Errors  Files
+     1  config.toml[90m:3[0m
+     1  users.csv[90m:3[0m
 ```
-
-```text
-config.toml(3,1): error motherload1: Invalid TOML document: trying to redefine an already defined table or value
-```
-
-The import of a broken file is typed `any`, so its uses add no errors of their own. Under the preload or a bundler, the same problem stops the load with the same message.
-
-| Code | Problem |
-| --- | --- |
-| `motherload1` | The file does not parse |
-| `motherload2` | A value no module can carry, such as a YAML `!!binary` |
-| `motherload3` | A file whose extension Motherload does not read |
-| `motherload4` | The schema is not valid, or a peer dependency is missing |
-| `motherload5` | An option in the `tsconfig.json` entry; Motherload takes none |

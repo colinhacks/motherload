@@ -15,8 +15,10 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <a href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight text-fd-headings">
-        {/* public/motherload.svg, the same drawing as app/icon.svg. */}
-        <img src="/motherload.svg" alt="" width={22} height={22} className="size-5.5" />
+        {/* The treasure chest emoji (U+1FA8E), as in app/icon.svg. */}
+        <span aria-hidden className="text-xl leading-none">
+          🪎
+        </span>
         Motherload
       </a>
       <span className="rounded-full border px-2 py-0.5 font-mono text-xs leading-none text-fd-muted-foreground">beta</span>
@@ -38,21 +40,41 @@ const linkClass = 'inline-flex items-center gap-1.5 text-sm text-fd-muted-foregr
 /** Above "On this page", in the left column. */
 export function TocHeader() {
   return (
-    <div className="mb-10">
+    <div className="mb-6">
       <Brand />
     </div>
   );
 }
 
-/** Below the entries, in the left column: the repository, then the theme switch. */
+/**
+ * Below the entries, in the left column: the repository, then the theme switch, and under the
+ * link nub's handwritten "Leave a star!" (nub/site/src/components/toc-star-nudge.tsx), its arrow
+ * rising to the link's bottom middle. The column has a fixed width, so the arrow is a static
+ * drawing: the link (icon and "GitHub") is about 64px wide, so its bottom middle is (32, 32) and
+ * the tip sits 6px under it, at (32, 38). The note sits closer under the link than on nub, so the
+ * footer leaves the entries above it room on a 900px-high window.
+ */
 export function TocFooter() {
   return (
-    <div className="mt-6 flex items-center justify-between gap-3 border-t pt-4">
-      <a href={githubUrl} rel="noreferrer noopener" target="_blank" className={linkClass}>
-        <GitHubIcon className="size-3.5 shrink-0" />
-        colinhacks/motherload
-      </a>
-      <ThemeSwitch />
+    <div className="mt-6 border-t pt-3 pb-[48px]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="relative">
+          <a href={githubUrl} rel="noreferrer noopener" target="_blank" className={`${linkClass} py-1.5`}>
+            <GitHubIcon className="size-3.5 shrink-0" />
+            GitHub
+          </a>
+          <div aria-hidden className="pointer-events-none absolute left-0 top-0 select-none text-[var(--ore)] opacity-70 dark:opacity-90">
+            <svg viewBox="0 0 120 100" fill="none" className="absolute left-0 top-0 h-[100px] w-[120px]">
+              <path d="M44 62 C 34 56, 28 48, 32 38" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M26 46 L 32 38 L 39 45" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="absolute left-[50px] top-[62px] block w-fit -rotate-3 whitespace-nowrap font-[family-name:var(--font-hand)] text-lg leading-none">
+              Leave a star!
+            </span>
+          </div>
+        </div>
+        <ThemeSwitch />
+      </div>
     </div>
   );
 }

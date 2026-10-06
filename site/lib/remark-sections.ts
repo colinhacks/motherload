@@ -22,6 +22,8 @@ export function toAgentMarkdown(source: string): string {
       .replace(/^[ \t]*\/\/\s*\^\?[ \t]*\n/gm, '')
       .replace(/[ \t]*\/\/ \[!code [+-]+\]/g, '')
       .replace(/^(```\w*)[ \t]+twoslash/gm, '$1')
+      // A terminal block's colours are escape codes, which an agent reads as noise.
+      .replace(/\x1b\[[0-9;]*m/g, '')
       // The page's components as plain Markdown.
       .replace(/<Callout[^>]*?title="([^"]*)"[^>]*>\s*([\s\S]*?)\s*<\/Callout>/g, (_, title: string, body: string) => `> **${title}.** ${body.replace(/\n/g, '\n> ')}`)
       .replace(/^<Tab value="([^"]*)">$/gm, '**$1**')
