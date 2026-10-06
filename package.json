@@ -5,6 +5,10 @@
   "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env) as typed modules, and .schema.json as a type and a validator. TypeScript 7.1 content mappers.",
   "license": "MIT",
   "author": "Colin McDonnell",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/colinhacks/motherload.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"

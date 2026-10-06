@@ -1,4 +1,4 @@
-# motherload: design record
+# Motherload: design record
 
 Each section is one decision: what was decided, the alternatives weighed, and the evidence. Decisions taken on 2026-10-03 while building the first working version, under the maintainer's instruction to decide and record rather than ask; the maintainer iterates on them from here. What could not be settled is in [PLAN.md](./PLAN.md#open). Measurements were taken on macOS with Node v26.10.0 and nub v0.9.5; "measured" means a command in this repository or in a scratch directory was run and its output read.
 
@@ -12,7 +12,7 @@ import { literal } from "./app.toml";   // the same object, typed as `as const`:
 import { raw } from "./app.toml";       // the file's text: string
 ```
 
-- **The default export is widened,** because that is how TypeScript's `resolveJsonModule` types a `.json` import, which users already know: `lab/basic/main.ts` checks that `import plain from "./plain.json" with { type: "json" }` is `{ port: number }`, and every motherload default export follows the same rule (a literal widens to its primitive, an array to an array of the union of its items, `[]` to `never[]`). A package.json-like file typed `as const` is rarely wanted.
+- **The default export is widened,** because that is how TypeScript's `resolveJsonModule` types a `.json` import, which users already know: `lab/basic/main.ts` checks that `import plain from "./plain.json" with { type: "json" }` is `{ port: number }`, and every Motherload default export follows the same rule (a literal widens to its primitive, an array to an array of the union of its items, `[]` to `never[]`). A package.json-like file typed `as const` is rarely wanted.
 - **The `literal` export is the opt-in for literal readonly types,** for a config file whose exact values matter. It is the same object as the default export, not a copy, so a module's data is held once; the readonly type is a view, as `as const` is. A copy, deep-frozen, was the alternative; it doubles what the preload holds for every data file.
 - **The `raw` export is the file's text, `string`,** the meaning of Vite's `?raw`. An unused `raw` costs nothing in a bundle: measured with the esbuild plugin, a bundle of `import config from "./config.toml"` holds none of the file's text, minified or not.
 - **No top-level keys as named exports.** Node's JSON modules export only `default`, and a key such as `raw` or `my-key` would collide with the exports above or not be an identifier.
@@ -86,16 +86,16 @@ The jsonc-parser package is the only candidate that parses JSONC itself and plac
 
 The dotenv package, 18.0.5 (2026-09-30, 223 M weekly downloads, no dependencies), was compared with Node's built-in `util.parseEnv`: on sixteen lines covering plain, double-quoted (with `\n`), single-quoted, inline comments, multi-line, `export`, backticks, empty, spaced, `${A}`, a quoted `#`, `=` in a value, a key starting with a digit and a dotted key, both gave the same values (measured). dotenv was chosen because its version is pinned by the lockfile, while `util.parseEnv` changes with the Node that runs the type check.
 
-- **No expansion:** `${A}` stays the text `${A}`, as in both parsers. nub expands `${VAR}` when it loads `.env` (nub's documentation); whether motherload should is in [PLAN.md](./PLAN.md#open).
+- **No expansion:** `${A}` stays the text `${A}`, as in both parsers. nub expands `${VAR}` when it loads `.env` (nub's documentation); whether Motherload should is in [PLAN.md](./PLAN.md#open).
 - **Every value is a string,** so the type is `{ KEY: string }` with the file's keys.
 - **File names:** a `.env` entry in tsconfig matches a file named `.env` (measured: TypeScript transformed `./.env` for a probe mapper claiming `.env`) and, by the suffix rule, `prod.env`. `.env.local` ends in `.local`, which no `.env` entry reaches; the loaders recognise `.env.*` names if an entry claims their suffix.
 - **The module carries the values.** A `.env` imported into browser code puts its values in the bundle; the README says so.
 
 ## The schema loader: types
 
-A `.schema.json` file becomes the type the schema describes plus a validator (the maintainer's decision). The types come from json-schema-to-typescript 16.0.0 (2026-08-28, 5.1 M weekly downloads), which compiles a schema to TypeScript declarations; json-schema-to-ts (type-level inference from a schema literal, 47 M weekly downloads, last release 2024-08-29) was the alternative, and it needs the schema as a literal type in user code and a library at type-check time. Writing a small emitter was the other alternative; it would cover fewer keywords and be motherload's to maintain.
+A `.schema.json` file becomes the type the schema describes plus a validator (the maintainer's decision). The types come from json-schema-to-typescript 16.0.0 (2026-08-28, 5.1 M weekly downloads), which compiles a schema to TypeScript declarations; json-schema-to-ts (type-level inference from a schema literal, 47 M weekly downloads, last release 2024-08-29) was the alternative, and it needs the schema as a literal type in user code and a library at type-check time. Writing a small emitter was the other alternative; it would cover fewer keywords and be Motherload's to maintain.
 
-- **An optional peer dependency, not a dependency.** Measured from the npm registry's unpacked sizes: the five parsers total 1.33 MB, and json-schema-to-typescript with its dependencies (prettier 9.96 MB, lodash, two js-yaml majors, @apidevtools/json-schema-ref-parser) 15.9 MB, 92 percent of the 17.2 MB motherload would otherwise install. Only `.schema.json` imports need it, and they need ajv too, so both are installed together. Without it the schema's types are `any` and a diagnostic says what to install.
+- **An optional peer dependency, not a dependency.** Measured from the npm registry's unpacked sizes: the five parsers total 1.33 MB, and json-schema-to-typescript with its dependencies (prettier 9.96 MB, lodash, two js-yaml majors, @apidevtools/json-schema-ref-parser) 15.9 MB, 92 percent of the 17.2 MB Motherload would otherwise install. Only `.schema.json` imports need it, and they need ajv too, so both are installed together. Without it the schema's types are `any` and a diagnostic says what to install.
 - **The root type is always `Type`:** the root `title` is removed before compiling, so `import { type Type as User }` works for every schema; nested definitions keep their titles and are exported too.
 - **A schema is one file:** `$ref` to another file or a URL is not followed (`$refOptions: { resolve: { file: false, http: false } }`), and is a diagnostic. Following file references needs the mapper to watch those files (`dynamicConfig`, below), which is in [PLAN.md](./PLAN.md#open).
 - **The schema itself is checked:** when ajv is installed, the type check compiles the schema and reports an invalid one (`tests/fixtures/errors`).
@@ -111,11 +111,11 @@ user.schema;                    // the JSON Schema, typed as a literal
 ```
 
 - **The ajv validator, as an optional peer dependency** (the maintainer's decision names ajv). Version 8.20.0 (2026-04-24, 464 M weekly downloads) validates drafts 06, 07, 2019-09 and 2020-12; the draft comes from `$schema` (`ajv/dist/2019`, `ajv/dist/2020`), and draft-04 is refused with a diagnostic. ajv-formats, also an optional peer, validates `format` when installed; without it `format` is not checked.
-- **Compiled when the module is built,** with ajv's standalone code, so the module needs no validator library at run time and no `new Function`. Measured: standalone code `require`s run-time helpers (`ajv/dist/runtime/ucs2length` for `minLength`, `equal` for `uniqueItems` over objects), even with `code: { esm: true }`; motherload inlines each required CommonJS module, transitively, into the module, so the generated module imports nothing. The esbuild bundle of `lab/basic` has no `node_modules` input and runs with nothing installed (`tests/lab.test.ts`).
+- **Compiled when the module is built,** with ajv's standalone code, so the module needs no validator library at run time and no `new Function`. Measured: standalone code `require`s run-time helpers (`ajv/dist/runtime/ucs2length` for `minLength`, `equal` for `uniqueItems` over objects), even with `code: { esm: true }`; Motherload inlines each required CommonJS module, transitively, into the module, so the generated module imports nothing. The esbuild bundle of `lab/basic` has no `node_modules` input and runs with nothing installed (`tests/lab.test.ts`).
 - **Options:** `allErrors: true`, so a failure lists every issue; `strict: false` and no logger, so a schema written for another validator still compiles.
 - **Without ajv** the types still work, and building or preloading the module fails with a message that names ajv.
 - **Standard Schema v1:** the default export implements `~standard` (vendor `motherload`) for any library that accepts one; the interface is copied into `src/index.ts`, so the types depend on no package. The brand study's consequence that "a module that exposes `~standard` plugs into every Standard Schema consumer" is the reason.
-- **The module imports nothing from motherload,** so motherload stays a development dependency (the condition in the porg repository's `docs/brands.md`); the generated `.ts` text imports types from `motherload`, which the type check resolves.
+- **The module imports nothing from Motherload,** so Motherload stays a development dependency (the condition in the porg repository's `docs/brands.md`); the generated `.ts` text imports types from `motherload`, which the type check resolves.
 
 ## Values a module carries
 
@@ -124,7 +124,7 @@ The serializer (`src/serialize.ts`) writes each parsed value as JavaScript and a
 ## Diagnostics
 
 - **Positions are UTF-8 bytes.** The mapper declares `positionEncoding: "utf-8"` in `initialize`, as the template and dotsql's mapper do, and dotsql's mapper places its diagnostics in UTF-8 bytes; the parsers report UTF-16 offsets, so the mapper converts them (`utf8Range`). The template passed UTF-16 offsets through, which places an error after a non-ASCII character too early. Measured: `tests/fixtures/errors/broken.toml`, whose first line holds `é`, reports `broken.toml(2,8)`.
-- **Codes** (shown as `motherload<code>`): 1 syntax, 2 a value no module can carry, 3 a file whose suffix motherload does not read, 4 the schema, 5 an option in tsconfig.
+- **Codes** (shown as `motherload<code>`): 1 syntax, 2 a value no module can carry, 3 a file whose suffix Motherload does not read, 4 the schema, 5 an option in tsconfig.
 - **A file that does not parse is typed `any`.** The diagnostic in the file fails the type check already; `any` keeps every use of the import from adding errors of its own. The template typed it `never`, and dotsql types a failed analysis `unknown`.
 
 ## The mapper process
@@ -164,7 +164,7 @@ The sources in `src/` started from the loader template in [lab/universal](./lab/
 | --- | --- |
 | TypeScript 7.1 content mapper (`tsc --runExternalCode`, the editor through the TypeScript 7 extension) | Built and tested: `lab/basic` type-checks with exact-type assertions; the editor was not run |
 | Node preload, `node --import motherload/register` | Built and tested |
-| nub, `nub --import motherload/register` | Run by hand on `lab/basic` (exit 0, the same output). nub's built-in data loaders export the parsed value as the default (nub's documentation), so `literal` and `raw` need motherload's preload, whose hook runs before nub's (the template's finding, docs/universal-plugin.md section 3) |
+| nub, `nub --import motherload/register` | Run by hand on `lab/basic` (exit 0, the same output). nub's built-in data loaders export the parsed value as the default (nub's documentation), so `literal` and `raw` need Motherload's preload, whose hook runs before nub's (the template's finding, docs/universal-plugin.md section 3) |
 | esbuild, `motherload/esbuild` | Built and tested: a bundle with no `node_modules` input |
 | Bun (`bun --preload`, `Bun.build`) | The template's Bun branch is kept in `src/register.ts`; not run, because this repository's tooling rule runs nub in place of bun |
 | Vite, Rollup, webpack, Rspack, Turbopack | Not built. The template's unplugin and webpack-loader adapters are the route ([PLAN.md](./PLAN.md#steps)) |

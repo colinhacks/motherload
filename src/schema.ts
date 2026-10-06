@@ -43,7 +43,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
     const mod = require(entry.entry);
     AjvClass = mod.default ?? mod;
   } catch {
-    return { error: `Validating ${basename(path)} needs ajv, an optional peer dependency of motherload: install it in the project.` };
+    return { error: `Validating ${basename(path)} needs ajv, an optional peer dependency of Motherload: install it in the project.` };
   }
   // allErrors: a Standard Schema result lists every issue. strict: false and no logger: a schema
   // written for another validator (unknown keywords, formats) still compiles, as the spec allows.
@@ -78,7 +78,7 @@ export async function schemaTypes(source: string, path: string): Promise<{ types
   try {
     ({ compile } = await import(pathToFileURL(createRequire(path).resolve("json-schema-to-typescript")).href));
   } catch {
-    return { types: FAILED_TYPES, problems: [...problems, problem(`Typing ${basename(path)} needs json-schema-to-typescript, an optional peer dependency of motherload: install it in the project.`)] };
+    return { types: FAILED_TYPES, problems: [...problems, problem(`Typing ${basename(path)} needs json-schema-to-typescript, an optional peer dependency of Motherload: install it in the project.`)] };
   }
   // The root is always `Type`; a root `title` would otherwise name it.
   const root = structuredClone(schema) as Record<string, unknown>;

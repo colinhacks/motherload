@@ -1,0 +1,390 @@
+---
+title: Motherload
+description: Import a TOML, YAML, JSON5, JSONC or .env file and get a typed module. Import a JSON Schema and get its type and a validator.
+---
+
+```toml title="config.toml"
+name = "demo"
+port = 8080
+tags = ["web", "api"]
+
+[database]
+url = "postgres://localhost/app"
+pool = 10
+```
+
+```ts twoslash title="main.ts"
+import config from "./config.toml";
+//     ^?
+```
+
+Every type above comes from the file, in the type check and in the editor. The same import runs under Node, Nub and esbuild.
+
+## How it works
+
+Motherload is a [content mapper](https://github.com/microsoft/typescript-go/pull/4712), a feature new in TypeScript 7.1: a package that turns a file TypeScript does not know into a typed module. Bundlers have loaded data files for years, and content mappers are the missing half.
+
+```text
+config.toml  →  Motherload  →  { name: string; port: number; tags: string[]; database: { … } }
+```
+
+## Setup
+
+Install Motherload, add it to `tsconfig.json`, then add it to each tool that loads your code.
+
+### Install
+
+```sh
+npm install -D motherload
+npm install -D typescript@next   # content mappers are in the TypeScript 7.1 dev builds
+```
+
+Schema imports need three optional peer dependencies, which run only when a module is built:
+
+```sh
+npm install -D json-schema-to-typescript ajv ajv-formats
+```
+
+The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`.
+
+### TypeScript
+
+Add Motherload to `tsconfig.json`, with the extensions it should own:
+
+```jsonc title="tsconfig.json"
+{
+  "compilerOptions": { /* ... */ },
+  "contentMappers": [ // [!code ++]
+    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".schema.json"] } // [!code ++]
+  ] // [!code ++]
+}
+```
+
+Type-check with `--runExternalCode`. Without the flag, `tsc` ignores content mappers.
+
+```json title="package.json"
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode"
+  }
+}
+```
+
+### Editors
+
+The editor needs the TypeScript 7.1 language server, with content mappers on.
+
+<Tabs items={["VS Code", "Cursor", "Zed"]}>
+<Tab value="VS Code">
+
+1. Install the **TypeScript (Native Preview)** extension (`TypeScriptTeam.native-preview`).
+2. Turn it on:
+
+   ```json title=".vscode/settings.json"
+   {
+     "typescript.experimental.useTsgo": true,
+     "js/ts.contentMappers.enabled": true
+   }
+   ```
+
+3. Trust the workspace. The extension runs no content mapper in an untrusted workspace.
+
+</Tab>
+<Tab value="Cursor">
+
+1. Install the **TypeScript (Native Preview)** extension (`TypeScriptTeam.native-preview`).
+2. Turn it on:
+
+   ```json title=".vscode/settings.json"
+   {
+     "typescript.experimental.useTsgo": true,
+     "js/ts.contentMappers.enabled": true
+   }
+   ```
+
+3. Trust the workspace. The extension runs no content mapper in an untrusted workspace.
+
+</Tab>
+<Tab value="Zed">
+
+1. Install the **TypeScript Language Server** extension by Zed Industries (search for "tsgo").
+2. Point it at the project's TypeScript, with content mappers on:
+
+   ```jsonc title=".zed/settings.json"
+   {
+     "languages": {
+       "TypeScript": {
+         "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+       },
+       "TSX": {
+         "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+       }
+     },
+     "lsp": {
+       "typescript-ls": {
+         // the extension's own download is TypeScript 7.0, which has no content mappers
+         "binary": { "path": "node_modules/typescript/bin/tsc", "arguments": ["--lsp", "--stdio"] },
+         "initialization_options": { "runExternalCode": true }
+       }
+     }
+   }
+   ```
+
+3. Trust the folder. In restricted mode, Zed starts no language server.
+
+</Tab>
+</Tabs>
+
+### Runtimes
+
+A preload turns each data file into a module as it loads:
+
+```sh
+node --import motherload/register main.ts
+```
+
+Nub reads the preload from its config file, so no flag is needed:
+
+```jsonc title="nub.jsonc"
+{
+  "preload": ["motherload/register"]
+}
+```
+
+### Bundlers
+
+A bundler plugin turns each data file into a module at build time, so a bundled app needs no preload, and Motherload stays a development dependency.
+
+<Accordions type="multiple">
+<Accordion title="esbuild" id="setup-esbuild">
+
+```js title="build.mjs"
+import * as esbuild from "esbuild";
+import motherload from "motherload/esbuild";
+
+await esbuild.build({
+  entryPoints: ["main.ts"],
+  bundle: true,
+  plugins: [motherload],
+  outfile: "dist/main.js",
+});
+```
+
+</Accordion>
+</Accordions>
+
+<Callout title="Not built yet">
+Bun, Vite, Rollup, Rolldown, webpack, Rspack, Turbopack and Jest.
+</Callout>
+
+## Loaders
+
+A loader turns a file into a module. Each file is parsed when the module is built, so a bundle holds the data as an object literal and no parser.
+
+A data file's module has three exports, and an import picks one by name:
+
+```ts twoslash title="main.ts"
+import config, { literal, raw } from "./config.toml";
+
+const port = config.port;     // the data, widened as TypeScript widens a .json import
+//    ^?
+const exact = literal.port;   // the same object, typed as `as const` would type it
+//    ^?
+const text = raw;             // the file's text
+//    ^?
+```
+
+A bundle holds the file's text only when an import uses `raw`. TypeScript does not resolve a specifier with a query, so `./config.toml?raw` is not typed. An import with a query or a hash goes to the next loader, such as Vite's own `?raw`.
+
+### `.toml`
+
+Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml). TOML has four kinds of date. Only an offset date-time names an instant, so only that one becomes a `Date`:
+
+```toml title="release.toml"
+published = 1979-05-27T07:32:00Z   # offset date-time
+day = 1979-05-27                   # local date
+at = 07:32:00                      # local time
+downloads = 9007199254740993       # past 2^53
+ratio = inf
+```
+
+```ts twoslash title="main.ts"
+import release from "./release.toml";
+//     ^?
+```
+
+A local date-time, date or time is its ISO text. An integer that a `number` cannot hold exactly is a `bigint`.
+
+### `.yaml`
+
+Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/), so `yes` is a string. Merge keys (`<<`) are read, and a duplicate key is an error. A `.yml` file is read the same way.
+
+```yaml title="app.yaml"
+defaults: &defaults
+  retries: 3
+  timeout: 1.5
+production:
+  <<: *defaults
+  host: example.com
+enabled: yes
+```
+
+```ts twoslash title="main.ts"
+import app from "./app.yaml";
+
+const production = app.production;
+//    ^?
+const enabled = app.enabled;
+//    ^?
+```
+
+A file of several documents (`---`) is the list of them:
+
+```yaml title="deploy.yaml"
+kind: Service
+---
+kind: Deployment
+replicas: 2
+```
+
+```ts twoslash title="main.ts"
+import deploy from "./deploy.yaml";
+//     ^?
+```
+
+### `.json5`
+
+Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser.
+
+```json5 title="data.json5"
+{
+  unquoted: 'single quotes',
+  hex: 0x10,
+  limit: Infinity,
+  list: [1, 2, 3,],
+}
+```
+
+```ts twoslash title="main.ts"
+import data from "./data.json5";
+//     ^?
+```
+
+### `.jsonc`
+
+Motherload reads JSON with comments with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser). Comments and trailing commas are allowed.
+
+```jsonc title="settings.jsonc"
+{
+  // the editor's font size
+  "editor.fontSize": 14,
+  "files.exclude": ["dist", "node_modules",],
+}
+```
+
+```ts twoslash title="main.ts"
+import settings from "./settings.jsonc";
+//     ^?
+```
+
+### `.env`
+
+Motherload reads `.env` files with [dotenv](https://github.com/motdotla/dotenv). Every value is a string, and `${NAME}` is not expanded.
+
+```sh title=".env"
+DATABASE_URL=postgres://localhost/app
+PORT=3000
+```
+
+```ts twoslash title="main.ts"
+import env from "./.env"; // no literal export, so no value appears in a type
+//     ^?
+```
+
+The `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.env`. A file such as `.env.local` ends in `.local`, which the entry does not reach.
+
+<Callout type="warn" title="The values are in the module">
+A `.env` file imported into browser code puts its values in the bundle.
+</Callout>
+
+### `.schema.json`
+
+A `.schema.json` file is a schema, not data. Its module is the type the schema describes and a validator for it.
+
+```json title="user.schema.json"
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "email": { "type": "string", "format": "email" },
+    "role": { "enum": ["admin", "member"] }
+  },
+  "required": ["name", "role"],
+  "additionalProperties": false
+}
+```
+
+```ts twoslash title="main.ts"
+declare const input: unknown;
+// ---cut---
+import user, { type Type as User } from "./user.schema.json";
+
+const ada = user.parse(input);       // or a TypeError listing every issue
+//    ^?
+
+user.is(input);                      // input is User
+user["~standard"].validate(input);   // Standard Schema v1
+user.schema;                         // the schema, as a literal type
+```
+
+The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). The types come from [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript).
+
+- **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
+- **Formats:** checked when `ajv-formats` is installed.
+- **References:** a `$ref` within the file is followed; a `$ref` to another file or a URL is an error.
+
+### `.json`
+
+Plain `.json` stays TypeScript's own: a content mapper cannot claim it. Turn on `resolveJsonModule`, and under `"module": "nodenext"` import it with an attribute:
+
+```ts
+import pkg from "./package.json" with { type: "json" };
+```
+
+## Errors
+
+A file that does not parse fails the type check at the line and column of the problem:
+
+```toml title="config.toml"
+name = "demo"
+port = nope
+```
+
+```text
+config.toml(2,8): error motherload1: Invalid TOML document: invalid value
+```
+
+The import of a broken file is typed `any`, so its uses add no errors of their own. Under the preload or a bundler, the same problem stops the load with the same message.
+
+| Code | Problem |
+| --- | --- |
+| `motherload1` | The file does not parse |
+| `motherload2` | A value no module can carry, such as a YAML `!!binary` |
+| `motherload3` | A file whose extension Motherload does not read |
+| `motherload4` | The schema is not valid, or a peer dependency is missing |
+| `motherload5` | An option in the `tsconfig.json` entry; Motherload takes none |
+
+## Status
+
+The package is pre-alpha and not published. It is tested on TypeScript `7.1.0-dev.20261002.1` and Node 26.
+
+| Host | State |
+| --- | --- |
+| `tsc --runExternalCode` | Tested |
+| Editors | Not yet run with Motherload |
+| Node, `--import motherload/register` | Tested |
+| Nub, `nub.jsonc` preload | Run by hand |
+| esbuild, `motherload/esbuild` | Tested |
+| Bun | Written, not run |
+| Vite, Rollup, Rolldown, webpack, Rspack, Turbopack, Jest | Not built |

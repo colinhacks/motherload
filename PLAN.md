@@ -1,4 +1,4 @@
-# motherload: the plan
+# Motherload: the plan
 
 Import a data file and get a typed module: `.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc` and `.env` become modules of data with no run time, and `.schema.json` becomes the TypeScript type it describes plus a validator. One npm package of TypeScript 7.1 content mappers, with a preload and bundler plugins so the same import runs. The brand study behind the name is `docs/brands.md` in the porg repository (`~/Documents/projects/lando`), also copied to dotsql (`~/Documents/projects/dotsql/docs/brands.md`); [DESIGN.md](./DESIGN.md) records every decision taken while building the first version.
 
@@ -6,14 +6,21 @@ Import a data file and get a typed module: `.toml`, `.yaml`/`.yml`, `.json5`, `.
 
 The maintainer's, Colin McDonnell, on 2026-10-03:
 
-- **One npm package, motherload,** of TypeScript 7.1 content mappers (plus bundler plugins and a preload) that type the data files a project imports: `.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env` and `.schema.json`. The name's pun on "load" is deliberate.
-- **A data file becomes a module of data with no run time,** so motherload is a development dependency of an application that bundles.
+- **One npm package, Motherload,** of TypeScript 7.1 content mappers (plus bundler plugins and a preload) that type the data files a project imports: `.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env` and `.schema.json`. The name's pun on "load" is deliberate.
+- **A data file becomes a module of data with no run time,** so Motherload is a development dependency of an application that bundles.
 - **A `.schema.json` file is a schema, not data:** it becomes its TypeScript type plus a validator, with the validator library (ajv) as an optional peer dependency.
-- **The SQL loader is not part of motherload.** It is its own product, dotsql (`~/Documents/projects/dotsql`), with each SQL dialect's engine in an add-on under `@dotsql`. A project that imports both lists both in its tsconfig, each with its own extensions.
+- **The SQL loader is not part of Motherload.** It is its own product, dotsql (`~/Documents/projects/dotsql`), with each SQL dialect's engine in an add-on under `@dotsql`. A project that imports both lists both in its tsconfig, each with its own extensions.
 - **Porg** (`~/Documents/projects/lando`, the porg repository) is the reactive Postgres driver, `pg_porg` and live queries.
-- **The loader kit stays a template,** not a published package: [lab/universal](./lab/universal), copied here from dotsql because motherload's mappers are its first users.
+- **The loader kit stays a template,** not a published package: [lab/universal](./lab/universal), copied here from dotsql because Motherload's mappers are its first users.
 - **Build an initial working version,** deciding every design question and recording it in DESIGN.md, one section per decision; the maintainer iterates on the design afterwards.
 - **A per-import choice between the parsed data and the raw text, and literal types as an opt-in,** with a query on the specifier (`?raw`, `?const`) proposed and to be verified against TypeScript first. It was: TypeScript does not resolve a specifier with a query, so the choice is by export name ([DESIGN.md](./DESIGN.md#how-an-import-chooses)).
+
+The maintainer's, on 2026-10-06:
+
+- **The name is written Motherload,** capitalized, wherever a person reads it; `motherload` stays the package name in code.
+- **The icon is the pickaxe emoji (⛏️),** used wherever the product shows an icon.
+- **The repository is public on GitHub,** at colinhacks/motherload.
+- **The docs site is one page** whose Loaders section has one heading per extension, each heading with a button that copies its link and one that copies the section as Markdown for an agent.
 
 ## Names
 
@@ -21,7 +28,7 @@ On npm, held by the maintainer as 0.0.0 placeholders: `motherload`, `motherlode`
 
 Held by other people, with transfer requests drafted and not sent: `dotyaml`, `dotyml`, `dotjson`, `dotmd`, `dotini`, `dotload`, `dot-loader`, `dotall`, `dotstar`, `dots`.
 
-On GitHub, a dormant user (since 2015, no repositories) holds `motherload`. This repository has no remote.
+On GitHub the repository is public at [colinhacks/motherload](https://github.com/colinhacks/motherload), created on 2026-10-06; a dormant user (since 2015, no repositories) holds the account name `motherload`.
 
 ## Content mapper facts
 
@@ -54,18 +61,17 @@ Run `nub install`, then `nub run typecheck` and `nub run test` (33 tests). The s
 4. **The schema loader** (done on 2026-10-03): types from json-schema-to-typescript and a validator compiled by ajv when the module is built, both optional peers.
 5. **Bundler plugins and the preload:** the preload (`motherload/register`) and esbuild (`motherload/esbuild`) are done. Next: Vite, Rollup and Rolldown through the template's unplugin adapter, webpack, Rspack and Turbopack through its webpack-loader adapter, Bun run for real, and a Jest transformer as dotsql has. Each needs a lab project that runs it.
 6. **A build to `dist/`** for publishing: today `exports` and the mapper's `exec` point at the TypeScript sources, which Node runs directly, as dotsql's repository does; the published package needs compiled JavaScript and declarations.
-7. **Docs and a launch:** a README for users, a docs site, the first release from `"private": true` to published.
+7. **Docs and a launch:** a README for users, a docs site (a first draft of one page is in [site/](./site), for the maintainer to review), the first release from `"private": true` to published.
 
 ## Open
 
 - **The `.env` module:** whether a module should read `process.env` at run time with the file as its defaults, instead of carrying the file's values (which a browser bundle then holds); whether to expand `${VAR}` as nub does; how a project claims `.env.local` and `.env.production`, whose suffixes are not `.env`.
 - **YAML multi-document files:** a file of several documents is the list of them, and a file of one document whose value is a list reads the same; a separate export (`documents`) would tell them apart.
 - **TOML date-times:** local dates and times are ISO strings and offset date-times are `Date`s; Temporal types (`Temporal.PlainDate` and the rest) are the alternative once every target runtime has Temporal.
-- **The per-format `dot<ext>` names:** whether they become aliases of motherload (`dottoml` installs motherload and claims `.toml`) or stay reserved.
-- **The validator peer for `.schema.json`:** ajv is the maintainer's choice and is built in; whether to accept others (a Standard Schema validator generated by another library), and whether `parse` should throw a `TypeError` or an error class of motherload's.
+- **The per-format `dot<ext>` names:** whether they become aliases of Motherload (`dottoml` installs Motherload and claims `.toml`) or stay reserved.
+- **The validator peer for `.schema.json`:** ajv is the maintainer's choice and is built in; whether to accept others (a Standard Schema validator generated by another library), and whether `parse` should throw a `TypeError` or an error class of Motherload's.
 - **JSON Schema `$ref` to other files:** following them needs the mapper to watch those files (`dynamicConfig` with `watchedFiles`), which costs a process on every `--incremental` run.
 - **JSONC trailing commas:** allowed today; whether a `.jsonc` file should be refused for them.
-- **Vite and `.schema.json`:** Vite treats ids ending in `.json` as JSON; whether its JSON handling runs on the module motherload returns is unverified.
-- **The GitHub home:** a dormant user holds `motherload` on GitHub.
-- **The built-in data loaders of nub** cover `.toml`, `.yaml`, `.json5` and `.jsonc` with a default export only; whether nub should read motherload's preload from its package (the template's `nub` manifest proposal in docs/universal-plugin.md section 5).
+- **Vite and `.schema.json`:** Vite treats ids ending in `.json` as JSON; whether its JSON handling runs on the module Motherload returns is unverified.
+- **The built-in data loaders of nub** cover `.toml`, `.yaml`, `.json5` and `.jsonc` with a default export only; whether nub should read Motherload's preload from its package (the template's `nub` manifest proposal in docs/universal-plugin.md section 5).
 - **The TypeScript nightly:** the repository pins `7.1.0-dev.20261002.1`; the content mapper diagnostic codes changed between nightlies, so tests match messages, not codes.

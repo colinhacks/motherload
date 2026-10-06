@@ -90,7 +90,7 @@ export function toMapperHandlers(plugin: LoaderPlugin): MapperHandlers {
     openProject(params) {
       // motherload takes no options; a key in a tsconfig entry's `options` is a mistake worth showing.
       const { options } = (params ?? {}) as { options?: Record<string, unknown> | null };
-      const optionDiagnostics = Object.keys(options ?? {}).map((key) => ({ path: [key], messageText: `motherload takes no options; remove "${key}".`, code: 5 }));
+      const optionDiagnostics = Object.keys(options ?? {}).map((key) => ({ path: [key], messageText: `Motherload takes no options; remove "${key}".`, code: 5 }));
       return { optionDiagnostics };
     },
     async transform(params) {

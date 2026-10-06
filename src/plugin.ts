@@ -7,7 +7,7 @@ import type { LoaderPlugin } from "./universal.ts";
 
 const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env and .schema.json";
 
-const unknownFormat = (path: string): Problem => ({ message: `motherload reads ${READS} files; ${path} is none of them. Remove its extension from motherload's contentMappers entry.`, start: 0, length: 1, code: CODES.unknownFormat });
+const unknownFormat = (path: string): Problem => ({ message: `Motherload reads ${READS} files; ${path} is none of them. Remove its extension from Motherload's contentMappers entry.`, start: 0, length: 1, code: CODES.unknownFormat });
 
 export const plugin: LoaderPlugin = {
   name: "motherload",

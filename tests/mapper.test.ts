@@ -47,7 +47,7 @@ test("the mapper answers the protocol, reports options and places errors in UTF-
     const bad = await mapper.call("transform", { fileName: `${ROOT}x.toml`, content, projectHandle: "p" });
     assert.equal(bad.result.diagnostics[0].start, Buffer.byteLength(content.slice(0, content.indexOf("nope"))));
     const unknown = await mapper.call("transform", { fileName: `${ROOT}x.ini`, content: "", projectHandle: "p" });
-    assert.match(unknown.result.diagnostics[0].messageText, /motherload reads/);
+    assert.match(unknown.result.diagnostics[0].messageText, /Motherload reads/);
   } finally {
     mapper.close();
   }

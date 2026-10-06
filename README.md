@@ -1,4 +1,4 @@
-# motherload
+# ⛏️ Motherload
 
 Import a data file and get a typed module.
 
@@ -11,7 +11,7 @@ import user, { type Type as User } from "./user.schema.json";
 const input: User = user.parse(JSON.parse(body));   // validated, or a TypeError listing every issue
 ```
 
-The motherload package is a TypeScript 7.1 content mapper for `.toml`, `.yaml`, `.yml`, `.json5`, `.jsonc` and `.env` files, which become modules of data, and for `.schema.json` files, which become the type they describe and a validator. A preload and an esbuild plugin make the same imports run.
+The Motherload package is a TypeScript 7.1 content mapper for `.toml`, `.yaml`, `.yml`, `.json5`, `.jsonc` and `.env` files, which become modules of data, and for `.schema.json` files, which become the type they describe and a validator. A preload and an esbuild plugin make the same imports run.
 
 Status: pre-alpha, not published.
 
@@ -43,4 +43,4 @@ A `.env` module carries the file's values: importing one into browser code puts 
 
 ## Repository
 
-[PLAN.md](./PLAN.md) is where motherload is going, [DESIGN.md](./DESIGN.md) records each decision and its evidence, and [AGENTS.md](./AGENTS.md) describes the layout and the checks. [lab/basic](./lab/basic) imports every format.
+[PLAN.md](./PLAN.md) is where Motherload is going, [DESIGN.md](./DESIGN.md) records each decision and its evidence, and [AGENTS.md](./AGENTS.md) describes the layout and the checks. [lab/basic](./lab/basic) imports every format.
