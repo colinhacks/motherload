@@ -41,22 +41,22 @@ test("an issue's path is the instance path, unescaped", async () => {
   assert.deepEqual(result.issues[0].path, ["a/b", "1"]);
 });
 
-test("the types name the root Type whatever its title", async () => {
-  const { types, problems } = await schemaTypes(SCHEMA, PATH);
+test("the types name the root Type whatever its title", () => {
+  const { types, problems } = schemaTypes(SCHEMA, PATH);
   assert.deepEqual(problems, []);
   assert.match(types, /export interface Type \{/);
   assert.match(types, /declare const schema: __MotherloadSchema<Type, \{ readonly \$schema: "https:\/\/json-schema.org\/draft\/2020-12\/schema";/);
 });
 
-test("a $ref to another file is a problem, not a read", async () => {
-  const { problems } = await schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.schema.json" } } }), PATH);
+test("a $ref to another file is a problem, not a read", () => {
+  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.schema.json" } } }), PATH);
   assert.equal(problems.length, 1);
   assert.match(problems[0]!.message, /resolve reference \.\/other\.schema\.json/);
 });
 
-test("an invalid schema is a problem in both texts", async () => {
+test("an invalid schema is a problem in both texts", () => {
   const invalid = JSON.stringify({ type: "object", properties: { a: { type: "strng" } } });
-  assert.match((await schemaTypes(invalid, PATH)).problems[0]!.message, /not valid/);
+  assert.match(schemaTypes(invalid, PATH).problems[0]!.message, /not valid/);
   assert.match(schemaCode(invalid, PATH).problems[0]!.message, /not valid/);
 });
 
@@ -65,10 +65,12 @@ test("draft-04 is refused with the drafts ajv validates", () => {
   assert.match(problems[0]!.message, /drafts 06, 07, 2019-09 and 2020-12/);
 });
 
-test("outside a project with the peers, each text says what to install", async () => {
+test("outside a project with ajv, the types are still built and the code says what to install", () => {
   const dir = mkdtempSync(join(tmpdir(), "motherload-no-peers-"));
   const path = join(dir, "a.schema.json");
   writeFileSync(path, SCHEMA);
-  assert.match((await schemaTypes(SCHEMA, path)).problems[0]!.message, /needs json-schema-to-typescript/);
+  const { types, problems } = schemaTypes(SCHEMA, path);
+  assert.deepEqual(problems, []);
+  assert.match(types, /export interface Type \{\n  name: string;\n  tags\?: \{\n    \[key: string\]: unknown;\n  \}\[\];\n\}/);
   assert.match(schemaCode(SCHEMA, path).problems[0]!.message, /needs ajv/);
 });

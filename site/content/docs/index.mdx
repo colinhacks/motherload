@@ -92,10 +92,10 @@ npm install -D motherload
 npm install -D typescript@next   # content mappers are in the TypeScript 7.1 dev builds
 ```
 
-Schema imports need three optional peer dependencies, which run only when a module is built:
+Schema imports need two optional peer dependencies, which run only when a module is built:
 
 ```sh
-npm install -D json-schema-to-typescript ajv ajv-formats
+npm install -D ajv ajv-formats
 ```
 
 The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`.
@@ -460,7 +460,7 @@ user["~standard"].validate(input);   // Standard Schema v1
 user.schema;                         // the schema, as a literal type
 ```
 
-The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). The types come from [json-schema-to-typescript](https://github.com/bcherny/json-schema-to-typescript).
+The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
 
 - **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
 - **Formats:** checked when `ajv-formats` is installed.

@@ -32,8 +32,8 @@ const DATA = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\
 const IMPORT = /\b(?:from|import)\s+["']\.\/([^"']+)["']/g;
 
 export function remarkMapper() {
-  // The build runs in site/. A schema's optional peers (ajv, json-schema-to-typescript) resolve
-  // from there, through the repository's node_modules.
+  // The build runs in site/. A schema's optional peers (ajv, ajv-formats) resolve from there,
+  // through the repository's node_modules.
   const site = process.cwd();
   return (tree: Node) => {
     // Each import is typed from the nearest block above it with the file's name, so a page can show

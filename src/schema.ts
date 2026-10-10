@@ -6,15 +6,15 @@
 //   user.is(input);             // input is User
 //   user["~standard"];          // Standard Schema v1, for any library that accepts one
 //
-// The types come from json-schema-to-typescript, the validator from ajv: both optional peer
-// dependencies, resolved from the schema's own directory. The generated module imports nothing:
-// ajv's standalone code is inlined with the few run-time helpers it requires.
+// The types come from Motherload's own emitter (schema-types.ts), the validator from ajv, an
+// optional peer dependency resolved from the schema's own directory. The generated module imports
+// nothing: ajv's standalone code is inlined with the few run-time helpers it requires.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { basename, dirname } from "node:path";
-import { pathToFileURL } from "node:url";
+import { basename } from "node:path";
 import { parseJsonFile, CODES, type Problem } from "./formats.ts";
 import { literal, toJs, type Value } from "./serialize.ts";
+import { schemaDeclarations } from "./schema-types.ts";
 import type { ModuleText } from "./data.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
@@ -59,7 +59,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
 
 // ---- types --------------------------------------------------------------------------------------
 
-export async function schemaTypes(source: string, path: string): Promise<{ types: string; problems: Problem[] }> {
+export function schemaTypes(source: string, path: string): { types: string; problems: Problem[] } {
   const parsed = parseJsonFile(source);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
@@ -72,34 +72,10 @@ export async function schemaTypes(source: string, path: string): Promise<{ types
       problems.push(problem(`The schema is not valid: ${(error as Error).message}`));
     }
   }
-  // json-schema-to-typescript is an optional peer too: with prettier it is about 16 MB of the
-  // 17 MB motherload would otherwise install (DESIGN.md), and only schema imports need it.
-  let compile: typeof import("json-schema-to-typescript").compile;
-  try {
-    ({ compile } = await import(pathToFileURL(createRequire(path).resolve("json-schema-to-typescript")).href));
-  } catch {
-    return { types: FAILED_TYPES, problems: [...problems, problem(`Typing ${basename(path)} needs json-schema-to-typescript, an optional peer dependency of Motherload: install it in the project.`)] };
-  }
-  // The root is always `Type`; a root `title` would otherwise name it.
-  const root = structuredClone(schema) as Record<string, unknown>;
-  if (root && typeof root === "object" && !Array.isArray(root)) delete root["title"];
-  let declarations: string;
-  try {
-    declarations = await compile(root as never, "Type", {
-      bannerComment: "",
-      format: false,
-      cwd: dirname(path),
-      // A schema is one file: a $ref to another file or a URL is not followed (DESIGN.md).
-      $refOptions: { resolve: { file: false, http: false } } as never,
-    });
-  } catch (error) {
-    // ajv's message, when it has one, already says why; one problem per cause.
-    return { types: FAILED_TYPES, problems: problems.length ? problems : [problem(`json-schema-to-typescript could not type the schema: ${(error as Error).message.split("\n")[0]}`)] };
-  }
   return {
     types: [
       `import type { Schema as __MotherloadSchema } from "motherload";`,
-      declarations.trim(),
+      schemaDeclarations(schema),
       `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
       "export default schema;",
       "",

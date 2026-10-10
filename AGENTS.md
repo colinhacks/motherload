@@ -11,6 +11,7 @@ The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5
 | `src/formats.ts` | One parser per format, each returning a value or problems placed in the text |
 | `src/serialize.ts` | A parsed value as JavaScript, as a widened type and as a literal type |
 | `src/data.ts`, `src/schema.ts` | The module a data file, a `.env` file and a `.schema.json` file become |
+| `src/schema-types.ts` | A JSON Schema as TypeScript declarations: Motherload's own emitter |
 | `src/plugin.ts` | The loader: each path to its format |
 | `src/universal.ts`, `src/rpc.ts` | The loader contract, its adapters (Node hooks, Bun, esbuild, the content mapper) and the JSON-RPC server, from the template |
 | `src/mapper.ts`, `src/register.ts`, `src/esbuild.ts` | The entry points: the content mapper process, the preload, the esbuild plugin |

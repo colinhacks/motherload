@@ -43,17 +43,13 @@
   },
   "peerDependencies": {
     "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
-    "json-schema-to-typescript": "^16.0.0"
+    "ajv-formats": "^3.0.1"
   },
   "peerDependenciesMeta": {
     "ajv": {
       "optional": true
     },
     "ajv-formats": {
-      "optional": true
-    },
-    "json-schema-to-typescript": {
       "optional": true
     }
   },
@@ -62,7 +58,6 @@
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "esbuild": "^0.28.2",
-    "json-schema-to-typescript": "^16.0.0",
     "motherload": "link:.",
     "typescript": "7.1.0-dev.20261002.1",
     "universal-toml": "link:lab/universal/plugin",

@@ -217,7 +217,7 @@ import post, { frontmatter } from "./post.md";
 
 ### `.schema.json`
 
-A JSON Schema becomes its type and a validator. Install `json-schema-to-typescript`, `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time.
+A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time.
 
 ```json
 {
