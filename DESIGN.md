@@ -217,3 +217,72 @@ The sources in `src/` started from the loader template in [lab/universal](./lab/
 | Bun (`bun --preload`, `Bun.build`) | The template's Bun branch is kept in `src/register.ts`; not run, because this repository's tooling rule runs nub in place of bun |
 | Vite, Rollup, webpack, Rspack, Turbopack | Not built. The template's unplugin and webpack-loader adapters are the route ([PLAN.md](./PLAN.md#steps)) |
 | Jest | Not built. A preload does not reach Jest's test code: measured with jest 30.5.2 under `node --import motherload/register`, the preload ran in Jest's process and its workers, but a test's `require("./config.toml")` was read and compiled by jest-runtime itself (`ReferenceError: server is not defined` for a file starting `[server]`), while plain Node under the same preload loaded it. Jest needs a transformer, as dotsql has |
+
+## Packaging
+
+Decided by the maintainer on 2026-10-08 and 2026-10-09: Motherload becomes a family of packages released together at one version. Each format is a package of its own under the `@motherload` scope, complete with its mapper, preload, esbuild plugin and parser; `motherload` is the package of all of them, with one mapper, one preload and one plugin; the code they share is `@motherload/core`, a published dependency of every other package. Not built yet: today the repository is still one package ([PLAN.md](./PLAN.md#steps)).
+
+| Package | Extensions | Dependencies, each at an exact version |
+| --- | --- | --- |
+| `@motherload/core` | none: the loader contract and its adapters (Node hooks, Bun, esbuild, the mapper's handlers), the JSON-RPC server, the serializer, the error codes and positions | none |
+| `@motherload/toml` | `.toml` | core, smol-toml |
+| `@motherload/yaml` | `.yaml`, `.yml` | core, yaml |
+| `@motherload/json5` | `.json5` | core, json5 |
+| `@motherload/jsonc` | `.jsonc` | core, jsonc-parser |
+| `@motherload/env` | `.env` | core (the parser is Node's `util.parseEnv`) |
+| `@motherload/csv` | `.csv`, `.tsv` | core, csv-parse |
+| `@motherload/txt` | `.txt` | core |
+| `@motherload/md` | `.md` | core, yaml (the frontmatter) |
+| `@motherload/schema` | `.schema.json` | core, jsonc-parser (positions in the schema), ajv, ajv-formats, and a type generator ([PLAN.md](./PLAN.md#open)) |
+| `motherload` | all of the above | core and the nine format packages |
+
+A format package's manifest, `@motherload/yaml` here; `./loader` is the format's `LoaderPlugin`, which `motherload` combines with the other eight:
+
+```jsonc
+{
+  "name": "@motherload/yaml",
+  "type": "module",
+  "exports": {
+    "./loader": "./dist/loader.js",
+    "./register": "./dist/register.js",
+    "./esbuild": "./dist/esbuild.js",          // export default function yaml()
+    "./client": { "types": "./client.d.ts" }   // `*.yaml?raw` and `*.yml?raw`
+  },
+  "typescript": { "contentMapper": { "exec": ["node", "dist/mapper.js"] } },
+  "dependencies": { "@motherload/core": "0.1.0", "yaml": "2.9.1" }
+}
+```
+
+`motherload`'s manifest has the same `typescript` field and the `./register`, `./esbuild` and `./client` exports, over the combined loader, and depends on `@motherload/core` and the nine format packages at the release's version.
+
+| A project's setup | With `motherload` | With `@motherload/yaml` |
+| --- | --- | --- |
+| tsconfig entry | `{ "package": "motherload", "extensions": [ every extension it uses ] }` | `{ "package": "@motherload/yaml", "extensions": [".yaml", ".yml"] }` |
+| `?raw` types | `"types": ["motherload/client"]` | `"types": ["@motherload/yaml/client"]` |
+| Node.js | `--import motherload/register` | `--import @motherload/yaml/register` |
+| esbuild | `plugins: [motherload()]` | `plugins: [yaml()]` from `@motherload/yaml/esbuild` |
+
+- **Exact versions throughout,** so the transform identity, which TypeScript computes from the mapper package's name and version and the tsconfig options (the content mapper PR's text, quoted in the porg repository's `docs/prior-art.md` section 4b), changes whenever a parser does. An optional peer's version is outside that identity: an `--incremental` build could keep a module built with an older peer (this follows from the PR's text and was not measured).
+- **One owner per extension:** two packages that claim one extension fail the type check (`TS18067`), so a project lists `motherload` or a format package for each extension, never both.
+- **One process per package:** TypeScript starts one mapper process per package, so `motherload` serves every format from one process, one tsconfig entry, one `--import` and one plugin; a project of two format packages has two of each.
+- **A scoped package is a mapper like any other:** measured on `7.1.0-dev.20261002.1`, a tsconfig entry `{ "package": "@probe/loader" }` started that package's mapper and typed a `.toml` import from it.
+- **A project that runs under the preload** loads its Motherload package at run time and lists it in `dependencies`; a bundled project lists it in `devDependencies`, because a generated module imports no package at run time, the validator included. A format package keeps the first case small: an app that preloads only TOML installs `@motherload/core`, `@motherload/toml` and smol-toml.
+- **The `@motherload` scope replaces the per-format `dot<ext>` names,** which stay reserved: `dotyaml`, `dotyml`, `dotjson` and `dotmd` are held by other people ([PLAN.md](./PLAN.md#names)).
+- **The schema's validator stays compiled when the module is built** (above), with ajv a dependency of `@motherload/schema`, so `format` is always checked. A run-time ajv was the alternative; measured on 2026-10-09 for one schema (`minLength`, `format: "email"`), bundled and minified with esbuild: 134 KB (41 KB gzipped) with ajv and ajv-formats, which compile the validator with `new Function`, against 4.2 KB (1.6 KB gzipped) for the module Motherload builds, which has no `new Function`. Loading ajv took 21 ms and compiling the schema 15 ms. A Content Security Policy without `unsafe-eval` refuses `new Function`.
+
+Sizes, from the npm registry's `dist.unpackedSize` on 2026-10-07:
+
+| Package | Version | Unpacked size | Needed for |
+| --- | --- | --- | --- |
+| smol-toml | 1.9.0 | 0.14 MB | `.toml` |
+| yaml | 2.9.1 | 0.69 MB | `.yaml`, `.yml`, a `.md` file's frontmatter |
+| json5 | 2.2.3 | 0.24 MB | `.json5` |
+| jsonc-parser | 3.3.1 | 0.21 MB | `.jsonc` |
+| csv-parse | 7.0.3 | 1.61 MB | `.csv`, `.tsv` |
+| json-schema-to-typescript | 16.0.0 | 15.9 MB with its dependencies, of which prettier 3.9.9 is 9.96 MB | a schema's types |
+| ajv, ajv-formats | 8.20.0, 3.0.1 | 1.03 MB, 0.06 MB | a schema's validator and `format` |
+| typescript (for comparison) | 7.1.0-dev.20261002.1 | 3.98 MB, plus 28.7 MB for `@typescript/typescript-darwin-arm64` | the compiler every Motherload project already installs |
+
+prettier cannot be left out of json-schema-to-typescript: its `index.js` requires its formatter, which requires prettier, at load. With it, `motherload` would install 18.8 MB, 85 percent of it for a schema's types; without it, about 4 MB. The type generator is open in [PLAN.md](./PLAN.md#open): json-schema-to-typescript, json-schema-to-ts (0.47 MB with its two dependencies; measured on `7.1.0-dev.20261002.1`, `FromSchema` gives the exact types and inlines each `$ref`, recomputed in every type check), or an emitter of Motherload's own, which would name each `$defs` entry and leave a keyword it does not cover `unknown`. The parsers cost little to load: `src/formats.ts` imports all five statically, and importing it took 19 to 47 ms in a fresh Node process (three runs); json-schema-to-typescript took 59 ms and ajv 35 ms.
+
+The shapes that were considered, on 2026-10-07: one package with the parsers as dependencies (the first version); one package with each parser an optional peer, which saves up to 2.88 MB and moves the parser's version outside the transform identity; one package per format with no package of all of them, which gives every project a process per format; and, for `.schema.json`, three optional peers (the first version), one `@motherload/schema` peer, a mapper package of its own, or dependencies of Motherload.

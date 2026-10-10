@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Motherload's icon: three gold bars, stacked. The same drawing is public/motherload.svg. -->
+  <!-- Motherload's icon: three gold bars, stacked. The same drawing is app/icon.svg. -->
   <g stroke="#4a230d" stroke-width="1.3" stroke-linejoin="round">
     <path d="M1.5 27.5H15.5L13.3 18.5H3.7Z" fill="#e4a636"/>
     <path d="M16.5 27.5H30.5L28.3 18.5H18.7Z" fill="#e4a636"/>

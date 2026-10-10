@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🪎<br/>Motherload</h1>
+  <h1 align="center"><img src="site/public/motherload.svg" width="56" height="56" alt=""><br/>Motherload</h1>
   <p align="center">
     Import a data file and get a typed module
     <br/>

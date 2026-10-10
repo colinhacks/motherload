@@ -15,10 +15,8 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <a href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight text-fd-headings">
-        {/* The treasure chest emoji (U+1FA8E), as in app/icon.svg. */}
-        <span aria-hidden className="text-xl leading-none">
-          🪎
-        </span>
+        {/* public/motherload.svg, the same drawing as app/icon.svg. */}
+        <img src="/motherload.svg" alt="" width={22} height={22} className="size-5.5" />
         Motherload
       </a>
       <span className="rounded-full border px-2 py-0.5 font-mono text-xs leading-none text-fd-muted-foreground">beta</span>

@@ -18,12 +18,18 @@ The maintainer's, Colin McDonnell, on 2026-10-03:
 The maintainer's, on 2026-10-06:
 
 - **The name is written Motherload,** capitalized, wherever a person reads it; `motherload` stays the package name in code.
-- **The icon is the treasure chest emoji** (🪎, U+1FA8E), used wherever the product shows an icon (the first choice, the pickaxe emoji, read poorly on the dark theme; a chest drawn as an SVG came between, and the maintainer chose the emoji over it).
+- **The icon is three stacked gold bars,** an SVG (`site/app/icon.svg`, `site/public/motherload.svg`), used wherever the product shows an icon. The maintainer chose it on 2026-10-09 from sixteen drawn candidates, without the "M" its mockup carried; before it came the pickaxe emoji (it read poorly on the dark theme), a drawn chest and the treasure chest emoji (🪎).
 - **The repository is public on GitHub,** at colinhacks/motherload.
 - **The docs site is one page** with no persistent top bar (the name, GitHub and the theme switch sit in the left column, as on nub's docs), whose Loaders section has one heading per extension, each heading with a button that copies its link and one that copies the section as Markdown for an agent. It opens with what Motherload is, a note on content mappers, and a tabbed example importing several formats whose types show on hover. It shows no internal state (no status table, no "not built yet"), and its label is "beta". The GitHub link at the foot of the left column reads "GitHub", with nub's handwritten "Leave a star!" under it. Its type is IBM Plex Sans and IBM Plex Mono, and its colours are "Lantern": ash grays and amber by day, coal-black and amber by night, chosen over nine other palettes as the most evocative of gold. The hero's example is its import lines only, each imported name ruled with a dotted line to show it can be hovered. Its Errors section says only that a file's invalid data reaches the compiler as a type error, with tsc's own output; there is nothing to configure.
 - **A data file's default export is typed as `as const` would type it,** and `?raw` gives the file's text, typed by `motherload/client` ([DESIGN.md](./DESIGN.md#the-module-an-import-returns)).
 - **A YAML file of several documents stays the list of them,** typed the same as one document whose value is a list; no `documents` export ([DESIGN.md](./DESIGN.md#the-yaml-parser-yaml)).
 - **A `.env` file is imported for its effect,** `import "./.env"`: its variables are set on `process.env` when the module runs and typed on `NodeJS.ProcessEnv`, with no value in a bundle ([DESIGN.md](./DESIGN.md#the-env-module)).
+
+The maintainer's, on 2026-10-08 and 2026-10-09:
+
+- **Motherload becomes a family of packages** released together at one version: a package per format under `@motherload` (`toml`, `yaml`, `json5`, `jsonc`, `env`, `csv`, `txt`, `md`, `schema`), each with its own mapper, preload, esbuild plugin and parser; `motherload`, the package of all of them, with one of each; and `@motherload/core`, the code they share, published as their dependency. Every dependency is at an exact version ([DESIGN.md](./DESIGN.md#packaging)).
+- **`.schema.json` stays in Motherload,** as `@motherload/schema`, with ajv and ajv-formats as its dependencies and the validator still compiled when the module is built.
+- **The per-format `dot<ext>` names stay reserved;** the `@motherload` scope replaces them.
 
 ## Names
 
@@ -50,6 +56,7 @@ Each was a lead from earlier research; each row says where it was confirmed. "Me
 | `tsc --incremental` opens dynamic mappers' projects | The porg repository's `docs/prior-art.md` section 4b, quoting the PR ("TypeScript uses `openProject` to obtain `configIdentity` before an up-to-date decision"); measured: a `dynamicConfig` mapper started and answered `openProject` on each `--incremental` run with no matching file present |
 | The failure budget is 5 per mapper, and each tsconfig entry is its own mapper | The porg repository's `DESIGN.md` (the PR's text: "after five failures in a project tsc stops calling that mapper") and `docs/brands.md` (per entry, read in the source, not run); measured: one entry with seven failing files gave five failed transforms and then the switched-off diagnostic, while the same package in two entries took four failures each without being switched off |
 | A transform request carries only `fileName`, `content` and `projectHandle` | Measured; `openProject` carries `configFileName`, `projectHandle`, `compilerOptions`, and `options` when the entry has them |
+| A scoped package (`@probe/loader`) is a content mapper like any other | Measured on 20261002.1: its tsconfig entry started its mapper, which typed a `.toml` import |
 | A specifier with a query (`./x.toml?raw`) does not resolve to the file, so the mapper never sees it | Measured: `TS2307` on both builds; an ambient `declare module "*.toml?raw"` types it instead (measured on 20261002.1); details in [DESIGN.md](./DESIGN.md#how-an-import-chooses) |
 
 ## What works
@@ -63,20 +70,19 @@ Run `nub install`, then `nub run typecheck` and `nub run test` (48 tests). The s
 3. **Each format** (done on 2026-10-03): TOML, YAML, JSON5, JSONC and `.env`, each with a parser chosen in DESIGN.md. CSV, TSV, text and Markdown with frontmatter added on 2026-10-06 ([DESIGN.md](./DESIGN.md#the-csv-and-tsv-module)).
 4. **The schema loader** (done on 2026-10-03): types from json-schema-to-typescript and a validator compiled by ajv when the module is built, both optional peers.
 5. **Bundler plugins and the preload:** the preload (`motherload/register`) and esbuild (`motherload/esbuild`) are done. Next: Vite, Rollup and Rolldown through the template's unplugin adapter, webpack, Rspack and Turbopack through its webpack-loader adapter, Bun run for real, and a Jest transformer as dotsql has (a preload does not reach Jest's test code, [DESIGN.md](./DESIGN.md#what-runs-where)). Each needs a lab project that runs it.
-6. **A build to `dist/`** for publishing: today `exports` and the mapper's `exec` point at the TypeScript sources, which Node runs directly, as dotsql's repository does; the published package needs compiled JavaScript and declarations.
+6. **The package family and a build to `dist/`** for publishing: the split into `@motherload/core`, nine format packages and `motherload` ([DESIGN.md](./DESIGN.md#packaging)), and compiled JavaScript and declarations for each, because today `exports` and the mapper's `exec` point at the TypeScript sources, which Node runs directly, as dotsql's repository does.
 7. **Docs and a launch:** a README for users, a docs site (a first draft of one page is in [site/](./site), for the maintainer to review), the first release from `"private": true` to published.
 
 ## Open
 
 - **`.env` files:** whether to expand `${VAR}` as nub does; how a project claims `.env.local` and `.env.production`, whose suffixes are not `.env`.
 - **TOML date-times:** local dates and times are ISO strings and offset date-times are `Date`s; Temporal types (`Temporal.PlainDate` and the rest) are the alternative once every target runtime has Temporal.
-- **The per-format `dot<ext>` names:** whether they become aliases of Motherload (`dottoml` installs Motherload and claims `.toml`) or stay reserved.
+- **A schema's type generator:** json-schema-to-typescript (15.9 MB with prettier), json-schema-to-ts (0.47 MB, the type computed in every type check), or an emitter of Motherload's own ([DESIGN.md](./DESIGN.md#packaging)).
 - **The validator peer for `.schema.json`:** ajv is the maintainer's choice and is built in; whether to accept others (a Standard Schema validator generated by another library), and whether `parse` should throw a `TypeError` or an error class of Motherload's.
 - **JSON Schema `$ref` to other files:** following them needs the mapper to watch those files (`dynamicConfig` with `watchedFiles`), which costs a process on every `--incremental` run.
 - **JSONC trailing commas:** allowed today; whether a `.jsonc` file should be refused for them.
 - **CSV quoting in TSV:** a `.tsv` file follows the IANA registration, with no quoting; whether the TSV that spreadsheets export puts quotes around a field that holds a tab or a line break, and so needs CSV quoting, is unverified.
 - **Large CSV files in a bundle:** each row is an object literal that repeats every column name; an array of arrays mapped to objects when the module runs would be smaller.
-- **The icon:** the emoji for now; drawn icons (a chest, a pickaxe, a mine cart with gold, an "M" traced as a gold vein) were mocked up on 2026-10-06 for the maintainer to choose from.
 - **Markdown:** whether `.mdx` should be claimed, and whether a `+++` TOML frontmatter (Hugo's) should be read.
 - **Vite and `.schema.json`:** Vite treats ids ending in `.json` as JSON; whether its JSON handling runs on the module Motherload returns is unverified.
 - **The built-in data loaders of nub** cover `.toml`, `.yaml`, `.json5` and `.jsonc` with a default export only; whether nub should read Motherload's preload from its package (the template's `nub` manifest proposal in docs/universal-plugin.md section 5).
