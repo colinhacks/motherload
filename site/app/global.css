@@ -339,3 +339,330 @@ figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:e
 #nd-page .prose .ml-lede em {
   font-style: normal;
 }
+
+/* ── The showcase (app/showcase/page.tsx) ─────────────────────────────────────
+   An unlisted page for screenshots: each of the hero's imports as one block,
+   main.ts and its file side by side, in a frame that wraps the block with the
+   padding set in the bar. The block resizes from its edges and its divider
+   moves (components/showcase.tsx), so a screenshot can be as dense as its
+   content. The text is larger than the docs' so it reads when the image is
+   shown small. The page around the frames is a flat gray, so each frame's edge
+   is plain to crop to. */
+
+.ml-showcase {
+  flex: 1;
+  padding: 24px 24px 64px;
+  background: #d8d4cb;
+}
+
+.dark .ml-showcase {
+  background: #1d1f23;
+}
+
+.ml-showcase-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 1200px;
+  max-width: 100%;
+  margin: 0 auto 24px;
+  font-size: 13px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.ml-showcase-controls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.ml-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 9999px;
+  background: var(--color-fd-background);
+}
+
+.ml-segmented button {
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ml-segmented button[aria-pressed='true'] {
+  color: var(--color-fd-primary-foreground);
+  background: var(--color-fd-primary);
+}
+
+.ml-padding {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ml-padding input {
+  width: 96px;
+  accent-color: var(--ore);
+}
+
+.ml-padding output {
+  width: 2ch;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.ml-shot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+/* Above each frame, outside it: the file, the frame's size in CSS px, and a reset. */
+.ml-shot-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.ml-shot-meta button {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ml-shot-meta button:disabled {
+  visibility: hidden;
+}
+
+/* A frame: the block on the Lantern's ground, lit from the top left, centred both ways. The
+   frame is as wide as the block and its padding, and as tall as the shape in the bar makes it. A
+   block too tall for the shape widens the frame instead (a flex item's width follows its height
+   through `aspect-ratio`). */
+.ml-shot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: var(--shot-pad);
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(760px 460px at 0% 0%, rgb(199 119 0 / 0.13), transparent 70%),
+    radial-gradient(640px 400px at 100% 100%, rgb(199 119 0 / 0.07), transparent 70%),
+    #f4f2ed;
+}
+
+.dark .ml-shot {
+  background:
+    radial-gradient(760px 460px at 0% 0%, rgb(245 165 36 / 0.12), transparent 70%),
+    radial-gradient(640px 400px at 100% 100%, rgb(245 165 36 / 0.05), transparent 70%),
+    #0b0c0e;
+}
+
+.ml-showcase[data-frame='4:3'] .ml-shot {
+  aspect-ratio: 4 / 3;
+}
+
+.ml-showcase[data-frame='1:1'] .ml-shot {
+  aspect-ratio: 1 / 1;
+}
+
+.ml-showcase[data-frame='fit'] .ml-shot {
+  aspect-ratio: auto;
+}
+
+/* A fitted frame ends at the block, so the logo takes a strip of its own below it. */
+.ml-showcase[data-frame='fit'][data-logo='on'] .ml-shot {
+  padding-bottom: calc(var(--shot-pad) + 36px);
+}
+
+.ml-shot-logo {
+  position: absolute;
+  right: max(16px, calc(var(--shot-pad) - 8px));
+  bottom: max(12px, calc(var(--shot-pad) / 2 - 2px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-muted-foreground);
+}
+
+.ml-showcase[data-logo='off'] .ml-shot-logo {
+  display: none;
+}
+
+/* The split block: two of Fumadocs' code blocks as the two panes of one card. main.ts takes the
+   larger share, because its types' cards open inside it (components/showcase.tsx); the file takes
+   42%, or its own width where it is wider. A dragged divider sets main.ts's width instead. */
+.ml-split {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(42%, max-content);
+  flex-shrink: 0;
+  width: 1120px;
+  overflow: hidden;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 16px;
+  background: var(--color-fd-card);
+  box-shadow: 0 28px 64px -28px rgb(28 25 23 / 0.32);
+}
+
+.dark .ml-split {
+  box-shadow: 0 28px 64px -24px rgb(0 0 0 / 0.75);
+}
+
+.ml-split > figure {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ml-split > figure + figure {
+  border-left: 1px solid var(--color-fd-border);
+}
+
+.ml-split > figure > div:first-child {
+  height: 46px;
+  padding-inline: 20px;
+  font-size: 15px;
+}
+
+.ml-split > figure [role='region'] {
+  padding-block: 18px;
+  font-size: var(--shot-code-size);
+  line-height: 1.7;
+}
+
+.ml-split > figure .line {
+  padding-inline: 20px;
+}
+
+/* The handles: the divider, the right edge, the bottom edge and the corner. Each is invisible until
+   the pointer is over the block, faint then, and amber under the pointer or while dragged. While a
+   type's card is open they stay hidden, so they are never in the screenshot. */
+.ml-grip {
+  position: absolute;
+  z-index: 1;
+  touch-action: none;
+}
+
+.ml-grip::after {
+  content: '';
+  position: absolute;
+  background: var(--ore);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.ml-grip[data-grip='divider'] {
+  /* The left edge of the second column: the divider, wherever it is. */
+  grid-column: 2;
+  grid-row: 1;
+  top: 0;
+  bottom: 0;
+  left: -6px;
+  width: 12px;
+  cursor: col-resize;
+}
+
+.ml-grip[data-grip='divider']::after {
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+}
+
+.ml-grip[data-grip='right'] {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.ml-grip[data-grip='right']::after {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3px;
+}
+
+.ml-grip[data-grip='bottom'] {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.ml-grip[data-grip='bottom']::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+}
+
+.ml-grip[data-grip='corner'] {
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+}
+
+.ml-grip[data-grip='corner']::after {
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  background: none;
+  border-right: 3px solid var(--ore);
+  border-bottom: 3px solid var(--ore);
+  border-bottom-right-radius: 14px;
+}
+
+.ml-split:hover .ml-grip::after {
+  opacity: 0.3;
+}
+
+.ml-split .ml-grip:hover::after,
+.ml-split .ml-grip[data-active]::after {
+  opacity: 1;
+}
+
+.ml-split:has(.twoslash-hover[data-popup-open]) .ml-grip:not(:hover, [data-active])::after {
+  opacity: 0;
+}
+
+/* The hover cards, which Twoslash puts at the end of the page, in the code's own size, as on the
+   docs page, where both are 13px. */
+html:has(.ml-showcase) {
+  --shot-code-size: 17px;
+}
+
+html:has(.ml-showcase) .fd-twoslash-popover {
+  /* Its width is set to its pane's (components/showcase.tsx). */
+  min-width: 0;
+  max-width: none;
+  max-height: none;
+  padding: 14px 18px;
+  font-size: var(--shot-code-size);
+}
+
+/* The type is a code block of its own inside the card, which Fumadocs sets at 13px. */
+html:has(.ml-showcase) .fd-twoslash-popover [role='region'],
+html:has(.ml-showcase) .twoslash-popup-code {
+  font-size: var(--shot-code-size) !important;
+  line-height: 1.7;
+}

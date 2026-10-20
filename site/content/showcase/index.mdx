@@ -1,0 +1,127 @@
+---
+title: Motherload showcase
+---
+
+{/* The hero's imports (content/docs/index.mdx), one split block each: main.ts on the left, the
+    file it imports on the right, with the same files the hero shows. lib/remark-mapper.ts types
+    each import from the block titled with its file. */}
+
+<Shot file="plans.toml">
+
+```ts twoslash title="main.ts"
+import plans from "./plans.toml";
+```
+
+```toml title="plans.toml"
+[free]
+price = 0
+seats = 1
+
+[pro]
+price = 12
+seats = 10
+```
+
+</Shot>
+
+<Shot file="team.yaml">
+
+```ts twoslash title="main.ts"
+import team from "./team.yaml";
+```
+
+```yaml title="team.yaml"
+- name: Ada
+  role: admin
+- name: Grace
+  role: member
+```
+
+</Shot>
+
+<Shot file="strings.json5">
+
+```ts twoslash title="main.ts"
+import strings from "./strings.json5";
+```
+
+```json5 title="strings.json5"
+{
+  // shown on the sign-in page
+  welcome: 'Welcome back',
+  signIn: 'Sign in',
+}
+```
+
+</Shot>
+
+<Shot file="posts.csv">
+
+```ts twoslash title="main.ts"
+import posts from "./posts.csv";
+```
+
+```csv title="posts.csv"
+slug,title,published
+hello,Hello world,2026-10-01
+loaders,Loaders,2026-10-06
+```
+
+</Shot>
+
+{/* Hovering a namespace import shows only `import notes`, so this one reads the frontmatter, as
+    the docs' .md section does. */}
+
+<Shot file="notes.md">
+
+```ts twoslash title="main.ts"
+import * as notes from "./notes.md";
+
+const meta = notes.frontmatter;
+```
+
+```md title="notes.md"
+---
+title: Release notes
+tags: [beta]
+---
+The first beta.
+```
+
+</Shot>
+
+{/* A bare import of a .env file has nothing to hover, so this one reads a variable, as the
+    docs' .env section does. */}
+
+<Shot file=".env">
+
+```ts twoslash title="main.ts"
+import "./.env";
+
+const url = process.env.DATABASE_URL;
+```
+
+```sh title=".env"
+DATABASE_URL=postgres://localhost/app
+```
+
+</Shot>
+
+<Shot file="user.schema.jsonc">
+
+```ts twoslash title="main.ts"
+import user from "./user.schema.jsonc";
+```
+
+```jsonc title="user.schema.jsonc"
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "role": { "enum": ["admin", "member"] }
+  },
+  "required": ["name", "role"]
+}
+```
+
+</Shot>

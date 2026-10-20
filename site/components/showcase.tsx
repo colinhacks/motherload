@@ -1,0 +1,355 @@
+'use client';
+
+import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
+import * as Twoslash from 'fumadocs-twoslash/ui';
+import {
+  Children,
+  createContext,
+  isValidElement,
+  use,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+
+/*
+ * The client half of the showcase page (app/showcase/page.tsx): the bar above the frames, the
+ * frames, whose blocks resize from their edges and whose panes split where the divider is dragged,
+ * and Twoslash's hover popups made to stay open when their name is clicked, so a type can be
+ * screenshotted without holding the pointer still.
+ */
+
+const FRAMES = ['16:9', '4:3', '1:1', 'fit'] as const;
+type Frame = (typeof FRAMES)[number];
+
+/** A value kept in localStorage, read after hydration so the server's markup still matches. */
+function useStored<T>(key: string, initial: T, parse: (stored: string) => T | undefined) {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    const stored = localStorage.getItem(key);
+    const parsed = stored === null ? undefined : parse(stored);
+    if (parsed !== undefined) setValue(parsed);
+    // `parse` is a fresh function each render; the key alone decides what is read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const update = (next: T) => {
+    setValue(next);
+    localStorage.setItem(key, typeof next === 'string' ? next : JSON.stringify(next));
+  };
+  return [value, update] as const;
+}
+
+const oneOf =
+  <T extends string>(valid: readonly T[]) =>
+  (stored: string) =>
+    (valid as readonly string[]).includes(stored) ? (stored as T) : undefined;
+
+const MAX_PADDING = 96;
+
+/** The page: a bar of settings, then the frames, which take the frame shape, padding and logo. */
+export function ShowcaseRoot({ children }: { children: ReactNode }) {
+  const [frame, setFrame] = useStored<Frame>('motherload-showcase-frame', '16:9', oneOf(FRAMES));
+  const [logo, setLogo] = useStored<'on' | 'off'>('motherload-showcase-logo', 'on', oneOf(['on', 'off']));
+  const [padding, setPadding] = useStored('motherload-showcase-padding', 40, (stored) => {
+    const value = Number(stored);
+    return Number.isInteger(value) && value >= 0 && value <= MAX_PADDING ? value : undefined;
+  });
+  return (
+    <main className="ml-showcase" data-frame={frame} data-logo={logo} style={{ '--shot-pad': `${padding}px` } as CSSProperties}>
+      <div className="ml-showcase-bar">
+        <span className="ml-showcase-hint">
+          Hover a name for its type; click it to keep the popup open. Drag a block&apos;s right or bottom edge to resize it, and the line between its panes to move it.
+        </span>
+        <div className="ml-showcase-controls">
+          <div className="ml-segmented" role="group" aria-label="Frame">
+            {FRAMES.map((option) => (
+              <button key={option} type="button" aria-pressed={frame === option} onClick={() => setFrame(option)}>
+                {option === 'fit' ? 'Fit' : option}
+              </button>
+            ))}
+          </div>
+          <label className="ml-padding">
+            <span>Padding</span>
+            <input type="range" min={0} max={MAX_PADDING} step={4} value={padding} onChange={(event) => setPadding(Number(event.target.value))} />
+            <output>{padding}</output>
+          </label>
+          <div className="ml-segmented" role="group" aria-label="Logo">
+            <button type="button" aria-pressed={logo === 'on'} onClick={() => setLogo(logo === 'on' ? 'off' : 'on')}>
+              Logo
+            </button>
+          </div>
+          <ThemeSwitch />
+        </div>
+      </div>
+      {children}
+    </main>
+  );
+}
+
+/** A block's size and where its divider sits, in CSS px; unset, each is the stylesheet's. */
+type Layout = { width?: number; height?: number; left?: number };
+type Grip = 'divider' | 'right' | 'bottom' | 'corner';
+
+const parseLayout = (stored: string): Layout | undefined => {
+  try {
+    const value: unknown = JSON.parse(stored);
+    if (typeof value !== 'object' || value === null) return undefined;
+    const { width, height, left } = value as Record<string, unknown>;
+    const size = (n: unknown) => (typeof n === 'number' && n > 0 ? n : undefined);
+    return { width: size(width), height: size(height), left: size(left) };
+  } catch {
+    return undefined;
+  }
+};
+
+/** How wide a pane must be to show its longest line without scrolling, and its whole file name. */
+function contentWidth(pane: HTMLElement): number {
+  const left = pane.getBoundingClientRect().left;
+  const range = document.createRange();
+  let right = 0;
+  const lines = pane.querySelectorAll<HTMLElement>('[role=region] .line');
+  for (const line of lines) {
+    range.selectNodeContents(line);
+    right = Math.max(right, range.getBoundingClientRect().right + (parseFloat(getComputedStyle(line).paddingRight) || 0));
+  }
+  // The name is truncated rather than scrolled, and its element stretches across the header, so
+  // its text is measured instead.
+  const caption = pane.querySelector('figcaption');
+  if (caption?.parentElement) {
+    range.selectNodeContents(caption);
+    right = Math.max(right, range.getBoundingClientRect().right + (parseFloat(getComputedStyle(caption.parentElement).paddingRight) || 0));
+  }
+  // Text measures to fractions of a pixel; the region rounds its width the other way.
+  return Math.ceil(right - left) + 2;
+}
+
+/** A block's height when nothing sets it: its taller pane's. */
+function naturalHeight(block: HTMLElement): number {
+  const set = block.style.height;
+  block.style.height = 'auto';
+  const height = block.getBoundingClientRect().height;
+  block.style.height = set;
+  return height;
+}
+
+/**
+ * The click that ends a drag lands outside a pinned popup, which Base UI takes as a press outside
+ * it and closes the popup. A drag swallows that one click, before the document sees it.
+ */
+function swallowNextClick() {
+  const swallow = (event: MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+  };
+  window.addEventListener('click', swallow, { capture: true, once: true });
+  setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
+}
+
+/**
+ * One screenshot: a frame around a split block of main.ts and the file it imports. The block is
+ * resized from its right edge, its bottom edge or its corner, and the divider between its panes
+ * moves; neither pane goes narrower than its longest line, nor the block shorter than its code.
+ * Each frame keeps its layout in localStorage, under its file's name.
+ */
+export function Shot({ file, children }: { file: string; children: ReactNode }) {
+  const [layout, setLayout] = useStored<Layout>(`motherload-showcase-layout:${file}`, {}, parseLayout);
+  const block = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const box = entry!.borderBoxSize[0]!;
+      setSize({ width: Math.round(box.inlineSize), height: Math.round(box.blockSize) });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const drag = (grip: Grip) => (event: ReactPointerEvent<HTMLDivElement>) => {
+    const element = block.current;
+    const [left, right] = element ? [...element.querySelectorAll<HTMLElement>(':scope > figure')] : [];
+    if (event.button !== 0 || !element || !left || !right) return;
+    event.preventDefault();
+    const handle = event.currentTarget;
+    const frameElement = frame.current!;
+    const box = element.getBoundingClientRect();
+    // Where on the handle the pointer took hold, so the edge keeps that distance from it.
+    const grab = { x: event.clientX - box.right, y: event.clientY - box.bottom, divider: event.clientX - left.getBoundingClientRect().right };
+    const minLeft = contentWidth(left);
+    const minRight = contentWidth(right);
+    const minHeight = naturalHeight(element);
+    let next: Layout = { ...layout, width: box.width, left: left.getBoundingClientRect().width };
+
+    // While the pointer moves, the block's style is written directly, and each move measures where
+    // the edge now is. The block is centred across its frame and the frame across the page, so its
+    // right edge moves half as far as its width changes. It is centred down the frame too while
+    // the frame's shape leaves room above and below it, and then its bottom edge also moves half as
+    // far; once the block sets the frame's height, its top stays put and the edge moves as far.
+    const apply = (layout: Layout) => {
+      element.style.width = `${layout.width}px`;
+      if (layout.height !== undefined) element.style.height = `${layout.height}px`;
+      element.style.gridTemplateColumns = `${layout.left}px minmax(0, 1fr)`;
+    };
+    const move = (moved: PointerEvent) => {
+      const now = element.getBoundingClientRect();
+      const pane = left.getBoundingClientRect();
+      next = { ...next };
+      if (grip === 'divider') {
+        const wanted = pane.width + (moved.clientX - grab.divider - pane.right);
+        next.left = Math.round(Math.min(Math.max(wanted, minLeft), now.width - minRight));
+      }
+      if (grip === 'right' || grip === 'corner') {
+        const wanted = now.width + 2 * (moved.clientX - grab.x - now.right);
+        next.width = Math.round(Math.max(wanted, pane.width + minRight));
+      }
+      if (grip === 'bottom' || grip === 'corner') {
+        const style = getComputedStyle(frameElement);
+        const room = frameElement.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom) - now.height;
+        const travel = room > 0.5 ? 2 : 1;
+        const wanted = now.height + travel * (moved.clientY - grab.y - now.bottom);
+        next.height = Math.round(Math.max(wanted, minHeight));
+      }
+      apply(next);
+    };
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+      delete handle.dataset.active;
+      setLayout(next);
+      swallowNextClick();
+    };
+    handle.setPointerCapture(event.pointerId);
+    handle.dataset.active = '';
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  };
+
+  const style: CSSProperties = {
+    width: layout.width,
+    height: layout.height,
+    gridTemplateColumns: layout.left === undefined ? undefined : `${layout.left}px minmax(0, 1fr)`,
+  };
+
+  return (
+    <div className="ml-shot-wrap">
+      <div className="ml-shot-meta">
+        <span>{file}</span>
+        <span>{size ? `${size.width} × ${size.height}` : ''}</span>
+        <button type="button" onClick={() => setLayout({})} disabled={!layout.width && !layout.height && !layout.left}>
+          Reset
+        </button>
+      </div>
+      <section ref={frame} className="ml-shot">
+        <div ref={block} className="ml-split" style={style}>
+          {Children.toArray(children).filter(isValidElement)}
+          <div className="ml-grip" data-grip="divider" onPointerDown={drag('divider')} />
+          <div className="ml-grip" data-grip="right" onPointerDown={drag('right')} />
+          <div className="ml-grip" data-grip="bottom" onPointerDown={drag('bottom')} />
+          <div className="ml-grip" data-grip="corner" onPointerDown={drag('corner')} />
+        </div>
+        <div className="ml-shot-logo" aria-hidden>
+          {/* public/motherload.svg, the same drawing as app/icon.svg. */}
+          <img src="/motherload.svg" alt="" width={20} height={20} />
+          Motherload
+        </div>
+      </section>
+    </div>
+  );
+}
+
+type PinState = { pinned: boolean; setPinned: (pinned: boolean) => void; trigger: RefObject<HTMLButtonElement | null> };
+
+const Pin = createContext<PinState | null>(null);
+
+function usePin() {
+  const pin = use(Pin);
+  if (!pin) throw new Error('A showcase popup part is outside its Popup');
+  return pin;
+}
+
+/** Twoslash's Popup, with a pinned state its trigger and content share. */
+export function Popup(props: ComponentProps<typeof Twoslash.Popup>) {
+  const [pinned, setPinned] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  return (
+    <Pin value={{ pinned, setPinned, trigger }}>
+      <Twoslash.Popup {...props} />
+    </Pin>
+  );
+}
+
+// Twoslash closes a popup when the pointer leaves its name or its card. Its parts spread their
+// props after those handlers, so a pinned popup replaces them with one that does nothing.
+const stayOpen = { onPointerLeave: () => {} };
+
+export function PopupTrigger(props: ComponentProps<typeof Twoslash.PopupTrigger>) {
+  const { pinned, setPinned, trigger } = usePin();
+
+  // Base UI closes the popup on a click outside it or on Escape; the pin goes with it. A drag of a
+  // block's edge or divider swallows its click (swallowNextClick), so the popup stays.
+  useEffect(() => {
+    if (!pinned) return;
+    const unpinOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!trigger.current?.contains(target) && !target.closest('.fd-twoslash-popover')) setPinned(false);
+    };
+    const unpinOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && setPinned(false);
+    document.addEventListener('click', unpinOutside, true);
+    document.addEventListener('keydown', unpinOnEscape);
+    return () => {
+      document.removeEventListener('click', unpinOutside, true);
+      document.removeEventListener('keydown', unpinOnEscape);
+    };
+  }, [pinned, setPinned, trigger]);
+
+  return (
+    <Twoslash.PopupTrigger
+      {...props}
+      {...(pinned ? stayOpen : {})}
+      ref={trigger}
+      data-pinned={pinned || undefined}
+      onClick={(event) => {
+        // A second click unpins, and Base UI's own handler closes the popup.
+        if (pinned) return setPinned(false);
+        // The first click pins. The hover has opened the popup already, or is about to, and Base
+        // UI would toggle it shut.
+        event.preventBaseUIHandler();
+        setPinned(true);
+      }}
+    />
+  );
+}
+
+/** The gap between a card and the edges of the pane it stays inside, in px. */
+const PANE_INSET = 12;
+
+/**
+ * A card opens under its name's left edge, and stays inside the main.ts pane, so it never covers
+ * the file on the right: it is no wider than the pane, and moves left as far as the pane's edge
+ * when it would cross the divider. The move is the card's `translate`, which Base UI's positioning
+ * (the positioner's own offset) and its open animation (`transform`) leave alone.
+ */
+export function PopupContent(props: ComponentProps<typeof Twoslash.PopupContent>) {
+  const { pinned, trigger } = usePin();
+  const fitToPane = (card: HTMLDivElement | null) => {
+    const name = trigger.current;
+    const pane = name?.closest('figure');
+    if (!card || !name || !pane) return;
+    const n = name.getBoundingClientRect();
+    const p = pane.getBoundingClientRect();
+    card.style.maxWidth = `${p.width - 2 * PANE_INSET}px`;
+    const left = Math.max(p.left + PANE_INSET, Math.min(n.left, p.right - PANE_INSET - card.offsetWidth));
+    card.style.translate = `${left - n.left}px 0`;
+  };
+  return <Twoslash.PopupContent align="start" {...props} {...(pinned ? stayOpen : {})} ref={fitToPane} />;
+}
