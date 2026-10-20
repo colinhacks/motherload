@@ -34,6 +34,10 @@ Prefer `nub` over `node`, `bun`, `npm`, `npx`, `pnpm` and `yarn`: run files with
 - Setting `TS_CONTENT_MAPPER_DEBUG=1` on `nubx tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode` prints the JSON-RPC traffic.
 - The nub installer refuses a package version younger than 24 hours (`minimumReleaseAge`); the TypeScript nightly is pinned to one that passed it. Do not bypass the gate.
 
+## Git
+
+Work lands on `main` directly, with no branch or pull request. When a task is done and `nub run typecheck` and `nub run test` pass, commit it to `main` and push it to `origin` without asking. The push may also carry commits another session left unpushed on `main`; push them with it. Several sessions can work in this checkout at once, so stage only the files the task changed.
+
 ## Writing conventions
 
 The product is Motherload, capitalized, in prose and in every message a user reads; `motherload` is the npm package, the import specifier, the diagnostic source and the Standard Schema vendor, always as code. Its icon is three stacked gold bars, drawn as an SVG (`site/app/icon.svg`, the favicon, and the same drawing in `site/public/motherload.svg`): the site's favicon, the top of its left column, and the README's title. Never hard-wrap Markdown: every paragraph, list item and table row is one line. Never estimate developer time. Anything stated as fact traces to a file read or a command run; a guess goes in PLAN.md's Open section as a question. Call the repository at `~/Documents/projects/lando` the porg repository.
