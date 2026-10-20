@@ -1,6 +1,6 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "b0314d2",
+  "commit": "900c444",
   "files": {
     "package.json": "e77d2ad4f3879fb80f08152eb7c25fe930aee0936d9e3e9d42ca0f0cd4f68ddb",
     "README.md": "8ef62f2d773c972aae866b14240eaf78262ceaab978c897b8b1a23506f44f901",
@@ -24,7 +24,7 @@
     "src/mdx/twoslash.ts": "a2039253b7f020858c6606bd352f069f2834c3a5a9eddc695b115bf032bf29e6",
     "src/mdx-dev-loader.mjs": "7fa2bafdcdc76d38d2fa4ed4024e82cd3c2db8d32544260d73e9a08d8a60cd19",
     "src/next.mjs": "ef82bff42ebfafea4bd40b21f498175244f1324fbc5b10fd5ce9be30bc3dbe9b",
-    "src/style.css": "65ae47b1129d07227197ac6672dfdd348424e9bb24bd3f03dda9dd5438eb9284",
+    "src/style.css": "4f9cebfb9a519034858a425ccb2ba2aebc365641007a4927014f9c90b06bf6c0",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626"
   }
 }

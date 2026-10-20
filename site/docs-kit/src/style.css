@@ -8,6 +8,16 @@
   --font-mono: var(--font-code), ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
+/* The left table of contents shows from 64rem (1024px), not Fumadocs' 80rem: Fumadocs' docs layout
+   switches the table of contents, its popover and the article's padding at `xl`, and the page with
+   its table of contents is now only `--dk-column` + 20.75rem (60.75rem at 40rem), so at 80rem a
+   window that is not full width, or zoomed to 110%, fell to the tablet layout with room to spare
+   (the maintainer, 2026-10-20: "zooming in to 110% causes a layout shift to the tablet layout").
+   Nothing else on the page uses `xl`. */
+@theme {
+  --breakpoint-xl: 64rem;
+}
+
 /* docs-kit: the stylesheet of a one-page Fumadocs docs site. A site imports it first in its own
    global.css and then sets its colours: Fumadocs' `--color-fd-*` variables for both themes (`:root`
    and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name,
