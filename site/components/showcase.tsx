@@ -1,9 +1,11 @@
 'use client';
 
+import { CodeBlockTab, CodeBlockTabs, CodeBlockTabsList, CodeBlockTabsTrigger } from 'fumadocs-ui/components/codeblock';
 import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
 import * as Twoslash from 'fumadocs-twoslash/ui';
 import {
   Children,
+  cloneElement,
   createContext,
   isValidElement,
   use,
@@ -13,15 +15,16 @@ import {
   type ComponentProps,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
+  type ReactElement,
   type ReactNode,
   type RefObject,
 } from 'react';
 
 /*
- * The client half of the showcase page (app/showcase/page.tsx): the bar above the frames, the
- * frames, whose blocks resize from their edges and whose panes split where the divider is dragged,
- * and Twoslash's hover popups made to stay open when their name is clicked, so a type can be
- * screenshotted without holding the pointer still.
+ * The client half of the showcase page (app/showcase/page.tsx): the bar above the frames; the
+ * frames, each example as a split block and as code tabs, whose blocks resize from their edges and
+ * whose split panes divide where the divider is dragged; and Twoslash's hover popups made to stay
+ * open when their name is clicked, so a type can be screenshotted without holding the pointer still.
  */
 
 const FRAMES = ['16:9', '4:3', '1:1', 'fit'] as const;
@@ -54,7 +57,7 @@ const MAX_PADDING = 96;
 /** The page: a bar of settings, then the frames, which take the frame shape, padding and logo. */
 export function ShowcaseRoot({ children }: { children: ReactNode }) {
   const [frame, setFrame] = useStored<Frame>('motherload-showcase-frame', '16:9', oneOf(FRAMES));
-  const [logo, setLogo] = useStored<'on' | 'off'>('motherload-showcase-logo', 'on', oneOf(['on', 'off']));
+  const [logo, setLogo] = useStored<'on' | 'off'>('motherload-showcase-logo', 'off', oneOf(['on', 'off']));
   const [padding, setPadding] = useStored('motherload-showcase-padding', 40, (stored) => {
     const value = Number(stored);
     return Number.isInteger(value) && value >= 0 && value <= MAX_PADDING ? value : undefined;
@@ -63,7 +66,7 @@ export function ShowcaseRoot({ children }: { children: ReactNode }) {
     <main className="ml-showcase" data-frame={frame} data-logo={logo} style={{ '--shot-pad': `${padding}px` } as CSSProperties}>
       <div className="ml-showcase-bar">
         <span className="ml-showcase-hint">
-          Hover a name for its type; click it to keep the popup open. Drag a block&apos;s right or bottom edge to resize it, and the line between its panes to move it.
+          Hover a name for its type; click it to keep the popup open. Drag a block&apos;s right or bottom edge to resize it, and the line between its panes to move it; the pointer turns to an arrow over each.
         </span>
         <div className="ml-showcase-controls">
           <div className="ml-segmented" role="group" aria-label="Frame">
@@ -107,33 +110,34 @@ const parseLayout = (stored: string): Layout | undefined => {
   }
 };
 
-/** How wide a pane must be to show its longest line without scrolling, and its whole file name. */
-function contentWidth(pane: HTMLElement): number {
-  const left = pane.getBoundingClientRect().left;
+/**
+ * How wide an element must be to show its longest line and its whole file name or tab labels
+ * without scrolling or truncating. Only what is laid out counts, so a hidden tab adds nothing.
+ */
+function contentWidth(element: HTMLElement): number {
+  const left = element.getBoundingClientRect().left;
   const range = document.createRange();
   let right = 0;
-  const lines = pane.querySelectorAll<HTMLElement>('[role=region] .line');
-  for (const line of lines) {
-    range.selectNodeContents(line);
-    right = Math.max(right, range.getBoundingClientRect().right + (parseFloat(getComputedStyle(line).paddingRight) || 0));
-  }
-  // The name is truncated rather than scrolled, and its element stretches across the header, so
-  // its text is measured instead.
-  const caption = pane.querySelector('figcaption');
-  if (caption?.parentElement) {
-    range.selectNodeContents(caption);
-    right = Math.max(right, range.getBoundingClientRect().right + (parseFloat(getComputedStyle(caption.parentElement).paddingRight) || 0));
-  }
+  const reach = (node: Element, padded: Element) => {
+    range.selectNodeContents(node);
+    const { right: end, width } = range.getBoundingClientRect();
+    if (width > 0) right = Math.max(right, end + (parseFloat(getComputedStyle(padded).paddingRight) || 0));
+  };
+  for (const line of element.querySelectorAll('[role=region] .line')) reach(line, line);
+  // A name is truncated rather than scrolled, and its element stretches across the header, so its
+  // text is measured instead; so are the tabs, which scroll.
+  for (const caption of element.querySelectorAll('figcaption')) reach(caption, caption.parentElement!);
+  for (const list of element.querySelectorAll('[role=tablist]')) reach(list, list);
   // Text measures to fractions of a pixel; the region rounds its width the other way.
   return Math.ceil(right - left) + 2;
 }
 
-/** A block's height when nothing sets it: its taller pane's. */
+/** A block's height when nothing sets it: its code's. */
 function naturalHeight(block: HTMLElement): number {
-  const set = block.style.height;
-  block.style.height = 'auto';
+  const set = block.style.minHeight;
+  block.style.minHeight = '';
   const height = block.getBoundingClientRect().height;
-  block.style.height = set;
+  block.style.minHeight = set;
   return height;
 }
 
@@ -150,14 +154,48 @@ function swallowNextClick() {
   setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
 }
 
+/** A rendered code block's file name, from rehype-code's `title`. */
+const titleOf = (pane: ReactElement) => String((pane.props as { title?: unknown }).title ?? '');
+
 /**
- * One screenshot: a frame around a split block of main.ts and the file it imports. The block is
- * resized from its right edge, its bottom edge or its corner, and the divider between its panes
- * moves; neither pane goes narrower than its longest line, nor the block shorter than its code.
- * Each frame keeps its layout in localStorage, under its file's name.
+ * One example, twice: as a split block, main.ts beside the file it imports, and as code tabs, as
+ * the docs page's hero shows its files. Both are drawn from the same two rendered panes.
  */
 export function Shot({ file, children }: { file: string; children: ReactNode }) {
-  const [layout, setLayout] = useStored<Layout>(`motherload-showcase-layout:${file}`, {}, parseLayout);
+  const panes = Children.toArray(children).filter(isValidElement);
+  return (
+    <>
+      <Frame storage={`motherload-showcase-layout:${file}`} label={`${file} · split`} kind="split">
+        {panes}
+      </Frame>
+      <Frame storage={`motherload-showcase-layout:tabs:${file}`} label={`${file} · tabs`} kind="tabs">
+        <CodeBlockTabs defaultValue={titleOf(panes[0]!)}>
+          <CodeBlockTabsList>
+            {panes.map((pane) => (
+              <CodeBlockTabsTrigger key={titleOf(pane)} value={titleOf(pane)}>
+                {titleOf(pane)}
+              </CodeBlockTabsTrigger>
+            ))}
+          </CodeBlockTabsList>
+          {panes.map((pane) => (
+            <CodeBlockTab key={titleOf(pane)} value={titleOf(pane)}>
+              {/* The tab names the file, so the pane drops its own header. */}
+              {cloneElement(pane as ReactElement<{ title?: string }>, { title: undefined })}
+            </CodeBlockTab>
+          ))}
+        </CodeBlockTabs>
+      </Frame>
+    </>
+  );
+}
+
+/**
+ * One screenshot: a frame around a block, which resizes from its right edge, its bottom edge or
+ * its corner. A split block's divider moves too. No pane goes narrower than its longest line, nor
+ * the block shorter than its code. Each frame keeps its layout in localStorage.
+ */
+function Frame({ storage, label, kind, children }: { storage: string; label: string; kind: 'split' | 'tabs'; children: ReactNode }) {
+  const [layout, setLayout] = useStored<Layout>(storage, {}, parseLayout);
   const block = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLElement>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
@@ -175,18 +213,21 @@ export function Shot({ file, children }: { file: string; children: ReactNode }) 
 
   const drag = (grip: Grip) => (event: ReactPointerEvent<HTMLDivElement>) => {
     const element = block.current;
-    const [left, right] = element ? [...element.querySelectorAll<HTMLElement>(':scope > figure')] : [];
-    if (event.button !== 0 || !element || !left || !right) return;
+    if (event.button !== 0 || !element) return;
+    // A split block's panes; code tabs have none, and are measured whole.
+    const [left, right] = kind === 'split' ? [...element.querySelectorAll<HTMLElement>(':scope > figure')] : [];
+    if (kind === 'split' && (!left || !right)) return;
     event.preventDefault();
     const handle = event.currentTarget;
     const frameElement = frame.current!;
     const box = element.getBoundingClientRect();
     // Where on the handle the pointer took hold, so the edge keeps that distance from it.
-    const grab = { x: event.clientX - box.right, y: event.clientY - box.bottom, divider: event.clientX - left.getBoundingClientRect().right };
-    const minLeft = contentWidth(left);
-    const minRight = contentWidth(right);
+    const grab = { x: event.clientX - box.right, y: event.clientY - box.bottom, divider: left ? event.clientX - left.getBoundingClientRect().right : 0 };
+    const minLeft = left ? contentWidth(left) : 0;
+    const minRight = right ? contentWidth(right) : 0;
+    const minWidth = kind === 'tabs' ? contentWidth(element) : 0;
     const minHeight = naturalHeight(element);
-    let next: Layout = { ...layout, width: box.width, left: left.getBoundingClientRect().width };
+    let next: Layout = { ...layout, width: box.width, ...(left ? { left: left.getBoundingClientRect().width } : {}) };
 
     // While the pointer moves, the block's style is written directly, and each move measures where
     // the edge now is. The block is centred across its frame and the frame across the page, so its
@@ -195,20 +236,20 @@ export function Shot({ file, children }: { file: string; children: ReactNode }) 
     // far; once the block sets the frame's height, its top stays put and the edge moves as far.
     const apply = (layout: Layout) => {
       element.style.width = `${layout.width}px`;
-      if (layout.height !== undefined) element.style.height = `${layout.height}px`;
-      element.style.gridTemplateColumns = `${layout.left}px minmax(0, 1fr)`;
+      if (layout.height !== undefined) element.style.minHeight = `${layout.height}px`;
+      if (layout.left !== undefined) element.style.gridTemplateColumns = `${layout.left}px minmax(0, 1fr)`;
     };
     const move = (moved: PointerEvent) => {
       const now = element.getBoundingClientRect();
-      const pane = left.getBoundingClientRect();
+      const pane = left?.getBoundingClientRect();
       next = { ...next };
-      if (grip === 'divider') {
+      if (grip === 'divider' && pane) {
         const wanted = pane.width + (moved.clientX - grab.divider - pane.right);
         next.left = Math.round(Math.min(Math.max(wanted, minLeft), now.width - minRight));
       }
       if (grip === 'right' || grip === 'corner') {
         const wanted = now.width + 2 * (moved.clientX - grab.x - now.right);
-        next.width = Math.round(Math.max(wanted, pane.width + minRight));
+        next.width = Math.round(Math.max(wanted, pane ? pane.width + minRight : minWidth));
       }
       if (grip === 'bottom' || grip === 'corner') {
         const style = getComputedStyle(frameElement);
@@ -234,25 +275,26 @@ export function Shot({ file, children }: { file: string; children: ReactNode }) 
     handle.addEventListener('pointercancel', end);
   };
 
+  // The height is a minimum: a taller tab, or a pane's code, still fits.
   const style: CSSProperties = {
     width: layout.width,
-    height: layout.height,
+    minHeight: layout.height,
     gridTemplateColumns: layout.left === undefined ? undefined : `${layout.left}px minmax(0, 1fr)`,
   };
 
   return (
     <div className="ml-shot-wrap">
       <div className="ml-shot-meta">
-        <span>{file}</span>
+        <span>{label}</span>
         <span>{size ? `${size.width} × ${size.height}` : ''}</span>
         <button type="button" onClick={() => setLayout({})} disabled={!layout.width && !layout.height && !layout.left}>
           Reset
         </button>
       </div>
       <section ref={frame} className="ml-shot">
-        <div ref={block} className="ml-split" style={style}>
-          {Children.toArray(children).filter(isValidElement)}
-          <div className="ml-grip" data-grip="divider" onPointerDown={drag('divider')} />
+        <div ref={block} className={`ml-block ml-${kind}`} style={style}>
+          {children}
+          {kind === 'split' && <div className="ml-grip" data-grip="divider" onPointerDown={drag('divider')} />}
           <div className="ml-grip" data-grip="right" onPointerDown={drag('right')} />
           <div className="ml-grip" data-grip="bottom" onPointerDown={drag('bottom')} />
           <div className="ml-grip" data-grip="corner" onPointerDown={drag('corner')} />
@@ -344,7 +386,7 @@ export function PopupContent(props: ComponentProps<typeof Twoslash.PopupContent>
   const { pinned, trigger } = usePin();
   const fitToBlock = (card: HTMLDivElement | null) => {
     const name = trigger.current;
-    const block = name?.closest('.ml-split');
+    const block = name?.closest('.ml-block');
     if (!card || !name || !block) return;
     const n = name.getBoundingClientRect();
     const b = block.getBoundingClientRect();

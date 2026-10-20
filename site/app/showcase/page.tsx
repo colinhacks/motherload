@@ -13,7 +13,7 @@ import type { ComponentProps } from 'react';
  */
 
 export const metadata: Metadata = {
-  title: 'Motherload',
+  title: 'Showcase',
   robots: { index: false, follow: false },
 };
 

@@ -501,24 +501,40 @@ figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:e
   display: none;
 }
 
+/* A block: each example is drawn twice (components/showcase.tsx), as a split block and as code
+   tabs. Both set their code at the showcase's size, and resize from their edges. */
+.ml-block {
+  --shot-shadow: 0 28px 64px -28px rgb(28 25 23 / 0.32);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dark .ml-block {
+  --shot-shadow: 0 28px 64px -24px rgb(0 0 0 / 0.75);
+}
+
+.ml-block figure [role='region'] {
+  padding-block: 18px;
+  font-size: var(--shot-code-size);
+  line-height: 1.7;
+}
+
+.ml-block figure .line {
+  padding-inline: 20px;
+}
+
 /* The split block: two of Fumadocs' code blocks as the two panes of one card. main.ts takes the
    larger share, below which its types' cards open; the file takes 42%, or its own width where it
    is wider. A dragged divider sets main.ts's width instead. */
 .ml-split {
-  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(42%, max-content);
-  flex-shrink: 0;
   width: 1120px;
   overflow: hidden;
   border: 1px solid var(--color-fd-border);
   border-radius: 16px;
   background: var(--color-fd-card);
-  box-shadow: 0 28px 64px -28px rgb(28 25 23 / 0.32);
-}
-
-.dark .ml-split {
-  box-shadow: 0 28px 64px -24px rgb(0 0 0 / 0.75);
+  box-shadow: var(--shot-shadow);
 }
 
 .ml-split > figure {
@@ -538,19 +554,51 @@ figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:e
   font-size: 15px;
 }
 
-.ml-split > figure [role='region'] {
-  padding-block: 18px;
-  font-size: var(--shot-code-size);
-  line-height: 1.7;
+/* The code tabs: Fumadocs' code tabs, as the docs page's hero draws them (mono labels), at the
+   showcase's size. The tabs fill the block, and the open tab's code fills the space below the
+   labels, so a block made taller is one card. */
+.ml-tabs {
+  display: flex;
+  flex-direction: column;
+  width: 760px;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: var(--shot-shadow);
 }
 
-.ml-split > figure .line {
-  padding-inline: 20px;
+.ml-tabs > div:first-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border-radius: inherit;
 }
 
-/* The handles: the divider, the right edge, the bottom edge and the corner. Each is invisible until
-   the pointer is over the block, faint then, and amber under the pointer or while dragged. While a
-   type's card is open they stay hidden, so they are never in the screenshot. */
+.ml-tabs [role='tablist'] {
+  flex: none;
+  padding-inline: 10px;
+}
+
+.ml-tabs [role='tab'] {
+  padding: 12px 10px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+
+.ml-tabs [role='tabpanel']:not([hidden]) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ml-tabs [role='tabpanel'] > figure {
+  flex: 1;
+  border-radius: 0 0 16px 16px;
+}
+
+/* The handles: the divider, the right edge, the bottom edge and the corner. Each is invisible, so
+   it is never in a screenshot, until the pointer is on it (the cursor turns to a resize arrow), and
+   amber then or while dragged. */
 .ml-grip {
   position: absolute;
   z-index: 1;
@@ -632,17 +680,9 @@ figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:e
   border-bottom-right-radius: 14px;
 }
 
-.ml-split:hover .ml-grip::after {
-  opacity: 0.3;
-}
-
-.ml-split .ml-grip:hover::after,
-.ml-split .ml-grip[data-active]::after {
+.ml-block .ml-grip:hover::after,
+.ml-block .ml-grip[data-active]::after {
   opacity: 1;
-}
-
-.ml-split:has(.twoslash-hover[data-popup-open]) .ml-grip:not(:hover, [data-active])::after {
-  opacity: 0;
 }
 
 /* The hover cards, which Twoslash puts at the end of the page, in the code's own size, as on the
