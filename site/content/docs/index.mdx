@@ -14,7 +14,7 @@ import strings from "./strings.json5";
 import posts from "./posts.csv";
 import notes, { frontmatter } from "./notes.md";
 import "./.env";
-import user from "./user.jsonschema";
+import user from "./user.schema.jsonc";
 ```
 
 ```toml tab="plans.toml"
@@ -60,7 +60,7 @@ The first beta.
 DATABASE_URL=postgres://localhost/app
 ```
 
-```json tab="user.jsonschema"
+```jsonc tab="user.schema.jsonc"
 {
   "type": "object",
   "properties": {
@@ -110,7 +110,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own. The `types
     "types": ["motherload/client"] // [!code ++]
   },
   "contentMappers": [ // [!code ++]
-    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".jsonschema"] } // [!code ++]
+    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".schema.jsonc"] } // [!code ++]
   ] // [!code ++]
 }
 ```
@@ -429,11 +429,11 @@ const meta = frontmatter;
 
 The frontmatter runs from a `---` first line to the next `---` line. A file without one exports `{}`. Pass the body to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
 
-### `.jsonschema`
+### `.schema.jsonc`
 
-A `.jsonschema` file is a schema, not data. Its module is the type the schema describes and a validator for it.
+A `.schema.jsonc` file is a schema, not data. Its module is the type the schema describes and a validator for it.
 
-```json title="user.jsonschema"
+```jsonc title="user.schema.jsonc"
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
@@ -450,7 +450,7 @@ A `.jsonschema` file is a schema, not data. Its module is the type the schema de
 ```ts twoslash title="main.ts"
 declare const input: unknown;
 // ---cut---
-import user, { type Type as User } from "./user.jsonschema";
+import user, { type Type as User } from "./user.schema.jsonc";
 
 const ada = user.parse(input);       // or a TypeError listing every issue
 //    ^?
@@ -465,7 +465,7 @@ The schema's type is always exported as `Type`. The validator is compiled by [aj
 - **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
 - **Formats:** checked when `ajv-formats` is installed.
 - **References:** a `$ref` within the file is followed; a `$ref` to another file or a URL is an error.
-- **The suffix:** `.jsonschema`, because TypeScript refuses a content mapper extension that ends in `.json`. VS Code shows the file as JSON with `"files.associations": { "*.jsonschema": "json" }` in `.vscode/settings.json`.
+- **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
 
 ### `.json`
 

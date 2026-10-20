@@ -22,10 +22,10 @@ export type Parsed = { ok: true; value: Value } | { ok: false; problems: Problem
 export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3, schema: 4 } as const;
 
 /** Every path a loader claims, in the order the longest suffix is tested first. `.env` files are matched by name: `.env`, `.env.local`, `prod.env`. */
-export const FILTER = /(\.jsonschema|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
+export const FILTER = /(\.schema\.jsonc|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
 
 export function formatOf(path: string): Format | undefined {
-  if (path.endsWith(".jsonschema")) return "schema";
+  if (path.endsWith(".schema.jsonc")) return "schema";
   if (path.endsWith(".toml")) return "toml";
   if (path.endsWith(".yaml") || path.endsWith(".yml")) return "yaml";
   if (path.endsWith(".json5")) return "json5";
@@ -114,7 +114,7 @@ export function parseJson5File(source: string): Parsed {
   }
 }
 
-// ---- JSONC and JSON (the schema loader) ---------------------------------------------------------
+// ---- JSONC (the `.jsonc` loader and the schema loader) ------------------------------------------
 
 /** jsonc-parser's own `parse` assigns keys, which turns a `"__proto__"` key into a prototype; building from the tree defines them. */
 function fromTree(node: Node): unknown {
@@ -142,11 +142,8 @@ function parseJsonLike(source: string, options: { allowTrailingComma: boolean; d
   return carry(tree ? fromTree(tree) : null);
 }
 
-/** JSONC: JSON with comments, and trailing commas allowed. */
+/** JSONC: JSON with comments, and trailing commas allowed. A `.schema.jsonc` file is read the same way. */
 export const parseJsoncFile = (source: string) => parseJsonLike(source, { allowTrailingComma: true, disallowComments: false });
-
-/** Strict JSON, with offsets for its errors. */
-export const parseJsonFile = (source: string) => parseJsonLike(source, { allowTrailingComma: false, disallowComments: true });
 
 // ---- .env ----------------------------------------------------------------------------------------
 

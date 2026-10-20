@@ -67,7 +67,7 @@ test("each definition is a named type, and a reference to it is its name", () =>
 
 test("`#` is the root; another pointer is inlined, unless it leads back into itself; another file is unknown", () => {
   assert.equal(emit({ type: "object", properties: { next: { $ref: "#" } }, additionalProperties: false }), "export interface Type {\n  next?: Type;\n}");
-  assert.equal(emit({ type: "object", properties: { a: { type: "string" }, b: { $ref: "#/properties/a" }, c: { $ref: "#/properties/c" }, d: { $ref: "./other.jsonschema" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n  b?: string;\n  c?: unknown;\n  d?: unknown;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "string" }, b: { $ref: "#/properties/a" }, c: { $ref: "#/properties/c" }, d: { $ref: "./other.schema.jsonc" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n  b?: string;\n  c?: unknown;\n  d?: unknown;\n}");
 });
 
 test("a description is a doc comment", () => {

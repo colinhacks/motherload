@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatOf, parseCsvFile, parseEnvFile, parseJson5File, parseJsoncFile, parseJsonFile, parseMarkdownFile, parseTomlFile, parseTsvFile, parseYamlFile } from "../src/formats.ts";
+import { formatOf, parseCsvFile, parseEnvFile, parseJson5File, parseJsoncFile, parseMarkdownFile, parseTomlFile, parseTsvFile, parseYamlFile } from "../src/formats.ts";
 
 const value = (parsed: ReturnType<typeof parseTomlFile>) => {
   if (!parsed.ok) assert.fail(JSON.stringify(parsed.problems));
@@ -8,7 +8,7 @@ const value = (parsed: ReturnType<typeof parseTomlFile>) => {
 };
 
 test("formats are chosen by the longest suffix", () => {
-  assert.equal(formatOf("/a/user.jsonschema"), "schema");
+  assert.equal(formatOf("/a/user.schema.jsonc"), "schema");
   assert.equal(formatOf("/a/b.toml"), "toml");
   assert.equal(formatOf("/a/b.yml"), "yaml");
   assert.equal(formatOf("/a/b.json5"), "json5");
@@ -72,11 +72,6 @@ test("JSONC: comments and trailing commas; a __proto__ key is kept as a property
   assert.ok(!parsed.ok);
   assert.equal(parsed.problems[0]!.message, "Comma Expected");
   assert.equal(parsed.problems[0]!.start, 8);
-});
-
-test("JSON (schemas): comments and trailing commas are errors", () => {
-  assert.ok(!parseJsonFile('{"a": 1,}').ok);
-  assert.ok(!parseJsonFile('{"a": 1 /* c */}').ok);
 });
 
 test(".env: strings, quotes, export, no expansion", () => {

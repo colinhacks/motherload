@@ -1,7 +1,7 @@
-// The module a `.jsonschema` file becomes: the TypeScript type the schema describes, and a
+// The module a `.schema.jsonc` file becomes: the TypeScript type the schema describes, and a
 // validator compiled from the schema when the module is built.
 //
-//   import user, { type Type as User } from "./user.jsonschema";
+//   import user, { type Type as User } from "./user.schema.jsonc";
 //   user.parse(input);          // User, or a TypeError listing every issue
 //   user.is(input);             // input is User
 //   user["~standard"];          // Standard Schema v1, for any library that accepts one
@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
-import { parseJsonFile, CODES, type Problem } from "./formats.ts";
+import { parseJsoncFile, CODES, type Problem } from "./formats.ts";
 import { literal, toJs, type Value } from "./serialize.ts";
 import { schemaDeclarations } from "./schema-types.ts";
 import type { ModuleText } from "./data.ts";
@@ -60,7 +60,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
 // ---- types --------------------------------------------------------------------------------------
 
 export function schemaTypes(source: string, path: string): { types: string; problems: Problem[] } {
-  const parsed = parseJsonFile(source);
+  const parsed = parseJsoncFile(source);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
   const problems: Problem[] = [];
@@ -154,7 +154,7 @@ export default schema;
 
 /** The module's JavaScript. Throws when the validator cannot be built: a bundler or the preload reports it as a load error. */
 export function schemaCode(source: string, path: string): { code: string; problems: Problem[] } {
-  const parsed = parseJsonFile(source);
+  const parsed = parseJsoncFile(source);
   if (!parsed.ok) return { code: "export default undefined;\n", problems: parsed.problems };
   const loaded = loadAjv(path, parsed.value, true);
   if ("error" in loaded) return { code: "export default undefined;\n", problems: [problem(loaded.error)] };

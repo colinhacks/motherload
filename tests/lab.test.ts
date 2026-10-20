@@ -22,7 +22,7 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.equal(status, 2);
   assert.match(out, /broken\.toml\(2,8\): error motherload1: Invalid TOML document: invalid value/);
   assert.match(out, /broken\.yaml\(2,1\): error motherload1: Map keys must be unique/);
-  assert.match(out, /broken\.jsonschema\(1,1\): error motherload4: The schema is not valid/);
+  assert.match(out, /broken\.schema\.jsonc\(1,1\): error motherload4: The schema is not valid/);
   // The row after "Émile" starts on line 3; the repeated frontmatter key on line 3 of the file, not of the frontmatter.
   assert.match(out, /broken\.csv\(3,1\): error motherload1: This row has 3 fields; the header has 2\./);
   assert.match(out, /broken\.md\(3,1\): error motherload1: Map keys must be unique/);

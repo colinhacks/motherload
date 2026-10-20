@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { schemaCode, schemaTypes } from "../src/schema.ts";
 import { evaluate, ROOT } from "./helpers.ts";
 
-const PATH = join(ROOT, "tests/fixtures/user.jsonschema");
+const PATH = join(ROOT, "tests/fixtures/user.schema.jsonc");
 const SCHEMA = JSON.stringify({
   $schema: "https://json-schema.org/draft/2020-12/schema",
   title: "User",
@@ -48,10 +48,22 @@ test("the types name the root Type whatever its title", () => {
   assert.match(types, /declare const schema: __MotherloadSchema<Type, \{ readonly \$schema: "https:\/\/json-schema.org\/draft\/2020-12\/schema";/);
 });
 
+test("a schema is JSONC: comments and trailing commas are read in both texts", async () => {
+  const source = '{\n  // a user\n  "type": "object",\n  "properties": { "name": { "type": "string" }, },\n  "required": ["name"], /* closed */ "additionalProperties": false,\n}';
+  const typed = schemaTypes(source, PATH);
+  assert.deepEqual(typed.problems, []);
+  assert.match(typed.types, /export interface Type \{\n  name: string;\n\}/);
+  const { code, problems } = schemaCode(source, PATH);
+  assert.deepEqual(problems, []);
+  const { default: user } = await evaluate(code);
+  assert.equal(user.is({ name: "Ada" }), true);
+  assert.equal(user.is({ name: "Ada", extra: 1 }), false);
+});
+
 test("a $ref to another file is a problem, not a read", () => {
-  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.jsonschema" } } }), PATH);
+  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.schema.jsonc" } } }), PATH);
   assert.equal(problems.length, 1);
-  assert.match(problems[0]!.message, /resolve reference \.\/other\.jsonschema/);
+  assert.match(problems[0]!.message, /resolve reference \.\/other\.schema\.jsonc/);
 });
 
 test("an invalid schema is a problem in both texts", () => {
@@ -67,7 +79,7 @@ test("draft-04 is refused with the drafts ajv validates", () => {
 
 test("outside a project with ajv, the types are still built and the code says what to install", () => {
   const dir = mkdtempSync(join(tmpdir(), "motherload-no-peers-"));
-  const path = join(dir, "a.jsonschema");
+  const path = join(dir, "a.schema.jsonc");
   writeFileSync(path, SCHEMA);
   const { types, problems } = schemaTypes(SCHEMA, path);
   assert.deepEqual(problems, []);

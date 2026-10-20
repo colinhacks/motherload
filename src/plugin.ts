@@ -1,11 +1,11 @@
 // motherload as one loader: each path goes to its format by its suffix (the longest first, so
-// `user.jsonschema` is a schema and `app.yaml` is data).
+// `user.schema.jsonc` is a schema and `app.yaml` is data).
 import { CODES, FILTER, formatOf, type Problem } from "./formats.ts";
 import { dataModule } from "./data.ts";
 import { schemaCode, schemaTypes } from "./schema.ts";
 import type { LoaderPlugin } from "./universal.ts";
 
-const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md and .jsonschema";
+const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md and .schema.jsonc";
 
 const unknownFormat = (path: string): Problem => ({ message: `Motherload reads ${READS} files; ${path} is none of them. Remove its extension from Motherload's contentMappers entry.`, start: 0, length: 1, code: CODES.unknownFormat });
 

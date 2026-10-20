@@ -2,7 +2,7 @@
 
 Read [PLAN.md](./PLAN.md) first: what Motherload is, what the maintainer decided, the content mapper facts and where each was confirmed, the steps, and what is open. [DESIGN.md](./DESIGN.md) holds one section per design decision with its alternatives and evidence; a change to a decision updates its section.
 
-The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env`, `.csv`, `.tsv`, `.txt`, `.md`) and `.jsonschema` imports (a type plus a validator): a TypeScript 7.1 content mapper, a preload and bundler plugins. Its sibling products are dotsql (`~/Documents/projects/dotsql`, the `.sql` loader) and porg (`~/Documents/projects/lando`, the porg repository: the reactive Postgres driver, `pg_porg` and live queries). Read those repositories; do not write to them.
+The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env`, `.csv`, `.tsv`, `.txt`, `.md`) and `.schema.jsonc` imports (a type plus a validator): a TypeScript 7.1 content mapper, a preload and bundler plugins. Its sibling products are dotsql (`~/Documents/projects/dotsql`, the `.sql` loader) and porg (`~/Documents/projects/lando`, the porg repository: the reactive Postgres driver, `pg_porg` and live queries). Read those repositories; do not write to them.
 
 ## Layout
 
@@ -10,7 +10,7 @@ The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5
 | --- | --- |
 | `src/formats.ts` | One parser per format, each returning a value or problems placed in the text |
 | `src/serialize.ts` | A parsed value as JavaScript, as a widened type and as a literal type |
-| `src/data.ts`, `src/schema.ts` | The module a data file, a `.env` file and a `.jsonschema` file become |
+| `src/data.ts`, `src/schema.ts` | The module a data file, a `.env` file and a `.schema.jsonc` file become |
 | `src/schema-types.ts` | A JSON Schema as TypeScript declarations: Motherload's own emitter |
 | `src/plugin.ts` | The loader: each path to its format |
 | `src/universal.ts`, `src/rpc.ts` | The loader contract, its adapters (Node hooks, Bun, esbuild, the content mapper) and the JSON-RPC server, from the template |
