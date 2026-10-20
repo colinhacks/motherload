@@ -2,7 +2,7 @@
   "name": "motherload",
   "version": "0.0.0",
   "private": true,
-  "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md) as typed modules, and .schema.json as a type and a validator. TypeScript 7.1 content mappers.",
+  "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md) as typed modules, and .jsonschema as a type and a validator. TypeScript 7.1 content mappers.",
   "license": "MIT",
   "author": "Colin McDonnell",
   "repository": {

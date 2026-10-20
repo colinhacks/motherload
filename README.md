@@ -36,7 +36,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
       "package": "motherload",
       "extensions": [
         ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env",
-        ".csv", ".tsv", ".txt", ".md", ".schema.json"
+        ".csv", ".tsv", ".txt", ".md", ".jsonschema"
       ]
     }
   ]
@@ -215,9 +215,9 @@ import post, { frontmatter } from "./post.md";
 // frontmatter: { readonly title: "Hello"; readonly draft: false }
 ```
 
-### `.schema.json`
+### `.jsonschema`
 
-A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time.
+A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time. The suffix is `.jsonschema`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; VS Code shows the file as JSON with `"files.associations": { "*.jsonschema": "json" }` in `.vscode/settings.json`.
 
 ```json
 {
@@ -232,7 +232,7 @@ A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` 
 ```
 
 ```ts
-import user, { type Type as User } from "./user.schema.json";
+import user, { type Type as User } from "./user.jsonschema";
 // User: { name: string; role?: "admin" | "member" }
 
 const valid: User = user.parse(input); // or a TypeError listing each issue

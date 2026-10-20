@@ -22,10 +22,10 @@ export type Parsed = { ok: true; value: Value } | { ok: false; problems: Problem
 export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3, schema: 4 } as const;
 
 /** Every path a loader claims, in the order the longest suffix is tested first. `.env` files are matched by name: `.env`, `.env.local`, `prod.env`. */
-export const FILTER = /(\.schema\.json|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
+export const FILTER = /(\.jsonschema|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
 
 export function formatOf(path: string): Format | undefined {
-  if (path.endsWith(".schema.json")) return "schema";
+  if (path.endsWith(".jsonschema")) return "schema";
   if (path.endsWith(".toml")) return "toml";
   if (path.endsWith(".yaml") || path.endsWith(".yml")) return "yaml";
   if (path.endsWith(".json5")) return "json5";

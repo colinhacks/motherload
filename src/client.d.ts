@@ -52,7 +52,7 @@ declare module "*.md?raw" {
   export default text;
 }
 
-declare module "*.schema.json?raw" {
+declare module "*.jsonschema?raw" {
   const text: string;
   export default text;
 }

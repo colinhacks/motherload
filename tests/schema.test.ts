@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { schemaCode, schemaTypes } from "../src/schema.ts";
 import { evaluate, ROOT } from "./helpers.ts";
 
-const PATH = join(ROOT, "tests/fixtures/user.schema.json");
+const PATH = join(ROOT, "tests/fixtures/user.jsonschema");
 const SCHEMA = JSON.stringify({
   $schema: "https://json-schema.org/draft/2020-12/schema",
   title: "User",
@@ -49,9 +49,9 @@ test("the types name the root Type whatever its title", () => {
 });
 
 test("a $ref to another file is a problem, not a read", () => {
-  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.schema.json" } } }), PATH);
+  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.jsonschema" } } }), PATH);
   assert.equal(problems.length, 1);
-  assert.match(problems[0]!.message, /resolve reference \.\/other\.schema\.json/);
+  assert.match(problems[0]!.message, /resolve reference \.\/other\.jsonschema/);
 });
 
 test("an invalid schema is a problem in both texts", () => {
@@ -67,7 +67,7 @@ test("draft-04 is refused with the drafts ajv validates", () => {
 
 test("outside a project with ajv, the types are still built and the code says what to install", () => {
   const dir = mkdtempSync(join(tmpdir(), "motherload-no-peers-"));
-  const path = join(dir, "a.schema.json");
+  const path = join(dir, "a.jsonschema");
   writeFileSync(path, SCHEMA);
   const { types, problems } = schemaTypes(SCHEMA, path);
   assert.deepEqual(problems, []);

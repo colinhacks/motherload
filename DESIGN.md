@@ -141,7 +141,7 @@ import post, { frontmatter } from "./post.md";    // string, and { readonly titl
 
 ## The schema loader: types
 
-A `.schema.json` file becomes the type the schema describes plus a validator (the maintainer's decision). The types come from an emitter of Motherload's own, `src/schema-types.ts` (the maintainer's decision of 2026-10-09). The alternatives were json-schema-to-typescript 16.0.0 (2026-08-28, 5.1 M weekly downloads), which compiles a schema to TypeScript declarations but installs 15.9 MB with its dependencies, prettier 9.96 MB of it, loaded every time ([Packaging](#packaging)); and json-schema-to-ts 3.1.1 (47 M weekly downloads, last release 2024-08-29, 0.47 MB with `@babel/runtime` and `ts-algebra`), which infers the type from the schema as a literal type, so the checker computes it again in every type check and each `$ref` is inlined.
+A `.jsonschema` file (`.schema.json` until 2026-10-19, [below](#the-schema-loader-the-suffix)) becomes the type the schema describes plus a validator (the maintainer's decision). The types come from an emitter of Motherload's own, `src/schema-types.ts` (the maintainer's decision of 2026-10-09). The alternatives were json-schema-to-typescript 16.0.0 (2026-08-28, 5.1 M weekly downloads), which compiles a schema to TypeScript declarations but installs 15.9 MB with its dependencies, prettier 9.96 MB of it, loaded every time ([Packaging](#packaging)); and json-schema-to-ts 3.1.1 (47 M weekly downloads, last release 2024-08-29, 0.47 MB with `@babel/runtime` and `ts-algebra`), which infers the type from the schema as a literal type, so the checker computes it again in every type check and each `$ref` is inlined.
 
 - **No dependency:** the emitter is part of Motherload and needs nothing installed; only the validator needs ajv.
 - **The root type is always `Type`,** whatever the root `title`, so `import { type Type as User }` works for every schema. An object root is an `interface`, any other root a `type`.
@@ -151,10 +151,19 @@ A `.schema.json` file becomes the type the schema describes plus a validator (th
 - **A schema is one file:** a `$ref` to another file or a URL is not followed. ajv reports it as a diagnostic, and its type is `unknown`. Following file references needs the mapper to watch those files (`dynamicConfig`, below), which is in [PLAN.md](./PLAN.md#open).
 - **The schema itself is checked:** when ajv is installed, the type check compiles the schema and reports an invalid one (`tests/fixtures/errors`).
 
+## The schema loader: the suffix
+
+A schema file's suffix is `.jsonschema` (the maintainer's decision of 2026-10-19), not `.schema.json`, its suffix until then. [microsoft/TypeScript#64581](https://github.com/microsoft/TypeScript/pull/64581), merged 2026-10-13, refuses a content mapper extension that ends in a built-in one (`.ts`, `.js`, `.json` and their kin) with the TS18066 that `.json` itself gets, and the `release-7.1` branch, cut as `7.1.0-beta` on 2026-10-16, carries it. Measured on 2026-10-19 with a tsconfig registering `.schema.json`, `.sql` and `.pg.sql` for a probe mapper: `7.1.0-dev.20260929.1` accepted all three, and `7.1.0-dev.20261019.1` reported `TS18066: Content mapper file extension '.schema.json' is a built-in extension and cannot be registered by a content mapper` and accepted the other two. The pinned `7.1.0-dev.20261002.1` predates the rule.
+
+- **The alternatives:** `.schema.jsonc`, which keeps "schema" and which VS Code already shows as JSON with comments (its `jsonc` language lists `.jsonc`); asking the TypeScript team to exempt the suffix, which is unlikely, since the rule extends the ban on built-in extensions rather than standing apart from it; and keeping `.schema.json` until the next TypeScript bump, which it would not survive.
+- **Editors:** VS Code's JSON language does not list `.jsonschema` (`extensions/json/package.json` in microsoft/vscode lists `.json`, `.jsonld`, `.geojson` and others), so a project shows the files as JSON with `"files.associations": { "*.jsonschema": "json" }`; the README and the site say so.
+- **Vite:** its JSON plugin claims the ids that match `\.(?:json|json5)(?:$|\?)` (`packages/vite/src/node/plugins/json.ts`), which `.jsonschema` does not, so the open question of whether Vite's JSON handling runs on the module Motherload returns no longer concerns the schema loader; it concerns `.json5` ([PLAN.md](./PLAN.md#open)).
+- **`?raw`:** `src/client.d.ts` declares `*.jsonschema?raw`.
+
 ## The schema loader: the validator
 
 ```ts
-import user, { type Type as User } from "./user.schema.json";
+import user, { type Type as User } from "./user.jsonschema";
 user.parse(input);              // User, or a TypeError whose `issues` lists every problem
 user.is(input);                 // input is User
 user["~standard"].validate(x);  // Standard Schema v1
@@ -183,7 +192,7 @@ The serializer (`src/serialize.ts`) writes each parsed value as JavaScript and a
 - **No `dynamicConfig`.** A data file's module depends on the file alone, and a schema's on the file and the installed peers. Without the flag TypeScript computes the transform identity from the package name and version and the tsconfig options without starting the process (the content mapper PR's text, quoted in the porg repository's `docs/prior-art.md` section 4b), and starts it only for a matching file. Measured with probe mappers on both builds: a static mapper with no matching file in the program started no process, with or without `--incremental`, while a `dynamicConfig` mapper started and answered `openProject` on every `--incremental` run, with no matching file present.
 - **No options.** A key in a tsconfig entry's `options` is reported (code 5) through `optionDiagnostics`, the field dotsql's mapper uses.
 - **One tsconfig entry for every format.** TypeScript starts one process per package and version (measured: two entries of one package, one process, each entry its own `openProject` with its own `options`). The failure budget is per entry (below), so a project that wants one format's failures kept apart from the others' lists that format in an entry of its own.
-- **Plain `.json` stays TypeScript's:** a mapper cannot claim it (`TS100021` on `7.1.0-dev.20260918.1`, `TS18066` on `7.1.0-dev.20261002.1`: "a built-in extension and cannot be registered"), and `.schema.json` can be claimed beside it (measured: the probe mapper transformed `user.schema.json` while `plain.json` was typed by `resolveJsonModule`).
+- **Plain `.json` stays TypeScript's:** a mapper cannot claim it (`TS100021` on `7.1.0-dev.20260918.1`, `TS18066` on `7.1.0-dev.20261002.1`: "a built-in extension and cannot be registered"), and `.schema.json` could be claimed beside it on both builds (measured: the probe mapper transformed `user.schema.json` while `plain.json` was typed by `resolveJsonModule`). From the nightly after 2026-10-13 no suffix that ends in `.json` can be claimed either, which is why a schema is a `.jsonschema` file ([above](#the-schema-loader-the-suffix)).
 
 ## The TypeScript build
 
@@ -196,6 +205,8 @@ The repository pins `typescript@7.1.0-dev.20261002.1`, the newest nightly older 
 | Mappers without `--runExternalCode` | TS100024 | TS18068 |
 | A failed transform | TS100025 | TS18069 |
 | A mapper switched off after five failures | TS100026 | TS18070 |
+
+A later rule is on neither build: from the nightly after 2026-10-13, an extension that ends in a built-in one, such as `.schema.json`, is refused with TS18066 (measured on `7.1.0-dev.20261019.1`, [above](#the-schema-loader-the-suffix)).
 
 Failure budget, measured with a mapper that throws for files named `fail*`: one entry, seven failing files: seven transform requests, five failed-transform diagnostics, then the switched-off diagnostic. Two entries of one package, four failing files each: eight failed-transform diagnostics, none switched off. One entry claiming both extensions, the same eight files: five, then switched off. So the budget of five counts per tsconfig entry, not per package or process.
 
@@ -236,7 +247,7 @@ Decided by the maintainer on 2026-10-08 and 2026-10-09: Motherload becomes a fam
 | `@motherload/csv` | `.csv`, `.tsv` | core, csv-parse |
 | `@motherload/txt` | `.txt` | core |
 | `@motherload/md` | `.md` | core, yaml (the frontmatter) |
-| `@motherload/schema` | `.schema.json` | core, jsonc-parser (positions in the schema), ajv, ajv-formats; the types come from Motherload's own emitter |
+| `@motherload/schema` | `.jsonschema` | core, jsonc-parser (positions in the schema), ajv, ajv-formats; the types come from Motherload's own emitter |
 | `motherload` | all of the above | core and the nine format packages |
 
 A format package's manifest, `@motherload/yaml` here; `./loader` is the format's `LoaderPlugin`, which `motherload` combines with the other eight:

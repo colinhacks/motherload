@@ -7,7 +7,7 @@ import multi from "./multi.yaml";
 import settings from "./settings.jsonc";
 import data from "./data.json5";
 import "./.env";
-import user, { type Type as User } from "./user.schema.json";
+import user, { type Type as User } from "./user.jsonschema";
 import plain from "./plain.json" with { type: "json" };
 import users from "./users.csv";
 import scores from "./scores.tsv";

@@ -1,7 +1,7 @@
-// The module a `.schema.json` file becomes: the TypeScript type the schema describes, and a
+// The module a `.jsonschema` file becomes: the TypeScript type the schema describes, and a
 // validator compiled from the schema when the module is built.
 //
-//   import user, { type Type as User } from "./user.schema.json";
+//   import user, { type Type as User } from "./user.jsonschema";
 //   user.parse(input);          // User, or a TypeError listing every issue
 //   user.is(input);             // input is User
 //   user["~standard"];          // Standard Schema v1, for any library that accepts one

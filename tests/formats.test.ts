@@ -8,7 +8,7 @@ const value = (parsed: ReturnType<typeof parseTomlFile>) => {
 };
 
 test("formats are chosen by the longest suffix", () => {
-  assert.equal(formatOf("/a/user.schema.json"), "schema");
+  assert.equal(formatOf("/a/user.jsonschema"), "schema");
   assert.equal(formatOf("/a/b.toml"), "toml");
   assert.equal(formatOf("/a/b.yml"), "yaml");
   assert.equal(formatOf("/a/b.json5"), "json5");
