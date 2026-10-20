@@ -330,26 +330,27 @@ export function PopupTrigger(props: ComponentProps<typeof Twoslash.PopupTrigger>
   );
 }
 
-/** The gap between a card and the edges of the pane it stays inside, in px. */
-const PANE_INSET = 12;
+/** The gap between a card and the edges of the block it stays inside, in px. */
+const BLOCK_INSET = 12;
 
 /**
- * A card opens under its name's left edge, and stays inside the main.ts pane, so it never covers
- * the file on the right: it is no wider than the pane, and moves left as far as the pane's edge
- * when it would cross the divider. The move is the card's `translate`, which Base UI's positioning
- * (the positioner's own offset) and its open animation (`transform`) leave alone.
+ * A card opens under its name's left edge and stays inside its block: it is as wide as its type,
+ * up to the block's width, so a type wraps only when the whole block is too narrow for it, and it
+ * moves left as far as the block's edge when it would cross the block's right edge. The move is the
+ * card's `translate`, which Base UI's positioning (the positioner's own offset) and its open
+ * animation (`transform`) leave alone.
  */
 export function PopupContent(props: ComponentProps<typeof Twoslash.PopupContent>) {
   const { pinned, trigger } = usePin();
-  const fitToPane = (card: HTMLDivElement | null) => {
+  const fitToBlock = (card: HTMLDivElement | null) => {
     const name = trigger.current;
-    const pane = name?.closest('figure');
-    if (!card || !name || !pane) return;
+    const block = name?.closest('.ml-split');
+    if (!card || !name || !block) return;
     const n = name.getBoundingClientRect();
-    const p = pane.getBoundingClientRect();
-    card.style.maxWidth = `${p.width - 2 * PANE_INSET}px`;
-    const left = Math.max(p.left + PANE_INSET, Math.min(n.left, p.right - PANE_INSET - card.offsetWidth));
+    const b = block.getBoundingClientRect();
+    card.style.maxWidth = `${b.width - 2 * BLOCK_INSET}px`;
+    const left = Math.max(b.left + BLOCK_INSET, Math.min(n.left, b.right - BLOCK_INSET - card.offsetWidth));
     card.style.translate = `${left - n.left}px 0`;
   };
-  return <Twoslash.PopupContent align="start" {...props} {...(pinned ? stayOpen : {})} ref={fitToPane} />;
+  return <Twoslash.PopupContent align="start" {...props} {...(pinned ? stayOpen : {})} ref={fitToBlock} />;
 }

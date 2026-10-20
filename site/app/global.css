@@ -502,8 +502,8 @@ figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:e
 }
 
 /* The split block: two of Fumadocs' code blocks as the two panes of one card. main.ts takes the
-   larger share, because its types' cards open inside it (components/showcase.tsx); the file takes
-   42%, or its own width where it is wider. A dragged divider sets main.ts's width instead. */
+   larger share, below which its types' cards open; the file takes 42%, or its own width where it
+   is wider. A dragged divider sets main.ts's width instead. */
 .ml-split {
   position: relative;
   display: grid;
@@ -652,7 +652,7 @@ html:has(.ml-showcase) {
 }
 
 html:has(.ml-showcase) .fd-twoslash-popover {
-  /* Its width is set to its pane's (components/showcase.tsx). */
+  /* Its width is capped at its block's (components/showcase.tsx). */
   min-width: 0;
   max-width: none;
   max-height: none;
