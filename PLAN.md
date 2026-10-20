@@ -34,6 +34,7 @@ The maintainer's, on 2026-10-08 and 2026-10-09:
 
 The maintainer's, on 2026-10-19 and 2026-10-20:
 
+- **A `.md` file has no default export:** its body is the named export `md`, a string, and its frontmatter the named export `frontmatter`, typed as `as const` would type it; `import * as post from "./post.md"` gives `post.md` and `post.frontmatter`. The body rendered as HTML is left for later ([DESIGN.md](./DESIGN.md#the-txt-and-md-modules)).
 - **A schema file's suffix is `.schema.jsonc`,** not `.schema.json`: TypeScript nightlies after 2026-10-13, and the 7.1 beta branch, refuse a content mapper extension that ends in `.json` (microsoft/TypeScript#64581, TS18066). The answer of 2026-10-19 was `.jsonschema`; on 2026-10-20 the maintainer chose `.schema.jsonc` instead. A schema is therefore read as JSON with comments ([DESIGN.md](./DESIGN.md#the-schema-loader-the-suffix)).
 
 ## Names
@@ -87,7 +88,7 @@ Run `nub install`, then `nub run typecheck` and `nub run test` (57 tests). The s
 - **JSONC trailing commas:** allowed today; whether a `.jsonc` file should be refused for them.
 - **CSV quoting in TSV:** a `.tsv` file follows the IANA registration, with no quoting; whether the TSV that spreadsheets export puts quotes around a field that holds a tab or a line break, and so needs CSV quoting, is unverified.
 - **Large CSV files in a bundle:** each row is an object literal that repeats every column name; an array of arrays mapped to objects when the module runs would be smaller.
-- **Markdown:** whether `.mdx` should be claimed, and whether a `+++` TOML frontmatter (Hugo's) should be read.
+- **Markdown:** whether `.mdx` should be claimed, whether a `+++` TOML frontmatter (Hugo's) should be read, and whether a `.md` module should also export its body rendered as HTML (the maintainer, on 2026-10-20: "down the line", not now).
 - **Vite and `.json5`:** Vite's JSON plugin claims the ids that match `\.(?:json|json5)(?:$|\?)` (`packages/vite/src/node/plugins/json.ts`); whether its JSON handling runs on the module Motherload returns for a `.json5` file is unverified. A `.schema.jsonc` file is outside it (it was `.schema.json` until 2026-10-19).
 - **The built-in data loaders of nub** cover `.toml`, `.yaml`, `.json5` and `.jsonc` with a default export only; whether nub should read Motherload's preload from its package (the template's `nub` manifest proposal in docs/universal-plugin.md section 5). It matters most for a schema: without Motherload's loader, nub and Bun read a `.schema.jsonc` file as data, the schema object in place of the validator the types promise (measured on 2026-10-20, [DESIGN.md](./DESIGN.md#the-schema-loader-the-suffix)).
 - **The TypeScript nightly:** the repository pins `7.1.0-dev.20261002.1`; the content mapper diagnostic codes changed between nightlies, so tests match messages, not codes. A nightly after 2026-10-13 refuses an extension that ends in a built-in one; Motherload registers none since the schema suffix left `.schema.json` (2026-10-19), and on `7.1.0-dev.20261019.1` the three projects of `nub run typecheck` pass and `tests/fixtures/errors` gives the same diagnostics as on the pinned build (run on 2026-10-20, with `.schema.jsonc`).

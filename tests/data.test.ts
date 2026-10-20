@@ -80,16 +80,18 @@ test("a .txt module is the file's text", async () => {
   assert.equal(types, "declare const data: string;\nexport default data;\n");
 });
 
-test("a .md module is the body and the frontmatter, typed as `as const` would type it", async () => {
+test("a .md module has no default export: the body is `md`, and the frontmatter is typed as `as const` would type it", async () => {
   const { code, types, problems } = dataModule("md", "---\ntitle: Hello\ntags: [a, b]\n---\n# Hello\n", "/app/post.md");
   assert.deepEqual(problems, []);
   const mod = await evaluate(code);
-  assert.deepEqual(Object.keys(mod).sort(), ["default", "frontmatter"]);
-  assert.equal(mod.default, "# Hello\n");
+  assert.deepEqual(Object.keys(mod).sort(), ["frontmatter", "md"]);
+  assert.equal(mod.md, "# Hello\n");
   assert.deepEqual(mod.frontmatter, { title: "Hello", tags: ["a", "b"] });
-  assert.equal(types, 'declare const data: string;\nexport default data;\nexport declare const frontmatter: { readonly title: "Hello"; readonly tags: readonly ["a", "b"] };\n');
+  assert.equal(types, 'export declare const md: string;\nexport declare const frontmatter: { readonly title: "Hello"; readonly tags: readonly ["a", "b"] };\n');
   const plain = dataModule("md", "# Hello\n", "/app/plain.md");
-  assert.deepEqual((await evaluate(plain.code)).frontmatter, {});
+  const plainMod = await evaluate(plain.code);
+  assert.equal(plainMod.md, "# Hello\n");
+  assert.deepEqual(plainMod.frontmatter, {});
   assert.match(plain.types, /^export declare const frontmatter: \{\};$/m);
 });
 
@@ -99,5 +101,5 @@ test("a .csv or .md file that does not parse has quiet types and its problems", 
   assert.match(csv.types, /declare const data: any;/);
   const md = dataModule("md", "---\na: [\n---\n", "/app/a.md");
   assert.ok(md.problems.length > 0);
-  assert.match(md.types, /export declare const frontmatter: any;/);
+  assert.equal(md.types, "export declare const md: string;\nexport declare const frontmatter: any;\n");
 });

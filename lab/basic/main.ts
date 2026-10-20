@@ -12,7 +12,7 @@ import plain from "./plain.json" with { type: "json" };
 import users from "./users.csv";
 import scores from "./scores.tsv";
 import notes from "./notes.txt";
-import post, { frontmatter } from "./post.md";
+import * as post from "./post.md";
 import postRaw from "./post.md?raw";
 
 // Exact equality of two types, not mere assignability.
@@ -39,10 +39,12 @@ expect<Equal<typeof process.env.GREETING, string>>();
 // A .csv or .tsv file is its rows, typed by the header's columns, every value a string.
 expect<Equal<typeof users, readonly { readonly name: string; readonly email: string; readonly zip: string }[]>>();
 expect<Equal<typeof scores, readonly { readonly player: string; readonly score: string }[]>>();
-// A .txt file is its text; a .md file is its body, with its frontmatter typed as `as const` would type it.
+// A .txt file is its text. A .md file has no default export: its body is `md`, and its frontmatter
+// is typed as `as const` would type it.
 expect<Equal<typeof notes, string>>();
-expect<Equal<typeof post, string>>();
-expect<Equal<typeof frontmatter, { readonly title: "Hello, Motherload"; readonly draft: false; readonly tags: readonly ["data", "types"] }>>();
+expect<Equal<keyof typeof post, "md" | "frontmatter">>();
+expect<Equal<typeof post.md, string>>();
+expect<Equal<typeof post.frontmatter, { readonly title: "Hello, Motherload"; readonly draft: false; readonly tags: readonly ["data", "types"] }>>();
 expect<Equal<typeof postRaw, string>>();
 
 expect<Equal<User, { name: string; email?: string; role: "admin" | "member"; tags?: string[] }>>();
@@ -83,8 +85,8 @@ console.log(
     grace: users[1]?.name,
     score: scores[1]?.score,
     notes: notes.split("\n")[0],
-    title: frontmatter.title,
-    body: post.split("\n")[0],
+    title: post.frontmatter.title,
+    body: post.md.split("\n")[0],
     postRaw: postRaw.split("\n")[0],
     valid: valid.name,
     invalid,

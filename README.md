@@ -197,7 +197,7 @@ import notes from "./notes.txt";
 
 ### `.md`
 
-The default export is the body. The YAML frontmatter is a named export.
+A `.md` file has no default export. The body, without the frontmatter, is the named export `md`; the YAML frontmatter is the named export `frontmatter`, typed from the file.
 
 ```md
 ---
@@ -210,9 +210,11 @@ The body of the post.
 ```
 
 ```ts
-import post, { frontmatter } from "./post.md";
-// post: string
-// frontmatter: { readonly title: "Hello"; readonly draft: false }
+import * as post from "./post.md";
+// post.frontmatter: { readonly title: "Hello"; readonly draft: false }
+// post.md: string
+
+import { md, frontmatter } from "./post.md"; // the same, as named imports
 ```
 
 ### `.schema.jsonc`

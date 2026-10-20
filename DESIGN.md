@@ -15,6 +15,7 @@ import "./.env";                        // process.env.PORT: string, loaded when
 - **The default export is typed as `as const` would type it** (the maintainer's choice, replacing the first version's widened default and its `literal` export). A readonly array or tuple is not assignable to a mutable one: `const tags: string[] = config.tags` fails with `TS4104: The type 'readonly ["a", "b"]' is 'readonly' and cannot be assigned to the mutable type 'string[]'` (measured on `lab/basic`, which keeps that line under `@ts-expect-error`). Plain `.json`, which stays TypeScript's, is still widened by `resolveJsonModule`.
 - **`?raw` is the file's text,** the meaning of Vite's `?raw`, typed by ambient declarations in `src/client.d.ts` (`declare module "*.toml?raw"` and one per extension) that a project lists in tsconfig's `types` as `motherload/client`. TypeScript resolves no query to a file (below), so the mapper never sees these imports; the ambient declaration answers instead, which works because the type of a file's text does not depend on the file. The preload's hook and the esbuild plugin serve `?raw` (esbuild's `text` loader); any other query or hash goes to the next hook or plugin. Patterns per extension, not `*?raw`, so a project that also loads `vite/client` declares no module twice.
 - **No top-level keys as named exports.** Node's JSON modules export only `default`, and a key such as `my-key` would not be an identifier.
+- **A `.md` file has no default export;** its body and its frontmatter are the named exports `md` and `frontmatter` ([below](#the-txt-and-md-modules)).
 - **A `.env` import loads the file into `process.env`;** see "The `.env` module" below.
 
 ## How an import chooses
@@ -127,15 +128,18 @@ import users from "./users.csv";   // readonly { readonly name: string; readonly
 
 ```ts
 import notes from "./notes.txt";                  // string
-import post, { frontmatter } from "./post.md";    // string, and { readonly title: "Hello" }
+import * as post from "./post.md";                // post.md: string; post.frontmatter: { readonly title: "Hello" }
+import { md, frontmatter } from "./post.md";      // the same, as named imports
 ```
 
 - **A `.txt` file is its text,** exactly as `?raw` gives it, typed `string`: a literal type would put the whole file into every hover.
-- **A `.md` file's default export is its body without the frontmatter,** typed `string`. Motherload does not render Markdown: no Markdown parser is a dependency, and the body goes to whichever renderer the project uses. `?raw` is the whole file.
-- **`frontmatter` is a named export,** one fixed name, so it is an identifier whatever the file holds (the rule against top-level keys as named exports, above, is about names that come from the file).
+- **A `.md` file has no default export,** the maintainer's decision of 2026-10-20, replacing the first version's default export of the body. The body, without the frontmatter, is the named export `md`, typed `string`; the frontmatter is the named export `frontmatter`. A default import is an error in the type check (`TS1192: Module '".../post.md"' has no default export`) and when the module runs (Node: `SyntaxError: The requested module './post.md' does not provide an export named 'default'`), both measured on `lab/basic`. Rejected: a default export of an object holding both, since the maintainer wanted no default export for now.
+- **Motherload does not render Markdown:** no Markdown parser is a dependency, and `md` goes to whichever renderer the project uses. Exporting the body rendered as HTML was left for later by the maintainer ([PLAN.md](./PLAN.md#open)). `?raw` is the whole file.
+- **`md` and `frontmatter` are fixed names,** so each is an identifier whatever the file holds (the rule against top-level keys as named exports, above, is about names that come from the file).
 - **The frontmatter is a `---` line at the very start of the file, closed by the next `---` line;** trailing spaces on either line, CRLF, and a byte order mark before it are accepted. The body starts after the closing line. A `---` line anywhere else is body (a thematic break).
 - **It is read as a `.yaml` file is** (the same function: YAML 1.2's core schema, merge keys, a duplicate key an error) and typed as `as const` would type it. A YAML error is placed at its place in the file, offset by where the frontmatter starts, and yaml's "at line N, column M", which counts from the frontmatter, is dropped from the message.
-- **No frontmatter, or an empty one, is `{}`,** typed `{}`.
+- **No frontmatter, or an empty one, is `{}`,** typed `{}`; a file with no frontmatter is all `md`.
+- **A file whose frontmatter fails to parse** is typed `md: string` and `frontmatter: any`, so the problem is the one error and no use of the module adds another; `md` keeps `string` because the body's type does not depend on the file.
 - **A frontmatter that is not a mapping** (a list or a scalar) is a problem at the frontmatter: frontmatter is keys and values by convention, and `null` or a list would make every `frontmatter.title` an error.
 - **An opening `---` with no closing line is a problem at the opening line,** not a file that is all body: read as body, a forgotten closing line would hide the YAML in the text with no error. A file that starts with a thematic break and has no other `---` line gets the problem; a blank line before the break avoids it.
 

@@ -12,7 +12,7 @@ import plans from "./plans.toml";
 import team from "./team.yaml";
 import strings from "./strings.json5";
 import posts from "./posts.csv";
-import notes, { frontmatter } from "./notes.md";
+import { md, frontmatter } from "./notes.md";
 import "./.env";
 import user from "./user.schema.jsonc";
 ```
@@ -407,7 +407,7 @@ import notes from "./notes.txt";
 
 ### `.md`
 
-The default export of a `.md` file is its Markdown body, without the frontmatter. The frontmatter is a named export, read and typed as a `.yaml` file is:
+A `.md` file has no default export. Its frontmatter is the named export `frontmatter`, read and typed as a `.yaml` file is, and its Markdown body, without the frontmatter, is the named export `md`:
 
 ```md title="post.md"
 ---
@@ -421,13 +421,14 @@ The body of the post.
 ```
 
 ```ts twoslash title="main.ts"
-import body, { frontmatter } from "./post.md";
-//     ^?
-const meta = frontmatter;
+import * as post from "./post.md";
+const meta = post.frontmatter;
+//    ^?
+const body = post.md;
 //    ^?
 ```
 
-The frontmatter runs from a `---` first line to the next `---` line. A file without one exports `{}`. Pass the body to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
+Named imports work the same: `import { md, frontmatter } from "./post.md"`. The frontmatter runs from a `---` first line to the next `---` line. A file without one exports `{}`. Pass `md` to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
 
 ### `.schema.jsonc`
 

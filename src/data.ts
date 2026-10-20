@@ -5,7 +5,7 @@
 //   import "./.env";                          // the variables, loaded into process.env at run time
 //   import users from "./users.csv";          // the rows, typed by the header's columns (also .tsv)
 //   import notes from "./notes.txt";          // the text
-//   import post, { frontmatter } from "./post.md"; // the body, and the YAML frontmatter
+//   import { md, frontmatter } from "./post.md"; // the body, and the YAML frontmatter; no default
 import { basename, relative } from "node:path";
 import { literal, propertyName, toJs } from "./serialize.ts";
 import { parseCsvFile, parseEnvFile, parseFile, parseMarkdownFile, parseTsvFile, type Format, type Problem } from "./formats.ts";
@@ -71,13 +71,18 @@ function tableModule(format: "csv" | "tsv", source: string): ModuleText {
   };
 }
 
-/** A `.md` file is its body, without the frontmatter, and a named export `frontmatter`, typed as `as const` would type it (`{}` when the file has none). */
+/**
+ * A `.md` file has no default export: its body, without the frontmatter, is the named export `md`,
+ * and its frontmatter the named export `frontmatter`, typed as `as const` would type it (`{}` when
+ * the file has none). `md` is a string even when the frontmatter fails, since its type does not
+ * depend on the file.
+ */
 function markdownModule(source: string): ModuleText {
   const parsed = parseMarkdownFile(source);
-  if (!parsed.ok) return { code: "export default undefined;\nexport const frontmatter = undefined;\n", types: `${FAILED_TYPES}export declare const frontmatter: any;\n`, problems: parsed.problems };
+  if (!parsed.ok) return { code: "export const md = undefined;\nexport const frontmatter = undefined;\n", types: "export declare const md: string;\nexport declare const frontmatter: any;\n", problems: parsed.problems };
   return {
-    code: `const data = ${JSON.stringify(parsed.body)};\nexport default data;\nexport const frontmatter = ${toJs(parsed.frontmatter)};\n`,
-    types: `declare const data: string;\nexport default data;\nexport declare const frontmatter: ${literal(parsed.frontmatter)};\n`,
+    code: `export const md = ${JSON.stringify(parsed.body)};\nexport const frontmatter = ${toJs(parsed.frontmatter)};\n`,
+    types: `export declare const md: string;\nexport declare const frontmatter: ${literal(parsed.frontmatter)};\n`,
     problems: [],
   };
 }
