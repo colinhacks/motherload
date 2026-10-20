@@ -1,6 +1,6 @@
 import type { RehypeCodeOptions } from 'fumadocs-core/mdx-plugins';
 import type { DefaultMDXOptions, applyMdxPreset } from 'fumadocs-mdx/config';
-import type { DocsTwoslashOptions } from './twoslash';
+import type { DocsTwoslashOptions } from './twoslash.ts';
 
 type Environment = Parameters<ReturnType<typeof applyMdxPreset>>[0];
 type Langs = NonNullable<RehypeCodeOptions['langs']>;
@@ -35,12 +35,12 @@ export type DocsMdxOptions = {
 export async function docsMdxOptions(environment: Environment, options: DocsMdxOptions = {}) {
   const { applyMdxPreset } = await import('fumadocs-mdx/config');
   const { rehypeCodeDefaultOptions } = await import('fumadocs-core/mdx-plugins');
-  const { remarkSections } = await import('./remark-sections');
-  const { recmaSharedPopups } = await import('./recma-shared-popups');
-  const { hangingIndent } = await import('./hanging-indent');
+  const { remarkSections } = await import('./remark-sections.ts');
+  const { recmaSharedPopups } = await import('./recma-shared-popups.ts');
+  const { hangingIndent } = await import('./hanging-indent.ts');
   const langs: Langs = ['js', 'jsx', 'ts', 'tsx'];
   for (const lang of options.langs ?? []) if (!langs.includes(lang)) langs.push(lang);
-  const twoslash = options.twoslash === false ? [] : [(await import('./twoslash')).docsTwoslash(options.twoslash)];
+  const twoslash = options.twoslash === false ? [] : [(await import('./twoslash.ts')).docsTwoslash(options.twoslash)];
   return applyMdxPreset({
     remarkPlugins: [remarkSections, ...(options.remarkPlugins ?? [])],
     recmaPlugins: [recmaSharedPopups],

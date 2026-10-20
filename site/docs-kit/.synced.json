@@ -1,9 +1,9 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "735c312",
+  "commit": "b0314d2",
   "files": {
     "package.json": "e77d2ad4f3879fb80f08152eb7c25fe930aee0936d9e3e9d42ca0f0cd4f68ddb",
-    "README.md": "dcc1c89c409aeadf8011fdcb6135711bcc55ca3b0513a11752123986fb7c6f76",
+    "README.md": "8ef62f2d773c972aae866b14240eaf78262ceaab978c897b8b1a23506f44f901",
     "src/components/agent-prompt.tsx": "252fe129833af67cde754c4958fbac2c7a290941a47ea680f01f922ed22d12b8",
     "src/components/chrome.tsx": "2406305d9db24be97199d4cc774425e596e7ea56b4c6f4664d59ffa9c73b2c26",
     "src/components/code-tabs.tsx": "392de2165f31253907c82c010f44cfe29ed5aac179e5577314a71d373e60d4d9",
@@ -17,8 +17,8 @@
     "src/components/shell.tsx": "b7cb46fe8fe858d33398a85f3048c8491411d2e48855988574ebd749695e9bb2",
     "src/components/variant-tabs.tsx": "c62ed24a2ea6ff1c50b14ec0092060ccbe5c2bffe7529c75aebe9b53b84e35d2",
     "src/mdx/hanging-indent.ts": "44982cd93fd12745ef11d30fac08cd39f98fda94aa836a2c817a5222231e8e20",
-    "src/mdx/index.ts": "204167c11dada50698b09e3aba8b69623c655635e18f571a408a8c5aa44b3284",
-    "src/mdx/options.ts": "05ca85d7506e83c198b67bffb7c11decb7686ed9498493f6b36f05638b3c584f",
+    "src/mdx/index.ts": "370019f852de4c6a6cf872df0a9a0058788d6fa6b1a712a1a737fc55a7c46c07",
+    "src/mdx/options.ts": "090b36011ecc74f81209049952c25a5ec12d5365a3faa279b122d62ae1347fd2",
     "src/mdx/recma-shared-popups.ts": "b12d67312b9875a469adba9ed4ca77b788f8f7958c0119451a9b4e16638ae427",
     "src/mdx/remark-sections.ts": "d1bf51eb2a1d2cab1edbc12591681c3219d8557e92241ef1b85218795d0a54d9",
     "src/mdx/twoslash.ts": "a2039253b7f020858c6606bd352f069f2834c3a5a9eddc695b115bf032bf29e6",

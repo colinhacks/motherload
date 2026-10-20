@@ -80,7 +80,7 @@ The copy keeps every repository self-contained (a site still builds from its own
 
 ## How a third site adopts it
 
-A Fumadocs site (Next.js 16, `fumadocs-ui`, `fumadocs-core`, `fumadocs-mdx`, `fumadocs-twoslash`, `@shikijs/twoslash`, Tailwind 4) needs, after `node ~/Documents/docs-kit/src/sync.mjs <site>` and `"docs-kit": "link:./docs-kit"` in its dependencies (then `nub install`):
+A Fumadocs site (Next.js 16, `fumadocs-ui`, `fumadocs-core`, `fumadocs-mdx`, `fumadocs-twoslash`, `@shikijs/twoslash`, Tailwind 4) needs, after `node ~/Documents/docs-kit/src/sync.mjs <site>`, `"docs-kit": "link:./docs-kit"` in its dependencies (then `nub install`) and `"allowImportingTsExtensions": true` in its tsconfig (`next dev` imports the build-time modules in Node itself, so they name their `.ts` extensions):
 
 ```js title="next.config.mjs"
 import { withDocsKit } from 'docs-kit/next';
