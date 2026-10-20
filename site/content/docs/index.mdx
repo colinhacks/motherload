@@ -5,7 +5,7 @@ description: Import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or .env
 
 Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file, or a JSON Schema, and get a typed module.
 
-<p className="ml-lede">It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.</p>
+<p className="dk-lede">It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.</p>
 
 ```ts twoslash tab="main.ts"
 import plans from "./plans.toml";
@@ -78,7 +78,9 @@ Hover over an import to see its type. Each type comes from the file, in the type
 The type check and the editor run Motherload as a content mapper: TypeScript hands it each data file a project imports, and it returns the module's types. At run time, a preload or a bundler plugin turns the same file into a module.
 
 ```text
-plans.toml  →  Motherload  →  { readonly free: { readonly price: 0; readonly seats: 1 }; readonly pro: { … } }
+plans.toml  →  Motherload  →
+  { readonly free: { readonly price: 0; readonly seats: 1 };
+    readonly pro: { … } }
 ```
 
 ## Setup
@@ -89,7 +91,8 @@ Install Motherload, add it to `tsconfig.json`, then add it to each tool that loa
 
 ```sh
 npm install -D motherload
-npm install -D typescript@next   # content mappers are in the TypeScript 7.1 dev builds
+# content mappers are in the TypeScript 7.1 dev builds
+npm install -D typescript@next
 ```
 
 Schema imports need two optional peer dependencies, which run only when a module is built:
@@ -110,7 +113,13 @@ Add Motherload to `tsconfig.json`, with the extensions it should own. The `types
     "types": ["motherload/client"] // [!code ++]
   },
   "contentMappers": [ // [!code ++]
-    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".schema.jsonc"] } // [!code ++]
+    { // [!code ++]
+      "package": "motherload", // [!code ++]
+      "extensions": [ // [!code ++]
+        ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", // [!code ++]
+        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc" // [!code ++]
+      ] // [!code ++]
+    } // [!code ++]
   ] // [!code ++]
 }
 ```

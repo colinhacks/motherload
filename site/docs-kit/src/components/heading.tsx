@@ -27,7 +27,7 @@ const checkIcon = (
 );
 
 /** A button that copies `text()` to the clipboard and shows a check for a moment. */
-function CopyButton({ label, icon, text }: { label: string; icon: ReactNode; text: () => string }) {
+function CopyButton({ className, label, icon, text }: { className: string; label: string; icon: ReactNode; text: () => string }) {
   const [copied, setCopied] = useState(false);
   const copy = () =>
     void navigator.clipboard.writeText(text()).then(() => {
@@ -35,17 +35,18 @@ function CopyButton({ label, icon, text }: { label: string; icon: ReactNode; tex
       setTimeout(() => setCopied(false), 1500);
     });
   return (
-    <button type="button" className="ml-action" aria-label={label} title={label} onClick={copy}>
+    <button type="button" className={`${className} not-prose`} aria-label={label} title={label} onClick={copy}>
       {copied ? checkIcon : icon}
     </button>
   );
 }
 
 /**
- * A section heading with two buttons at the right end of its line, always shown in a light gray:
- * one copies the section's URL and puts its anchor in the address bar, the other copies the
- * section as Markdown (lib/remark-sections.ts), to paste into an agent. The heading text is plain
- * text, not a link, so it carries none of the link underline.
+ * A section heading. A link icon sits in the margin to its left, always shown in a light gray:
+ * clicking it copies the section's URL and puts its anchor in the address bar. An h2 and an h3
+ * also carry, at the right end of the line, a button that copies the section as Markdown
+ * (`remarkSections` in ../mdx/remark-sections.ts), to paste into an agent. The heading text is
+ * plain text, not a link, so it carries none of the link underline.
  */
 export function Heading({ as: As, id, children, className, 'data-section': section, ...props }: Props) {
   if (!id) return <As className={className} {...props}>{children}</As>;
@@ -56,12 +57,10 @@ export function Heading({ as: As, id, children, className, 'data-section': secti
     return url.href;
   };
   return (
-    <As id={id} className={['ml-heading', className].filter(Boolean).join(' ')} {...props}>
-      <span className="ml-heading-text">{children}</span>
-      <span className="ml-heading-actions not-prose">
-        <CopyButton label="Copy a link to this section" icon={linkIcon} text={url} />
-        {section && <CopyButton label="Copy this section as Markdown" icon={copyIcon} text={() => section} />}
-      </span>
+    <As id={id} className={['dk-heading', className].filter(Boolean).join(' ')} {...props}>
+      <CopyButton className="dk-anchor" label="Copy a link to this section" icon={linkIcon} text={url} />
+      <span className="dk-heading-text">{children}</span>
+      {section && <CopyButton className="dk-copy-section" label="Copy this section as Markdown" icon={copyIcon} text={() => section} />}
     </As>
   );
 }

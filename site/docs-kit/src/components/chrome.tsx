@@ -1,28 +1,14 @@
 import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
-
-export const githubUrl = 'https://github.com/colinhacks/motherload';
+import type { ReactNode } from 'react';
 
 /*
- * The page has no bar that stays on screen, as on nub's docs (nub/site): the name sits at the top
- * of the left column and the repository and theme switch at its foot. Here that column is the
- * table of contents, so the name is its header and the links its footer. Below xl Fumadocs hides
- * the column and shows its popover instead, so `TopRow` carries the same three things above the
- * title, in the grid's empty header row, and scrolls away with the page.
+ * The page has no bar that stays on screen, as on nub's docs: the name sits at the top of the left
+ * column and the repository and theme switch at its foot. That column is the table of contents,
+ * so the name is its header and the links its footer. Below xl Fumadocs hides the column and shows
+ * its popover instead, so `TopRow` carries the same three things above the title, in the grid's
+ * empty header row, and scrolls away with the page. The brand (the mark and the name, a link to the
+ * top of the page) is the site's own; it is passed in as an element.
  */
-
-/** The chest and the name, a link to the top of the page, and the status. */
-function Brand() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <a href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight text-fd-headings">
-        {/* public/motherload.svg, the same drawing as app/icon.svg. */}
-        <img src="/motherload.svg" alt="" width={22} height={22} className="size-5.5" />
-        Motherload
-      </a>
-      <span className="rounded-full border px-2 py-0.5 font-mono text-xs leading-none text-fd-muted-foreground">beta</span>
-    </div>
-  );
-}
 
 function GitHubIcon({ className }: { className?: string }) {
   // The GitHub mark, as nub's site draws it.
@@ -36,12 +22,8 @@ function GitHubIcon({ className }: { className?: string }) {
 const linkClass = 'inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground transition-colors hover:text-fd-foreground';
 
 /** Above "On this page", in the left column. */
-export function TocHeader() {
-  return (
-    <div className="mb-6">
-      <Brand />
-    </div>
-  );
+export function TocHeader({ brand }: { brand: ReactNode }) {
+  return <div className="mb-6">{brand}</div>;
 }
 
 /**
@@ -49,19 +31,27 @@ export function TocHeader() {
  * link nub's handwritten "Leave a star!" (nub/site/src/components/toc-star-nudge.tsx), its arrow
  * rising to the link's bottom middle. The column has a fixed width, so the arrow is a static
  * drawing: the link (icon and "GitHub") is about 64px wide, so its bottom middle is (32, 32) and
- * the tip sits 6px under it, at (32, 38). The note sits closer under the link than on nub, so the
- * footer leaves the entries above it room on a 900px-high window.
+ * the tip sits 6px under it, at (32, 38). The note is in `--dk-star`, by default the accent that
+ * carries text (`--color-fd-primary`), so it keeps its contrast in both themes.
+ *
+ * The note is drawn over the footer's bottom padding, which ends 8px above the window's edge. 48px
+ * of padding would hold the note alone and leave it just above that edge, where the address bubble
+ * Chrome shows in the window's bottom-left corner while a link is hovered (about 24px tall) covered
+ * it; the 40px beyond those 48 keep the note clear of the bubble at every window height (the
+ * maintainer, 2026-10-20).
  */
-export function TocFooter() {
+export function TocFooter({ github }: { github: string }) {
+  // The row holds the theme switch's 36px from the first paint: on a slow connection the browser
+  // painted the row before the switch had streamed in, and the switch then grew it by 9px.
   return (
-    <div className="mt-6 border-t pt-3 pb-[48px]">
-      <div className="flex items-center justify-between gap-3">
+    <div className="mt-6 border-t pt-3 pb-[88px]">
+      <div className="flex min-h-9 items-center justify-between gap-3">
         <div className="relative">
-          <a href={githubUrl} rel="noreferrer noopener" target="_blank" className={`${linkClass} py-1.5`}>
+          <a href={github} rel="noreferrer noopener" target="_blank" className={`${linkClass} py-1.5`}>
             <GitHubIcon className="size-3.5 shrink-0" />
             GitHub
           </a>
-          <div aria-hidden className="pointer-events-none absolute left-0 top-0 select-none text-[var(--ore)] dark:opacity-90">
+          <div aria-hidden className="dk-star pointer-events-none absolute left-0 top-0 select-none">
             <svg viewBox="0 0 120 100" fill="none" className="absolute left-0 top-0 h-[100px] w-[120px]">
               <path d="M44 62 C 34 56, 28 48, 32 38" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
               <path d="M26 46 L 32 38 L 39 45" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -78,12 +68,12 @@ export function TocFooter() {
 }
 
 /** Below xl, where the left column is hidden: one row above the title, not sticky. */
-export function TopRow() {
+export function TopRow({ brand, github }: { brand: ReactNode; github: string }) {
   return (
     <div className="[grid-area:header] mx-auto flex w-full max-w-[900px] items-center gap-3 px-4 pt-4 md:px-6 xl:hidden">
-      <Brand />
+      {brand}
       <div className="flex-1" />
-      <a href={githubUrl} rel="noreferrer noopener" target="_blank" className={linkClass} aria-label="GitHub">
+      <a href={github} rel="noreferrer noopener" target="_blank" className={linkClass} aria-label="GitHub">
         <GitHubIcon className="size-4" />
       </a>
       <ThemeSwitch />

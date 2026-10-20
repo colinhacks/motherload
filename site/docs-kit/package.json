@@ -1,0 +1,39 @@
+{
+  "name": "docs-kit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The shared core of a one-page Fumadocs documentation site: chrome, headings, collapsibles, tabs, Twoslash, the dev-server memory fix and the stylesheet.",
+  "type": "module",
+  "exports": {
+    "./style.css": "./src/style.css",
+    "./next": "./src/next.mjs",
+    "./mdx-dev-loader": "./src/mdx-dev-loader.mjs",
+    "./mdx": "./src/mdx/index.ts",
+    "./remark-sections": "./src/mdx/remark-sections.ts",
+    "./shell": "./src/components/shell.tsx",
+    "./root": "./src/components/root.tsx",
+    "./components": "./src/components/index.ts",
+    "./chrome": "./src/components/chrome.tsx"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@shikijs/twoslash": "^4.4.3",
+    "fumadocs-core": "^16.15.1",
+    "fumadocs-mdx": "^15.3.1",
+    "fumadocs-twoslash": "3.3.1",
+    "fumadocs-ui": "^16.15.1",
+    "next": "^16.3.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.1.0"
+  },
+  "scripts": {
+    "sync": "node src/sync.mjs"
+  },
+  "bin": {
+    "docs-kit-sync": "src/sync.mjs"
+  }
+}

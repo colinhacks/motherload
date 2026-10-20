@@ -1,25 +1,12 @@
-import defaultMdxComponents from 'fumadocs-ui/mdx';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import * as Twoslash from 'fumadocs-twoslash/ui';
-import { Heading } from './heading';
+import { docsMdxComponents } from 'docs-kit/components';
 import type { MDXComponents } from 'mdx/types';
 
+/**
+ * docs-kit's components: headings with the link icon in the margin and the copy-as-Markdown
+ * button, accordions, tabs, `<Details>`, code tabs and Twoslash's popups.
+ */
 export function getMDXComponents(components?: MDXComponents) {
-  return {
-    ...defaultMdxComponents,
-    // Section headings carry a link button and a copy-as-Markdown button (components/heading.tsx).
-    h2: (props) => <Heading as="h2" {...props} />,
-    h3: (props) => <Heading as="h3" {...props} />,
-    h4: (props) => <Heading as="h4" {...props} />,
-    Accordion,
-    Accordions,
-    Tab,
-    Tabs,
-    // The hover popups of `ts twoslash` blocks.
-    ...Twoslash,
-    ...components,
-  } satisfies MDXComponents;
+  return docsMdxComponents(components);
 }
 
 export const useMDXComponents = getMDXComponents;

@@ -8,6 +8,7 @@
     "start": "next start --port 3312"
   },
   "dependencies": {
+    "docs-kit": "link:./docs-kit",
     "fumadocs-core": "^16.15.1",
     "fumadocs-mdx": "^15.3.1",
     "fumadocs-twoslash": "3.3.1",
@@ -17,6 +18,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@shikijs/twoslash": "4.4.3",
     "@tailwindcss/postcss": "^4.1.0",
     "@types/mdx": "^2.0.13",
     "@types/node": "^26.3.0",

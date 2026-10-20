@@ -1,0 +1,904 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import 'fumadocs-twoslash/twoslash.css';
+
+@theme inline {
+  --font-sans: var(--font-text), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-code), ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* docs-kit: the stylesheet of a one-page Fumadocs docs site. A site imports it first in its own
+   global.css and then sets its colours: Fumadocs' `--color-fd-*` variables for both themes (`:root`
+   and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name,
+   inline code, the table of contents' code chips and the selection. The washes of
+   the accent are variables too, for a palette that wants them lighter or stronger. Everything
+   else here is the maintainer's rules for the docs sites, from the reviews of Reylo's site
+   (Reylo's docs/docs-site.md): the layout follows zod.dev (ruled h1 and h2, borderless inline code
+   tinted with the accent, mono tab labels), with a reading measure, quiet collapsibles, code that
+   never scrolls sideways and one cursor per kind of thing. */
+
+@source './';
+
+:root {
+  /* The brand colour, used for washes and rules; `--color-fd-primary` is the accent where it
+     carries text, so a light theme can darken it for contrast on white. */
+  --dk-accent: hsl(46, 97%, 52%);
+  --dk-wash-code: 13%;
+  --dk-wash-toc: 12%;
+  --dk-wash-toc-hover: 16%;
+  --dk-wash-toc-active: 22%;
+  --dk-wash-summary: 10%;
+  --dk-wash-selection: 35%;
+  /* The dotted rule under a name with a Twoslash popup, as a share of the code's colour. */
+  --dk-hover-rule: 40%;
+  /* The "Leave a star!" note under the GitHub link. */
+  --dk-star: var(--color-fd-primary);
+  --dk-popover-shadow: 0 8px 24px -8px rgb(15 23 42 / 0.18);
+  /* The one column of prose, headings, code, tab groups and tables ("The reading measure"). */
+  --dk-column: 40rem;
+}
+
+.dark {
+  --dk-popover-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.6);
+}
+
+.dk-star {
+  color: var(--dk-star);
+}
+
+
+/* ── Prose, after zod.dev ────────────────────────────────────────────────── */
+
+.prose {
+  --tw-prose-body: var(--color-fd-foreground);
+  --tw-prose-headings: var(--color-fd-headings);
+  --tw-prose-links: var(--color-fd-foreground);
+  --tw-prose-code: var(--color-fd-headings);
+  /* Bold text takes the headings' colour, so the lead phrase of each item in a feature list
+     stands out from the item's text. */
+  --tw-prose-bold: var(--color-fd-headings);
+}
+
+/* zod.dev rules the title off from the page, as it does every h2. */
+#nd-page h1 {
+  color: var(--color-fd-headings);
+  letter-spacing: -0.02em;
+  border-bottom: 1px solid var(--color-fd-border);
+  @apply pb-3;
+}
+
+/* The subheader under the title, the page's first element (`<p className="dk-subheader">`, which
+   can hold inline code where the frontmatter's description cannot): Fumadocs' description size
+   and colour, close above the first paragraph. */
+#nd-page .prose .dk-subheader {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+  margin-bottom: 1.25rem;
+}
+
+/* A feature list (`<div className="dk-features">` around a list): square bullets in the muted
+   colour, each item opening with an emoji and a bold lead phrase (Reylo's, 2026-10-20). */
+#nd-page .prose .dk-features ul {
+  list-style-type: square;
+}
+
+#nd-page .prose .dk-features li::marker {
+  color: var(--color-fd-muted-foreground);
+}
+
+/* The page opens with its first paragraph right under the title. The body is a flex item, so its
+   first child's margin does not collapse into the page's 1rem gap; without this the two add up. */
+#nd-page .prose > :first-child {
+  margin-top: 0;
+}
+
+html .prose {
+  font-weight: 400;
+
+  /* An h2 opens a section: larger, ruled off the section above. An h3 is a step inside it. */
+  h2 {
+    color: var(--color-fd-headings);
+    border-bottom: 1px solid var(--color-fd-border);
+    font-size: 1.75rem;
+    font-weight: 650;
+    line-height: 1.25;
+    @apply py-3 mt-16;
+    letter-spacing: -0.02em;
+  }
+
+  /* No rule under an h3: the rule is what marks an h2 off from it, beside its size. */
+  & > h3 {
+    color: var(--color-fd-headings);
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.4;
+    @apply mt-10;
+  }
+
+  /* A heading that names a code token (a member of an API, a key of a config file, an extension)
+     sets it as inline code, wash and all, as the maintainer asked on 2026-10-20. */
+  h2 code,
+  h3 code {
+    font-size: 0.86em;
+    font-weight: 600;
+  }
+
+  /* The link icon sits in the margin to the left of the heading, always visible; the button that
+     copies the section as Markdown sits at the right end of its line, as on Motherload's docs. */
+  .dk-heading {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    scroll-margin-top: 7rem;
+  }
+
+  .dk-heading-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .dk-copy-section {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 0.3125rem;
+    border-radius: 0.375rem;
+    color: color-mix(in oklab, var(--color-fd-muted-foreground) 60%, transparent);
+    transition: color 120ms, background-color 120ms;
+  }
+
+  .dk-copy-section:hover {
+    color: var(--color-fd-foreground);
+    background-color: var(--color-fd-accent);
+  }
+
+  /* The icon's centre sits on the centre of the heading's lowercase letters (its x-height), not on
+     the centre of its box or of its capitals: a heading is mostly lowercase, and an icon centred on
+     the capitals read as sitting high (the maintainer, 2026-10-20). The offset is in the heading's
+     em, and one value holds for both sizes: measured, it puts the icon within 0.05px of the
+     x-height's centre in an h2 (28px, its rule's padding below the text included) and an h3
+     (19.2px), and within a pixel of the centre of an inline-code heading's chip. */
+  .dk-anchor {
+    position: absolute;
+    left: -1.75rem;
+    top: calc(50% + 0.0675em);
+    translate: 0 -50%;
+    display: inline-flex;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    color: color-mix(in oklab, var(--color-fd-muted-foreground) 55%, transparent);
+    transition: color 120ms;
+  }
+
+  .dk-anchor:hover {
+    color: var(--color-fd-muted-foreground);
+  }
+
+  /* Below md the page's margin is narrower than the icon, which would be cut off at the window's
+     edge: the icon joins the copy button at the right end of the line, still always visible. */
+  @media (width < 48rem) {
+    .dk-anchor {
+      position: static;
+      translate: none;
+      order: 2;
+      margin-inline-end: -0.5rem;
+      padding: 0.3125rem;
+    }
+
+    .dk-copy-section {
+      order: 3;
+    }
+  }
+
+  /* Links keep the text colour; the yellow is the rule beneath the word. */
+  a:not(.not-prose a) {
+    font-weight: 500;
+    text-decoration-line: underline;
+    text-decoration-color: var(--dk-accent);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
+
+  a:not(.not-prose a):hover {
+    color: var(--color-fd-primary);
+  }
+
+  /* Inline code: no outline, a faint yellow wash. */
+  :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
+    border: none;
+    @apply px-1.5;
+    background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-code), transparent);
+    font-size: 0.86em;
+  }
+
+  button[role='tab'] {
+    @apply font-mono text-xs font-medium;
+  }
+
+  td > p:first-child {
+    margin-top: 0;
+  }
+
+  td > p:last-child {
+    margin-bottom: 0;
+  }
+
+  th {
+    color: var(--color-fd-headings);
+  }
+}
+
+/* The setup accordions: a quiet list, one hairline between items. */
+#nd-page .prose [data-accordion-item] h3,
+#nd-page .prose h3.not-prose {
+  margin: 0;
+}
+
+/* The table of contents sits on the left, beside the text it indexes. */
+#nd-toc a[data-active='true'] {
+  color: var(--color-fd-headings);
+}
+
+/* The list scrolls under "On this page": an entry fades out fully before it reaches the title,
+   instead of passing under it half faded, and the first entry starts clear of the fade.
+   (`#nd-toc > .overflow-auto` outranks Fumadocs' `mask-[…]` class.) */
+#nd-toc > .overflow-auto {
+  padding-block: 1.25rem;
+  mask-image: linear-gradient(to bottom, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+/* A code token in the table of contents (and in its popover below xl) is a chip, like inline code
+   in the text but on a fainter wash, so the list stays quieter than the page. Fumadocs gives each
+   entry the `prose` class, which would otherwise paint the text's own wash and colour here. The
+   chip takes its entry's colour; the active entry's chip takes a stronger wash. */
+#nd-toc code,
+[data-toc-popover] code {
+  border: none;
+  border-radius: 0.3125rem;
+  padding: 0.0625rem 0.3125rem;
+  font-size: 0.9em;
+  color: inherit;
+  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc), transparent);
+  transition: background-color 120ms;
+}
+
+#nd-toc a:hover code,
+[data-toc-popover] a:hover code {
+  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc-hover), transparent);
+}
+
+#nd-toc a[data-active='true'] code,
+[data-toc-popover] a[data-active='true'] code {
+  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc-active), transparent);
+}
+
+/* The note under the opening paragraph (`<p className="dk-lede">`): italic and muted, with its
+   emphasis set upright so it still stands out inside the italic, as on Motherload's docs. */
+#nd-page .prose .dk-lede {
+  font-style: italic;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .prose .dk-lede em {
+  font-style: normal;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--dk-accent) var(--dk-wash-selection), transparent);
+}
+
+/* ── Twoslash hovers ─────────────────────────────────────────────────────────
+   A `ts twoslash` block shows the editor's hover for each name. The token whose
+   popup is open takes the links' yellow rule; the popup is one plain card with
+   the type as its text, not a code card (border, copy button) inside a card. */
+
+/* A quick fade: Fumadocs' 300ms one trails the popup. Every name that has a popup keeps its dotted
+   rule, not only while the pointer is over the block, so a reader sees which names can be hovered
+   (Motherload's docs do the same). Its cursor is the code's text cursor (Cursors, at the end). */
+.twoslash .twoslash-hover {
+  transition: border-color 80ms;
+  border-bottom-color: color-mix(in oklab, currentColor var(--dk-hover-rule), transparent);
+}
+
+/* The open token's rule is 2px, drawn as its 1px border plus a 1px shadow under it: a thicker
+   border would push the line down by a pixel while the popup is open. */
+.twoslash .twoslash-hover[data-popup-open] {
+  border-bottom-style: solid;
+  border-bottom-color: var(--dk-accent);
+  box-shadow: 0 1px 0 var(--dk-accent);
+}
+
+/* Base UI's positioner, the popup's parent, carries no z-index, so a `^?` card (relative, z-index 8)
+   painted over an open popup; the popup's own z-50 sits inside the positioner and does nothing. */
+[role='presentation']:has(> .fd-twoslash-popover) {
+  z-index: 50;
+}
+
+/* The popup appears in 60ms and goes at once (Fumadocs: 100ms each way). */
+.fd-twoslash-popover[data-open] {
+  animation-duration: 60ms;
+}
+
+.fd-twoslash-popover[data-closed] {
+  animation: none;
+}
+
+.fd-twoslash-popover {
+  box-shadow: var(--dk-popover-shadow);
+}
+
+.fd-twoslash-popover figure.shiki,
+.twoslash-query-line figure.shiki {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.fd-twoslash-popover figure.shiki > div:has(> button[aria-label='Copy Text']),
+.twoslash-query-line figure.shiki > div:has(> button[aria-label='Copy Text']) {
+  display: none;
+}
+
+.fd-twoslash-popover figure.shiki [role='region'],
+.twoslash-query-line figure.shiki [role='region'] {
+  padding-block: 0;
+}
+
+.fd-twoslash-popover figure.shiki .line,
+.twoslash-query-line figure.shiki .line {
+  padding-inline: 0;
+}
+
+/* A method's signature or a long type is one line: wrap it inside the popup or the query's card
+   instead of scrolling. */
+.fd-twoslash-popover figure.shiki pre,
+.twoslash-query-line figure.shiki pre {
+  width: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* A pinned `^?` popup keeps clear of the lines around it: the maintainer found the next line
+   "cramped" 4px under its card. The card sits 8px under the name it points at (Fumadocs' gap, which
+   its arrow spans) and 14px above the next line. */
+.twoslash .twoslash-query-line {
+  padding-bottom: 0.875rem;
+}
+
+.fd-twoslash-popover .twoslash-popup-docs {
+  border-top: 1px solid var(--color-fd-border);
+  padding-top: 8px;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* A `^?` query shows the hover's card inline, under the line it asks about. The card is as wide as
+   its type, up to the block's width, not the hover popup's fixed 20rem, which cut a long type off
+   at the card's edge; the type wraps inside it (above). */
+.twoslash-query-line .twoslash-popup-container {
+  width: fit-content;
+  max-width: 100%;
+  margin-right: 0;
+  padding: 0.375rem 0.75rem;
+}
+
+/* A query is the last line of its block, and Twoslash leaves the empty line its `^?` comment was
+   on below the card: hide that line, so the block ends at the card plus its padding. */
+figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:empty))) {
+  display: none;
+}
+
+/* ── Code never scrolls sideways ─────────────────────────────────────────────
+   The page keeps every line of code within 90 characters, which fit the column
+   at every desktop width. Where they do not (a phone, a narrow window), a long
+   line wraps at the block's edge instead of scrolling, and a wrapped line's
+   continuation hangs two characters in from the line's own indent (which
+   mdx/hanging-indent.ts sets as `--indent` on each line), so it reads as one line.
+   Fumadocs sizes the <pre> to its longest line (`w-max`) inside a scrolling
+   region; here it takes the region's width. */
+#nd-page figure.shiki pre {
+  width: auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#nd-page figure.shiki > [role='region'] {
+  overflow-x: hidden;
+}
+
+#nd-page figure.shiki pre .line {
+  padding-inline-start: calc(var(--padding-left, 1rem) + var(--indent, 0ch) + 2ch);
+  text-indent: calc(-1 * (var(--indent, 0ch) + 2ch));
+}
+
+/* An empty line keeps a line's height: Shiki writes it as an empty element, or one holding an
+   empty span (a blank line of a ```text block), which the wrapping above draws 0px tall, so the
+   blank lines between the agent instructions' paragraphs vanished. The zero-width space is not
+   text, so a copy of the block is unchanged. */
+#nd-page figure.shiki pre .line:is(:empty, :has(> span:only-child:empty))::after {
+  content: '\200b';
+}
+
+/* A code font may draw `->>`, `=>` and `!=` as single glyphs; code shows the characters typed. */
+pre,
+code {
+  font-variant-ligatures: none;
+}
+
+/* A query's card sets its type flush with its padding; a wrapped line of the type hangs under it. */
+#nd-page .twoslash-query-line figure.shiki {
+  --padding-left: 0rem;
+  --padding-right: 0rem;
+}
+
+/* The hanging indent is the line's own; the hover tokens and the query cards inside it inherit
+   `text-indent`, and an inline block would take it as its own first-line indent. */
+#nd-page figure.shiki pre .line * {
+  text-indent: 0;
+}
+
+/* ── Code tabs ───────────────────────────────────────────────────────────────
+   A group of tabs whose blocks share a file name (Reylo's examples: one SQL
+   file in Postgres, MySQL and SQLite). The name stands at the right end of the
+   strip, in mono, quieter than the tabs, with a file glyph, so the group has
+   one bar: which variant on the left, which file on the right
+   (components/code-tabs.tsx). */
+.dk-code-tabs [role='tablist'] {
+  align-items: center;
+}
+
+/* A tab strip wraps instead of scrolling sideways when its tabs outrun the column: in the 40rem
+   column, Reylo's eight SQLite drivers ran 39px past the edge and Motherload's hero, main.ts and
+   its seven files, 60px, each hiding its last tab ("No code block … scrolls sideways"). */
+#nd-page [role='tablist'] {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+.dk-code-tabs-file {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-fd-muted-foreground);
+  white-space: nowrap;
+}
+
+.dk-code-tabs-file::before {
+  content: '';
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  background-color: currentColor;
+  opacity: 0.7;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* ── <VariantTabs> (components/variant-tabs.tsx) ─────────────────────────────
+   With a strip it is Fumadocs' tabs card. With `follow` it is no box at all,
+   only the chosen variant's content, which carries its own card. */
+#nd-page .dk-variant-follow {
+  display: block;
+  overflow: visible;
+  margin-block: 1rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+#nd-page .dk-variant-follow > .dk-variant-panel {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* Fumadocs pulls a lone block out to the edges of a tabs panel (`-m-4`, no border); a followed
+   panel has no padding to pull it over, so the block keeps its own margins and border. */
+#nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki {
+  margin: 0;
+  border: 1px solid var(--color-fd-border);
+}
+
+/* An example reads as one card: a file's tabs and, directly under them, the code that imports
+   the file, which follows the tab chosen above. The two share the rule between them and
+   lose the rounded corners where they meet. */
+#nd-page .dk-code-tabs:has(+ .dk-variant-follow) {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#nd-page .dk-code-tabs:has(+ .dk-variant-follow) figure.shiki {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#nd-page .dk-code-tabs + .dk-variant-follow {
+  margin-top: 0;
+}
+
+#nd-page .dk-code-tabs + .dk-variant-follow > .dk-variant-panel > figure.shiki:first-child {
+  margin-top: -1px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* Consecutive blocks in a followed panel (a `.sql` file and the TypeScript that imports it) are one
+   card too, as an example's tabs and the code under them are. */
+#nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki:has(+ figure.shiki) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+#nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki + figure.shiki {
+  margin-top: -1px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* ── Phones ──────────────────────────────────────────────────────────────────
+   A tabs panel pads less, so a nested code line keeps more of the narrow column. An untitled
+   block's copy button floats over its first line, so that line stops short of it. */
+@media (width < 48rem) {
+  #nd-page .dk-variant-tabs > .dk-variant-panel {
+    padding: 0.5rem;
+  }
+
+  #nd-page figure.shiki:not(:has(figcaption)) pre .line:first-child {
+    padding-inline-end: 2rem;
+  }
+}
+
+/* A table of two columns (Reylo's Data types tables, "SQL type | TypeScript") splits the width in
+   halves, as the maintainer asked; its columns once came out 197px beside 603px and then, sized by
+   their content, the other way round. A wider table shares its width by its content. */
+#nd-page .prose table:has(tr > :nth-child(2):last-child) {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* On a phone, a table of four columns fits the text column in a smaller face and
+   tighter cells, instead of scrolling sideways. */
+@media (max-width: 639px) {
+  #nd-page .prose table {
+    font-size: 0.8125rem;
+  }
+
+  #nd-page .prose :is(th, td) {
+    padding-inline: 0.25rem;
+  }
+
+}
+
+@media (min-width: 640px) {
+  /* A short type in a cell (`Row | null`) stays on one line where the column has the room; on a
+     phone the table would scroll sideways instead. */
+  #nd-page .prose td code {
+    white-space: nowrap;
+  }
+}
+
+/* ── <Details> ───────────────────────────────────────────────────────────────
+   A secondary detail: one muted line with a chevron, no box, so it reads as an aside and not as
+   the most important thing in its section; opened, its text hangs from a thin rule. The line is
+   the size of the text around it: a smaller one read as a footnote set apart from the page. */
+
+#nd-page .dk-details {
+  margin-block: 0.75rem;
+}
+
+#nd-page .dk-details > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  list-style: none;
+  color: var(--color-fd-muted-foreground);
+  transition: color 80ms;
+}
+
+#nd-page .dk-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+#nd-page .dk-details > summary::before {
+  content: '';
+  flex: none;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateX(-0.1em) rotate(-45deg);
+  transition: transform 120ms;
+}
+
+#nd-page .dk-details[open] > summary::before {
+  transform: translateY(-0.1em) rotate(45deg);
+}
+
+#nd-page .dk-details > summary:hover,
+#nd-page .dk-details[open] > summary {
+  color: var(--color-fd-foreground);
+}
+
+/* A code part of a summary keeps the summary's colour, on a fainter wash, so the line stays quiet. */
+#nd-page .dk-details > summary code {
+  color: inherit;
+  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-summary), transparent);
+}
+
+/* Several in a row, such as a list of bundlers, read as one list. */
+#nd-page .dk-details + .dk-details {
+  margin-top: -0.25rem;
+}
+
+/* Its text is a size below the page's (15px against 16px), so an opened detail reads as an aside;
+   its summary stays the size of the text around it. */
+#nd-page .dk-details-body {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--color-fd-border);
+  font-size: 0.9375rem;
+}
+
+#nd-page .dk-details-body > :first-child {
+  margin-top: 0;
+}
+
+#nd-page .dk-details-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── The agent card, `<AgentPrompt>` (components/agent-prompt.tsx) ─────────────
+   A plain card in the page's own greys, like a code block's, with one Copy button; the
+   instructions under it are folded to their first lines until opened. It carries no accent: in
+   the accent's border and fill it read as a warning ("It looks scary and awful", the maintainer
+   on Reylo's yellow card, 2026-10-20). */
+
+#nd-page .dk-agent {
+  margin-block: 1.5rem 2rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--color-fd-card);
+  overflow: hidden;
+}
+
+#nd-page .dk-agent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+#nd-page .dk-agent-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-fd-headings);
+}
+
+#nd-page .dk-agent-note {
+  margin: 0.125rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .dk-agent-copy {
+  flex: none;
+  padding: 0.5rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--color-fd-background);
+  color: var(--color-fd-headings);
+}
+
+#nd-page .dk-agent-copy:hover {
+  background: var(--color-fd-accent);
+}
+
+/* Its two labels share one grid cell, the one not shown hidden, so the button keeps the width of
+   the longer and "Copied" moves nothing (components/agent-prompt.tsx). */
+#nd-page .dk-agent-copy {
+  display: inline-grid;
+}
+
+#nd-page .dk-agent-copy > span {
+  grid-area: 1 / 1;
+}
+
+#nd-page .dk-agent-copy > span:not([data-shown]) {
+  visibility: hidden;
+}
+
+#nd-page .dk-agent-body {
+  position: relative;
+  padding-inline: 1.25rem;
+  max-height: 9rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+
+#nd-page .dk-agent-body[data-open] {
+  max-height: none;
+  mask-image: none;
+}
+
+#nd-page .dk-agent-body figure {
+  margin: 0;
+}
+
+#nd-page .dk-agent-toggle {
+  display: block;
+  width: 100%;
+  padding: 0.625rem 1.25rem 0.875rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .dk-agent-toggle:hover {
+  color: var(--color-fd-headings);
+}
+
+/* ── No layout shift ─────────────────────────────────────────────────────────
+   "Hovers open fast, with no layout shift" (the maintainer, 2026-10-11). Measured on Reylo's page
+   with Chrome's Layout Instability API on 2026-10-20; the head scripts of
+   components/head-scripts.ts do the rest (a saved tab choice from the first paint, a pressed tab
+   kept under the pointer). */
+
+/* The table of contents' column exists from the first paint. Fumadocs sets `--fd-toc-width` from a
+   `:has()` on a class of `#nd-toc`, which comes after the whole article in the HTML, so a paint
+   before the parser reached it laid the article out without the column and then moved it 134px
+   right (0.064). The table of contents' popover comes before the article and is rendered whenever
+   the page has a table of contents; 80rem is Tailwind's xl, where Fumadocs shows the column. */
+@media (min-width: 80rem) {
+  #nd-docs-layout:has([data-toc-popover]) {
+    --fd-toc-width: 268px;
+  }
+}
+
+/* A tab group whose choice is saved server-renders every panel (components/prepaint.tsx); the
+   inactive ones are hidden, as Radix leaves out an unmounted one. */
+[role='tabpanel'][data-state='inactive'] {
+  display: none;
+}
+
+/* ── Cursors ─────────────────────────────────────────────────────────────────
+   Everything that responds to a click shows a pointer, and a code block shows one steady text
+   cursor from edge to edge, the names with a Twoslash popup included (the maintainer, 2026-10-20,
+   reversing an earlier pointer on those names). Every cursor rule of the page is in this block, so
+   that no rule elsewhere contradicts it. Its selectors are all in `:where()`, of no specificity, so
+   that the order of the rules below decides and nothing else: a later rule overrides an earlier
+   one, and being unlayered, every one of them overrides Tailwind's and Fumadocs' layers. */
+
+/* A pointer on everything that responds to a click: every link (in the text, the table of contents
+   and the header), every button (the copy buttons, the heading's link and copy-as-Markdown buttons,
+   the accordion triggers and their link buttons, the theme switch, the table of contents' popover
+   toggle), every tab trigger, and the summary of every <Details>. Tailwind's preflight leaves a
+   button the arrow. */
+:where(a[href], button, summary, label[for], select, [role='button'], [role='tab'], [role='switch'], [role='link'], [role='menuitem'], [role='option']):where(:not(:disabled, [aria-disabled='true'])) {
+  cursor: pointer;
+}
+
+/* An icon, a span or inline code inside one of those shows the same pointer, whatever a rule for it
+   says, so that a button never shows two cursors. */
+:where(a[href], button, summary, label[for], [role='button'], [role='tab'], [role='switch'], [role='link']) :where(*) {
+  cursor: inherit;
+}
+
+/* A code block is one text cursor over all of it, so that moving across a line never switches
+   cursors: `auto` is an I-beam over a glyph but an arrow between tokens and past a line's end, and
+   a Twoslash name was a pointer. The popups, the one a hover opens and the `^?` cards pinned under
+   a line, are selectable text too. */
+:where(figure.shiki, pre, .fd-twoslash-popover, [role='presentation']:has(> .fd-twoslash-popover)),
+:where(figure.shiki, pre, .fd-twoslash-popover, [role='presentation']:has(> .fd-twoslash-popover)) :where(*) {
+  cursor: text;
+}
+
+/* A code-tab group is one code card, its strip included: the strip behind the tabs showed an arrow
+   and the file name an I-beam or an arrow, so a pointer moving along the strip cycled arrow, hand,
+   arrow, I-beam, arrow right above the code's steady I-beam (counted from the cursor changes Chrome
+   itself sends, 2026-10-20). */
+:where(.dk-code-tabs),
+:where(.dk-code-tabs) :where(*) {
+  cursor: text;
+}
+
+/* Except what inside a code block, a code-tab group or a popup responds to a click: the copy button
+   floating over the block, a tab, and a link in a popup's documentation. */
+:where(figure.shiki, pre, .fd-twoslash-popover, .dk-code-tabs) :where(a[href], button:not(.twoslash-hover), [role='tab']),
+:where(figure.shiki, pre, .fd-twoslash-popover, .dk-code-tabs) :where(a[href], button:not(.twoslash-hover), [role='tab']) :where(*) {
+  cursor: pointer;
+}
+
+/* ── The reading measure ─────────────────────────────────────────────────────
+   One column for everything, 40rem by default (`--dk-column`): prose, headings, code blocks, tab
+   groups and tables share both edges. Prose runs a median of 81 characters a line (90th
+   percentile 88) in Geist at 16.5px, and the same in IBM Plex Sans, measured per rendered line on
+   Reylo's and Motherload's pages; a code block holds about 78 characters of mono at 13px. Reylo's
+   column of 2026-10-20 morning ran to 103; a version that afternoon stopped prose at 36rem and let
+   code and headings run to 49.5rem, and the maintainer rejected the ragged edges ("we made the
+   content column smaller for the paragraphs, but not for the code blocks or for the headings. It
+   looks like trash"); one column of 46rem ran to a median of 94. The page is the column plus
+   Fumadocs' 2rem of padding on each side; `--fd-layout-width` in components/shell.tsx is that plus
+   the 268px table of contents. */
+#nd-page {
+  max-width: calc(var(--dk-column) + 4rem);
+}
+
+#nd-page .prose {
+  font-size: 1.03125rem;
+  line-height: 1.7;
+}
+
+#nd-page .prose :is(ul, ol) > li {
+  margin-block: 0.4em;
+}
+
+/* The title outranks an h2 (it was the same 28px), an h2 an h3. */
+#nd-page h1 {
+  font-size: 2.5rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+html #nd-page .prose h2 {
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+html #nd-page .prose > h3 {
+  font-size: 1.1875rem;
+  letter-spacing: -0.01em;
+}
+
+/* Code at 13px with room between lines (it was 13px at 1.43), in the blocks and the type popups. */
+#nd-page figure.shiki pre,
+#nd-page figure.shiki pre code,
+.fd-twoslash-popover pre,
+.fd-twoslash-popover code {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Shiki's github themes paint comments #6A737D, 3.5:1 on the dark card, and light-mode keywords
+   #D73A49, 4.2:1 on the light one, both under WCAG AA; GitHub's own later greys and red pass. */
+.dark .shiki span[style*='--shiki-dark:#6A737D' i] {
+  color: #8b949e !important;
+}
+
+html:not(.dark) .shiki span[style*='--shiki-light:#6A737D' i] {
+  color: #57606a !important;
+}
+
+html:not(.dark) .shiki span[style*='--shiki-light:#D73A49' i] {
+  color: #cf222e !important;
+}
+
+/* Inline code keeps its yellow wash, a little fainter; in a table cell it is plain mono in the
+   headings' colour, so a column of types reads as a list rather than a column of chips. */
+html #nd-page .prose :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
+  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-code), transparent);
+  font-size: 0.85em;
+}
+
+html #nd-page .prose :is(td, th) {
+  font-size: 0.9375em;
+}
+
+html #nd-page .prose :is(td, th) code {
+  background: none !important;
+  padding: 0 !important;
+  font-size: 0.92em;
+  color: var(--color-fd-headings);
+}
