@@ -26,6 +26,8 @@ test("a broken file is a diagnostic at its place in the file", () => {
   // The row after "Émile" starts on line 3; the repeated frontmatter key on line 3 of the file, not of the frontmatter.
   assert.match(out, /broken\.csv\(3,1\): error motherload1: This row has 3 fields; the header has 2\./);
   assert.match(out, /broken\.md\(3,1\): error motherload1: Map keys must be unique/);
+  // A broken .md file keeps its default export, so `import md from "./broken.md"` adds no error.
+  assert.doesNotMatch(out, /TS1192/);
 });
 
 const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","raw":"# A TOML file with each kind of value.","tags":2';

@@ -34,7 +34,7 @@ The maintainer's, on 2026-10-08 and 2026-10-09:
 
 The maintainer's, on 2026-10-19 and 2026-10-20:
 
-- **A `.md` file has no default export:** its body is the named export `md`, a string, and its frontmatter the named export `frontmatter`, typed as `as const` would type it; `import * as post from "./post.md"` gives `post.md` and `post.frontmatter`. The body rendered as HTML is left for later ([DESIGN.md](./DESIGN.md#the-txt-and-md-modules)).
+- **A `.md` file's default export is the object `{ md, frontmatter }`:** its body, a string, and its frontmatter, typed as `as const` would type it, each also a named export. The default is there so that the import hovers with its whole type, which a namespace import (`import * as post`) never does in TypeScript. It replaced, the same day, a module of the named exports with no default, which had replaced the default export of the body as a string. The body rendered as HTML is left for later ([DESIGN.md](./DESIGN.md#the-txt-and-md-modules)).
 - **A schema file's suffix is `.schema.jsonc`,** not `.schema.json`: TypeScript nightlies after 2026-10-13, and the 7.1 beta branch, refuse a content mapper extension that ends in `.json` (microsoft/TypeScript#64581, TS18066). The answer of 2026-10-19 was `.jsonschema`; on 2026-10-20 the maintainer chose `.schema.jsonc` instead. A schema is therefore read as JSON with comments ([DESIGN.md](./DESIGN.md#the-schema-loader-the-suffix)).
 
 ## Names

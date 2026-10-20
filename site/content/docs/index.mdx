@@ -12,7 +12,7 @@ import plans from "./plans.toml";
 import team from "./team.yaml";
 import strings from "./strings.json5";
 import posts from "./posts.csv";
-import { md, frontmatter } from "./notes.md";
+import notes from "./notes.md";
 import "./.env";
 import user from "./user.schema.jsonc";
 ```
@@ -407,7 +407,7 @@ import notes from "./notes.txt";
 
 ### `.md`
 
-A `.md` file has no default export. Its frontmatter is the named export `frontmatter`, read and typed as a `.yaml` file is, and its Markdown body, without the frontmatter, is the named export `md`:
+Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is, and `md`, the Markdown body without the frontmatter:
 
 ```md title="post.md"
 ---
@@ -421,14 +421,11 @@ The body of the post.
 ```
 
 ```ts twoslash title="main.ts"
-import * as post from "./post.md";
-const meta = post.frontmatter;
-//    ^?
-const body = post.md;
-//    ^?
+import post from "./post.md";
+//     ^?
 ```
 
-Named imports work the same: `import { md, frontmatter } from "./post.md"`. The frontmatter runs from a `---` first line to the next `---` line. A file without one exports `{}`. Pass `md` to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
+Each part is also a named export, as in `import { frontmatter } from "./post.md"`, and a bundle that imports only the frontmatter leaves the body out. The frontmatter runs from a `---` first line to the next `---` line; a file without one has `{}`. Pass `md` to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
 
 ### `.schema.jsonc`
 

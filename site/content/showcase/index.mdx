@@ -69,15 +69,10 @@ loaders,Loaders,2026-10-06
 
 </Shot>
 
-{/* Hovering a namespace import shows only `import notes`, so this one reads the frontmatter, as
-    the docs' .md section does. */}
-
 <Shot file="notes.md">
 
 ```ts twoslash title="main.ts"
-import * as notes from "./notes.md";
-
-const meta = notes.frontmatter;
+import notes from "./notes.md";
 ```
 
 ```md title="notes.md"

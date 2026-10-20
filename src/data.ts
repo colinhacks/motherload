@@ -5,7 +5,8 @@
 //   import "./.env";                          // the variables, loaded into process.env at run time
 //   import users from "./users.csv";          // the rows, typed by the header's columns (also .tsv)
 //   import notes from "./notes.txt";          // the text
-//   import { md, frontmatter } from "./post.md"; // the body, and the YAML frontmatter; no default
+//   import post from "./post.md";             // { md, frontmatter }: the body and the YAML frontmatter
+//   import { frontmatter } from "./post.md";  // each also a named export
 import { basename, relative } from "node:path";
 import { literal, propertyName, toJs } from "./serialize.ts";
 import { parseCsvFile, parseEnvFile, parseFile, parseMarkdownFile, parseTsvFile, type Format, type Problem } from "./formats.ts";
@@ -72,17 +73,19 @@ function tableModule(format: "csv" | "tsv", source: string): ModuleText {
 }
 
 /**
- * A `.md` file has no default export: its body, without the frontmatter, is the named export `md`,
- * and its frontmatter the named export `frontmatter`, typed as `as const` would type it (`{}` when
- * the file has none). `md` is a string even when the frontmatter fails, since its type does not
- * depend on the file.
+ * A `.md` file's default export is the object `{ md, frontmatter }`: its body without the
+ * frontmatter, and its frontmatter typed as `as const` would type it (`{}` when the file has none).
+ * Each is also a named export, so a bundle that imports only `frontmatter` can leave the body out.
+ * The default's type spells the frontmatter out again rather than as `typeof frontmatter`, so a
+ * hover on the import shows the whole type. `md` is a string even when the frontmatter fails,
+ * since its type does not depend on the file.
  */
 function markdownModule(source: string): ModuleText {
   const parsed = parseMarkdownFile(source);
-  if (!parsed.ok) return { code: "export const md = undefined;\nexport const frontmatter = undefined;\n", types: "export declare const md: string;\nexport declare const frontmatter: any;\n", problems: parsed.problems };
-  return {
-    code: `export const md = ${JSON.stringify(parsed.body)};\nexport const frontmatter = ${toJs(parsed.frontmatter)};\n`,
-    types: `export declare const md: string;\nexport declare const frontmatter: ${literal(parsed.frontmatter)};\n`,
-    problems: [],
-  };
+  const codeOf = (md: string, frontmatter: string) =>
+    `export const md = ${md};\nexport const frontmatter = ${frontmatter};\nexport default { md, frontmatter };\n`;
+  const typesOf = (frontmatter: string) =>
+    `export declare const md: string;\nexport declare const frontmatter: ${frontmatter};\ndeclare const data: { readonly md: string; readonly frontmatter: ${frontmatter} };\nexport default data;\n`;
+  if (!parsed.ok) return { code: codeOf("undefined", "undefined"), types: typesOf("any"), problems: parsed.problems };
+  return { code: codeOf(JSON.stringify(parsed.body), toJs(parsed.frontmatter)), types: typesOf(literal(parsed.frontmatter)), problems: [] };
 }

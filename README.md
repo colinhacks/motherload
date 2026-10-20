@@ -197,7 +197,7 @@ import notes from "./notes.txt";
 
 ### `.md`
 
-A `.md` file has no default export. The body, without the frontmatter, is the named export `md`; the YAML frontmatter is the named export `frontmatter`, typed from the file.
+A `.md` file is the object `{ md, frontmatter }`: the body, without the frontmatter, and the YAML frontmatter, typed from the file. Each part is also a named export.
 
 ```md
 ---
@@ -210,11 +210,10 @@ The body of the post.
 ```
 
 ```ts
-import * as post from "./post.md";
-// post.frontmatter: { readonly title: "Hello"; readonly draft: false }
-// post.md: string
+import post from "./post.md";
+// post: { readonly md: string; readonly frontmatter: { readonly title: "Hello"; readonly draft: false } }
 
-import { md, frontmatter } from "./post.md"; // the same, as named imports
+import { frontmatter } from "./post.md"; // one part; a bundle leaves out the body
 ```
 
 ### `.schema.jsonc`
