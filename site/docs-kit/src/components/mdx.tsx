@@ -1,10 +1,12 @@
 import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import * as Twoslash from 'fumadocs-twoslash/ui';
 import type { MDXComponents } from 'mdx/types';
 import type { ComponentProps } from 'react';
 import { Accordion, Accordions } from './accordion';
 import { Callout } from './callout';
+import { CodeCopyButton } from './code-copy';
 import { CodeTabs } from './code-tabs';
 import { Details } from './details';
 import { Heading } from './heading';
@@ -37,6 +39,23 @@ export function docsMdxComponents(components?: MDXComponents) {
     Tab: (props: ComponentProps<typeof Tab>) => <Tab forceMount {...props} />,
     Tabs,
     CodeBlockTabs: CodeTabs,
+    // Fumadocs' code block, with docs-kit's copy button (./code-copy.tsx) in place of its own: the
+    // page's one copy icon, with a tooltip.
+    pre: ({ ref: _ref, allowCopy, ...props }: ComponentProps<typeof CodeBlock>) => (
+      <CodeBlock
+        {...props}
+        allowCopy={false}
+        Actions={({ className }) =>
+          String(allowCopy) === 'false' ? null : (
+            <div className={['empty:hidden', className].filter(Boolean).join(' ')}>
+              <CodeCopyButton />
+            </div>
+          )
+        }
+      >
+        <Pre>{props.children}</Pre>
+      </CodeBlock>
+    ),
     // The hover popups of `ts twoslash` blocks.
     ...Twoslash,
     // Fumadocs waits 300ms before it opens a popup and as long before it closes one. 60ms opens it

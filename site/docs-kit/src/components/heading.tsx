@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
+import { CheckIcon, CopyIcon } from './copy-icons';
 
 type Props = ComponentPropsWithoutRef<'h2'> & { as: 'h2' | 'h3' | 'h4'; 'data-section'?: string };
 
@@ -10,19 +11,6 @@ const linkIcon = (
   <svg {...ICON}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-  </svg>
-);
-
-const copyIcon = (
-  <svg {...ICON}>
-    <rect width="14" height="14" x="8" y="8" rx="2" />
-    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-  </svg>
-);
-
-const checkIcon = (
-  <svg {...ICON}>
-    <path d="M20 6 9 17l-5-5" />
   </svg>
 );
 
@@ -36,7 +24,7 @@ function CopyButton({ className, label, icon, text }: { className: string; label
     });
   return (
     <button type="button" className={`${className} not-prose`} aria-label={label} title={label} onClick={copy}>
-      {copied ? checkIcon : icon}
+      {copied ? <CheckIcon /> : icon}
     </button>
   );
 }
@@ -60,7 +48,7 @@ export function Heading({ as: As, id, children, className, 'data-section': secti
     <As id={id} className={['dk-heading', className].filter(Boolean).join(' ')} {...props}>
       <CopyButton className="dk-anchor" label="Copy a link to this section" icon={linkIcon} text={url} />
       <span className="dk-heading-text">{children}</span>
-      {section && <CopyButton className="dk-copy-section" label="Copy this section as Markdown" icon={copyIcon} text={() => section} />}
+      {section && <CopyButton className="dk-copy-section" label="Copy this section as Markdown" icon={<CopyIcon />} text={() => section} />}
     </As>
   );
 }

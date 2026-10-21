@@ -408,8 +408,8 @@ html .prose {
   background: transparent;
 }
 
-.fd-twoslash-popover figure.shiki > div:has(> button[aria-label='Copy Text']),
-.twoslash-query-line figure.shiki > div:has(> button[aria-label='Copy Text']) {
+.fd-twoslash-popover figure.shiki > div:has(> .dk-code-copy),
+.twoslash-query-line figure.shiki > div:has(> .dk-code-copy) {
   display: none;
 }
 

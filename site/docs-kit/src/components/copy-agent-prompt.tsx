@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AGENT_PROMPT_SELECTOR, agentPromptText } from './agent-prompt';
+import { CheckIcon, CopyIcon } from './copy-icons';
 
 /**
  * "Copy agent prompt" at the top of the page, on the title's row (`titleAside` of `DocsShell`), as
@@ -37,25 +38,13 @@ export function CopyAgentPrompt({ label = 'Copy agent prompt' }: { label?: strin
   return (
     <button type="button" className="dk-cta" onClick={copy}>
       <span data-shown={!copied || undefined}>
-        <Icon path={CLIPBOARD} />
+        <CopyIcon />
         {label}
       </span>
       <span data-shown={copied || undefined} aria-live="polite">
-        <Icon path={CHECK} />
+        <CheckIcon />
         Copied
       </span>
     </button>
-  );
-}
-
-// Lucide's clipboard and check.
-const CLIPBOARD = 'M9 2h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1ZM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2';
-const CHECK = 'M20 6 9 17l-5-5';
-
-function Icon({ path }: { path: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={path} />
-    </svg>
   );
 }
