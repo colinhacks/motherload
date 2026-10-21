@@ -1,0 +1,18 @@
+{
+  "name": "motherload-example-esbuild",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode",
+    "dev": "node --import motherload/register main.ts",
+    "build": "tsc --noEmit --runExternalCode && node build.mjs",
+    "start": "node dist/main.mjs",
+    "test": "node --import motherload/register --test"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "motherload": "link:../..",
+    "typescript": "7.1.0-beta"
+  }
+}

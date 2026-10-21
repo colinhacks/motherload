@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["esnext", "dom"],
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "contentMappers": [
+    { "package": "motherload", "extensions": [".toml", ".csv", ".md"] }
+  ],
+  "include": ["main.ts", "site.ts", "site.test.ts", "vite.config.ts"]
+}

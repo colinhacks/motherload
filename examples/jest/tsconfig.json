@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "contentMappers": [
+    { "package": "motherload", "extensions": [".toml", ".csv", ".md"] }
+  ],
+  "include": ["site.ts", "site.test.ts"]
+}

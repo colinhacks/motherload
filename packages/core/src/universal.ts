@@ -118,12 +118,14 @@ export async function register(plugin: LoaderPlugin): Promise<void> {
 
 // ---- esbuild ----------------------------------------------------------------------------------
 
+/**
+ * A module as an esbuild plugin's onLoad returns it, in the one shape esbuild and `Bun.build`, which
+ * takes esbuild's plugins, both accept, so that the plugin type-checks in either.
+ */
+type EsbuildModule = { contents: string; loader: "js"; watchFiles?: string[] };
 type EsbuildBuild = {
   initialOptions?: { plugins?: readonly unknown[] };
-  onLoad(
-    options: { filter: RegExp; namespace?: string },
-    callback: (args: { path: string; suffix?: string }) => { contents: string; loader: "js"; watchFiles?: string[] } | { errors: { text: string }[]; watchFiles?: string[] } | undefined,
-  ): void;
+  onLoad(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string; suffix?: string }) => EsbuildModule | undefined): void;
 };
 
 /** The Motherload plugin an esbuild plugin object was made from, so that plugins in one build can see each other. */
@@ -144,7 +146,14 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
         // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
         const result = plugin.load(readFileSync(args.path, "utf8"), args.path);
         const watchFiles = result.watchFiles ?? [];
-        if (result.problems.length) return { errors: [{ text: loadError(plugin, args.path, result.problems) }], watchFiles };
+        if (result.problems.length) {
+          const text = loadError(plugin, args.path, result.problems);
+          // `Bun.build` does not take an onLoad's `errors`: it fails with "onLoad plugins must return
+          // an object with "contents" as a string or Uint8Array" in place of the problem, so under
+          // Bun the problem is thrown, which Bun prints as it is (Bun 1.4.3).
+          if (process.versions.bun) throw new Error(text);
+          return { errors: [{ text }], watchFiles } as unknown as EsbuildModule;
+        }
         return { contents: result.code, loader: "js", watchFiles };
       });
     },

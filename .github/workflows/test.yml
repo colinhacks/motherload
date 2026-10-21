@@ -28,6 +28,12 @@ jobs:
         working-directory: lab/nextjs
       - run: nub install --frozen-lockfile
         working-directory: lab/jest
+      # each example in examples/ has its own dependencies too (tests/examples.test.ts)
+      - run: for dir in examples/*/; do (cd "$dir" && nub install --frozen-lockfile) || exit 1; done
+      # examples/bun runs under Bun; release.yml leaves it out, so its jobs run no other third-party action, and the test skips it there
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: "1.4.3"
       - run: nub run typecheck
       - run: nub run test
       # the packages as release.yml stages them, installed from tarballs outside the repository

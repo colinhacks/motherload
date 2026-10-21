@@ -1,0 +1,21 @@
+{
+  "name": "motherload-example-jest",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:cjs": "jest --config jest.cjs.config.js",
+    "typecheck": "tsc --noEmit --runExternalCode"
+  },
+  "devDependencies": {
+    "@babel/core": "8.0.7",
+    "@babel/preset-env": "8.0.7",
+    "@babel/preset-typescript": "8.0.7",
+    "@jest/globals": "30.5.2",
+    "@types/node": "26.6.5",
+    "babel-jest": "30.5.2",
+    "jest": "30.5.2",
+    "motherload": "link:../..",
+    "typescript": "7.1.0-beta"
+  }
+}

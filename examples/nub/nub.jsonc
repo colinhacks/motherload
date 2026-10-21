@@ -1,0 +1,4 @@
+{
+  // Motherload's preload: `nub main.ts` imports data files with no flag
+  "preload": ["motherload/register"]
+}

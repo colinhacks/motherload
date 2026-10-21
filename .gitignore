@@ -15,3 +15,9 @@ lab/**/dist/
 lab/nextjs/.next/
 lab/nextjs/next-env.d.ts
 lab/nextjs/tsconfig.tsbuildinfo
+
+# The examples' build output and caches (dist/ is ignored above)
+examples/nextjs/.next/
+examples/nextjs/next-env.d.ts
+examples/*/tsconfig.tsbuildinfo
+examples/cloudflare-workers/.wrangler/

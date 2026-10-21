@@ -1,0 +1,17 @@
+{
+  "name": "motherload-example-node",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --import motherload/register main.ts",
+    "test": "node --import motherload/register --test",
+    "typecheck": "tsc --noEmit --runExternalCode"
+  },
+  "dependencies": {
+    "motherload": "link:../.."
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.1.0-beta"
+  }
+}

@@ -4,68 +4,52 @@ title: "Setup"
 
 ## Setup
 
-Install Motherload and TypeScript 7.1:
+<AgentPrompt>
+
+```text
+Set up Motherload in this project. Motherload lets TypeScript import data files as typed modules (.toml, .yaml, .jsonc, .json5, .env, .csv, .tsv, .txt and .md). Its docs are one page, https://motherload.dev, also served as Markdown at https://motherload.dev/llms.txt, and each step below links its section.
+
+Each setup has a complete, working example project to copy, whose README's "How Motherload is wired in" lists every line Motherload needs. Install from npm, since the examples link the repository: https://github.com/colinhacks/motherload/tree/main/examples
+
+1. Check the requirements and install Motherload and TypeScript 7.1 (currently in beta), Motherload as a devDependency in a bundled app and as a dependency in one that runs under the preload: https://motherload.dev/#install
+2. Add Motherload to tsconfig.json as a content mapper, listing the extensions the project imports (all of them when it imports none yet, and on Next.js all but .env), and add a typecheck script that runs tsc --noEmit --runExternalCode (after next typegen on Next.js): https://motherload.dev/#typescript
+3. Make data-file imports load wherever the project runs code, with Node's --import or the plugin for its runtime, bundler or framework: https://motherload.dev/#plugins
+   The example for that setup shows it end to end (node, nub, bun, vite, nextjs, esbuild, webpack, rspack, jest or cloudflare-workers): https://github.com/colinhacks/motherload/tree/main/examples/<name>
+   If the project runs on anything else, Motherload has no plugin for it yet: say so, and do not write one.
+4. Set up the editor the project uses, or VS Code's settings when nothing in the project names an editor: https://motherload.dev/#editors
+5. Import a data file and use its values. What each format's module holds: https://motherload.dev/#loaders
+6. Run the typecheck script. Invalid data in a file is a type error at its line and column: https://motherload.dev/#errors
+```
+
+</AgentPrompt>
+
+Install Motherload, then add it to TypeScript and to each tool that loads your code.
+
+### Install
+
+You'll need:
+
+- **TypeScript 7.1 (currently in beta).** The first release with content mappers.
+- **Node 24 or later.**
 
 ```sh
 npm install -D motherload typescript@beta
 ```
 
-<Callout>Motherload is powered by [content mappers](https://github.com/microsoft/typescript-go/pull/4712), a new feature of TypeScript 7.1. TypeScript 7.1 is currently in beta.</Callout>
+If your app runs under the preload, not as a bundle, Motherload loads your data files at run time, so install it as a dependency:
 
-Motherload needs Node 24 or later. An app that runs under the preload, not as a bundle, loads Motherload at run time, so it lists `motherload` in `dependencies`.
-
-<AgentPrompt>
-
-```text
-Set up Motherload in this project. Motherload lets TypeScript
-import data files as typed modules (.toml, .yaml, .jsonc, .json5,
-.env, .csv, .tsv, .txt and .md). Its docs are one page,
-https://motherload.dev, also served as Markdown at
-https://motherload.dev/llms.txt: follow the section linked at
-each step. A working project that imports every format, with its
-tsconfig.json and main.ts:
-https://github.com/colinhacks/motherload/tree/main/lab/basic
-and a Next.js app:
-https://github.com/colinhacks/motherload/tree/main/lab/nextjs
-Both run from the repository's own build: install from npm.
-
-1. Check the requirements and install motherload and the
-   TypeScript 7.1 beta (typescript@beta), motherload as a
-   devDependency in a bundled app (Next.js, Vite, webpack,
-   Rspack, Rollup, Rolldown, esbuild) and as a dependency in one
-   that runs under the preload: https://motherload.dev/#setup
-2. Add Motherload to tsconfig.json as a content mapper, listing
-   the extensions the project imports (all of them when it
-   imports none yet, and on Next.js all but .env), and add a
-   typecheck script that runs tsc --noEmit --runExternalCode,
-   after next typegen on Next.js:
-   https://motherload.dev/#typescript
-3. Make the imports load wherever the project runs code, with
-   Node's --import (https://motherload.dev/#node) or the plugin
-   for Next.js, Vite (also Vitest, Rollup and Rolldown), webpack,
-   Rspack, esbuild or Nub, and Jest's transformer for Jest tests
-   (https://motherload.dev/#plugins). Next.js also needs its
-   build's own type check turned off, with the typecheck script
-   run before next build. If the project runs on anything else,
-   Motherload has no plugin for it yet: say so, and do not
-   write one.
-4. Set up the editor the project uses, or VS Code's settings
-   when nothing in the project names an editor:
-   https://motherload.dev/#editors
-5. Import a data file and use its values. What each format's
-   module holds: https://motherload.dev/#loaders
-6. Run the typecheck script. Invalid data in a file is a type
-   error at its line and column: https://motherload.dev/#errors
+```sh
+npm install motherload
+npm install -D typescript@beta
 ```
-
-</AgentPrompt>
 
 ### TypeScript
 
-Add Motherload to `tsconfig.json`, with the extensions it should own.
+Add Motherload to `tsconfig.json`, listing the extensions you import:
 
 ```jsonc title="tsconfig.json"
 {
+  "compilerOptions": { /* ... */ },
   "contentMappers": [ // [!code ++]
     { // [!code ++]
       "package": "motherload", // [!code ++]
@@ -78,43 +62,231 @@ Add Motherload to `tsconfig.json`, with the extensions it should own.
 }
 ```
 
-Type-check with `--runExternalCode`. Without the flag, `tsc` ignores content mappers.
+Then type-check with `--runExternalCode`, which lets `tsc` run content mappers:
 
-```json title="package.json"
+```jsonc title="package.json"
 {
   "scripts": {
-    "typecheck": "tsc --noEmit --runExternalCode"
+    "typecheck": "tsc --noEmit --runExternalCode" // [!code ++]
   }
 }
 ```
 
+### Plugins
+
+Install the plugin for your runtime or framework of choice:
+
+<Tabs items={["Node", "Bun", "Nub", "Vite", "Next.js", "esbuild", "webpack", "Rspack", "Cloudflare", "Jest"]}>
+<Tab value="Node" id="setup-node">
+
+Load Motherload's preload with `--import`:
+
+```sh
+node --import motherload/register main.ts
+```
+
+</Tab>
+<Tab value="Bun" id="setup-bun">
+
+Add the preload to `bunfig.toml`, and under `[test]` for `bun test`:
+
+```toml title="bunfig.toml"
+preload = ["motherload/register"]
+
+[test]
+preload = ["motherload/register"]
+```
+
+For Bun's bundler, use the esbuild plugin:
+
+```ts title="build.ts"
+import motherload from "motherload/esbuild";
+
+await Bun.build({
+  entrypoints: ["main.ts"],
+  target: "bun",
+  plugins: [motherload()],
+  outdir: "dist",
+});
+```
+
+</Tab>
+<Tab value="Nub" id="setup-nub">
+
+Add the preload to `nub.jsonc`:
+
+```jsonc title="nub.jsonc"
+{
+  "preload": ["motherload/register"]
+}
+```
+
+</Tab>
+<Tab value="Vite" id="setup-vite">
+
+```ts title="vite.config.ts"
+import { defineConfig } from "vite";
+import motherload from "motherload/vite";
+
+export default defineConfig({
+  plugins: [motherload()],
+});
+```
+
+For Vitest, this plugin is all you need. Rollup and Rolldown take it too:
+
+```js title="rollup.config.mjs"
+import motherload from "motherload/vite";
+
+export default {
+  // ...
+  plugins: [motherload()],
+};
+```
+
+</Tab>
+<Tab value="Next.js" id="setup-nextjs">
+
+```ts title="next.config.ts"
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // the build script runs the type check first
+  typescript: { ignoreBuildErrors: true },
+  turbopack: {
+    rules: {
+      // every format but .env, which Next.js loads itself
+      "*.{toml,yaml,yml,jsonc,json5,csv,tsv,txt,md}": {
+        loaders: ["motherload/turbopack"],
+        as: "*.js",
+      },
+    },
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/,
+      use: "motherload/webpack",
+    });
+    return config;
+  },
+};
+
+export default nextConfig;
+```
+
+Run `tsc` before `next build`, since Next.js's own type check can't run content mappers:
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "next dev",
+    "typecheck": "next typegen && tsc --noEmit --runExternalCode",
+    "build": "npm run typecheck && next build"
+  }
+}
+```
+
+</Tab>
+<Tab value="esbuild" id="setup-esbuild">
+
+```js title="build.mjs"
+import * as esbuild from "esbuild";
+import motherload from "motherload/esbuild";
+
+await esbuild.build({
+  entryPoints: ["main.ts"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  plugins: [motherload()],
+  outfile: "dist/main.mjs",
+});
+```
+
+</Tab>
+<Tab value="webpack" id="setup-webpack">
+
+```js title="webpack.config.mjs"
+export default {
+  // ...
+  module: {
+    rules: [
+      {
+        test: /\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$/,
+        use: "motherload/webpack",
+      },
+    ],
+  },
+};
+```
+
+Compile TypeScript with `swc-loader` or `babel-loader`, since TypeScript 7 has no JavaScript API for `ts-loader`.
+
+</Tab>
+<Tab value="Rspack" id="setup-rspack">
+
+```js title="rspack.config.mjs"
+export default {
+  // ...
+  module: {
+    rules: [
+      {
+        test: /\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$/,
+        use: "motherload/webpack",
+      },
+    ],
+  },
+};
+```
+
+</Tab>
+<Tab value="Cloudflare" id="setup-cloudflare-workers">
+
+Add Motherload's Vite plugin beside Cloudflare's:
+
+```ts title="vite.config.ts"
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { defineConfig } from "vite";
+import motherload from "motherload/vite";
+
+export default defineConfig({
+  plugins: [motherload(), cloudflare()],
+});
+```
+
+Deploy with `wrangler deploy` after `vite build`: Wrangler's own bundler takes no plugin.
+
+</Tab>
+<Tab value="Jest" id="setup-jest">
+
+Add Motherload's transformer to your Jest config:
+
+```js title="jest.config.js"
+export default {
+  transform: {
+    "\\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$": "motherload/jest",
+  },
+  extensionsToTreatAsEsm: [
+    ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env",
+    ".csv", ".tsv", ".txt", ".md",
+  ],
+};
+```
+
+```sh
+# Jest runs ES modules only behind this Node flag
+NODE_OPTIONS=--experimental-vm-modules npx jest
+```
+
+</Tab>
+</Tabs>
+
 ### Editors
 
-The editor needs the TypeScript 7.1 language server, with content mappers on.
+Set up your editor to use the TypeScript 7.1 language server, with content mappers on.
 
-<Accordions type="multiple">
-<Accordion title="VS Code" id="editor-vscode">
-
-1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
-2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
-
-   ```json title=".vscode/settings.json"
-   {
-     "js/ts.experimental.useTsgo": true,
-     "js/ts.tsdk.path": "./node_modules/typescript"
-   }
-   ```
-
-3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
-
-To suggest the extension to everyone who opens the project:
-
-```json title=".vscode/extensions.json"
-{ "recommendations": ["TypeScriptTeam.native-preview"] }
-```
-
-</Accordion>
-<Accordion title="Cursor" id="editor-cursor">
+<Tabs items={["VS Code", "Cursor", "Zed"]}>
+<Tab value="VS Code" id="editor-vscode">
 
 1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
 2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
@@ -128,14 +300,23 @@ To suggest the extension to everyone who opens the project:
 
 3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
 
-To suggest the extension to everyone who opens the project:
+</Tab>
+<Tab value="Cursor" id="editor-cursor">
 
-```json title=".vscode/extensions.json"
-{ "recommendations": ["TypeScriptTeam.native-preview"] }
-```
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
+2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
 
-</Accordion>
-<Accordion title="Zed" id="editor-zed">
+   ```json title=".vscode/settings.json"
+   {
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript"
+   }
+   ```
+
+3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
+
+</Tab>
+<Tab value="Zed" id="editor-zed">
 
 1. Install the **TypeScript Language Server** extension by Zed Industries (search for "tsgo").
 2. Point it at the project's TypeScript, with content mappers on:
@@ -175,183 +356,10 @@ To suggest the extension to everyone who opens the project:
 
 3. Trust the folder. In restricted mode, Zed starts no language server.
 
-After a change to `binary.path`, close the window and open it again. In a monorepo whose TypeScript is installed at the root, `binary.path` points at that copy.
+Zed doesn't send data files to the language server, so an error inside one shows only in the type check.
 
-</Accordion>
-</Accordions>
-
-### Node
-
-Node loads Motherload with `--import`, which turns each data file into a module as it loads:
-
-```sh
-node --import motherload/register main.ts
-```
-
-### Plugins
-
-Everywhere else, a plugin turns each data file into a module: Nub loads Motherload's preload from its config file, and a bundler builds each module at build time, so a bundled app needs no `--import` and no preload, and Motherload stays a development dependency. Jest takes a transformer.
-
-<Accordions type="multiple">
-<Accordion title="Next.js" id="setup-nextjs">
-
-Add the loader to Turbopack's rules. Next.js loads `.env` files itself, so the rule and `tsconfig.json` leave them out:
-
-```ts title="next.config.ts"
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  turbopack: {
-    rules: {
-      "*.{toml,yaml,yml,jsonc,json5,csv,tsv,txt,md}": {
-        loaders: ["motherload/turbopack"],
-        as: "*.js",
-      },
-    },
-  },
-};
-
-export default nextConfig;
-```
-
-Next.js's own type check runs `tsc` without `--runExternalCode`, so turn it off:
-
-```ts title="next.config.ts"
-const nextConfig: NextConfig = {
-  typescript: { ignoreBuildErrors: true }, // [!code ++]
-  turbopack: {
-    // ...
-  },
-};
-```
-
-And run the typecheck script before the build, after `next typegen` writes the route types:
-
-```json title="package.json"
-{
-  "scripts": {
-    "typecheck": "next typegen && tsc --noEmit --runExternalCode",
-    "build": "npm run typecheck && next build"
-  }
-}
-```
-
-With `--webpack`, the same loader goes in `webpack()`:
-
-```ts title="next.config.ts"
-const nextConfig: NextConfig = {
-  webpack(config) { // [!code ++]
-    config.module.rules.push({ // [!code ++]
-      test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/, // [!code ++]
-      use: "motherload/webpack", // [!code ++]
-    }); // [!code ++]
-    return config; // [!code ++]
-  }, // [!code ++]
-};
-```
-
-</Accordion>
-<Accordion title="Vite" id="setup-vite">
-
-```ts title="vite.config.ts"
-import { defineConfig } from "vite";
-import motherload from "motherload/vite";
-
-export default defineConfig({
-  plugins: [motherload()],
-});
-```
-
-Vitest runs the same plugin from the Vite config. Rollup and Rolldown take it too:
-
-```js title="rollup.config.mjs"
-import motherload from "motherload/vite";
-
-export default {
-  // ...
-  plugins: [motherload()],
-};
-```
-
-</Accordion>
-<Accordion title="webpack and Rspack" id="setup-webpack">
-
-```js title="webpack.config.mjs"
-export default {
-  // ...
-  module: {
-    rules: [
-      {
-        test: /\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$/,
-        use: "motherload/webpack",
-      },
-    ],
-  },
-};
-```
-
-Rspack takes the same rule in `rspack.config.mjs`.
-
-</Accordion>
-<Accordion title="esbuild" id="setup-esbuild">
-
-```js title="build.mjs"
-import * as esbuild from "esbuild";
-import motherload from "motherload/esbuild";
-
-await esbuild.build({
-  entryPoints: ["main.ts"],
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  plugins: [motherload()],
-  outfile: "dist/main.mjs",
-});
-```
-
-Use `.build()`: esbuild runs plugins in `.build()` only, and `.buildSync()` throws.
-
-</Accordion>
-<Accordion title="Nub" id="setup-nub">
-
-Nub takes the preload in `nub.jsonc`, so `nub main.ts` needs no flag:
-
-```jsonc title="nub.jsonc"
-{
-  "preload": ["motherload/register"]
-}
-```
-
-</Accordion>
-<Accordion title="Jest" id="setup-jest">
-
-Jest reads test code itself, so it takes Motherload's transformer:
-
-```js title="jest.config.js"
-export default {
-  transform: {
-    "\\.[jt]sx?$": "babel-jest",
-    "\\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$": "motherload/jest", // [!code ++]
-  },
-};
-```
-
-With `--experimental-vm-modules`, list the extensions as ES modules too:
-
-```js title="jest.config.js"
-export default {
-  transform: {
-    // ...
-  },
-  extensionsToTreatAsEsm: [ // [!code ++]
-    ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env", // [!code ++]
-    ".csv", ".tsv", ".txt", ".md", // [!code ++]
-  ], // [!code ++]
-};
-```
-
-</Accordion>
-</Accordions>
+</Tab>
+</Tabs>
 
 ### Loaders à la carte [#loaders-a-la-carte]
 

@@ -1,0 +1,17 @@
+{
+  "name": "motherload-example-nub",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "nub main.ts",
+    "test": "nub --test",
+    "typecheck": "tsc --noEmit --runExternalCode"
+  },
+  "dependencies": {
+    "motherload": "link:../.."
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.1.0-beta"
+  }
+}

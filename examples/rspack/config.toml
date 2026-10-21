@@ -1,0 +1,5 @@
+title = "Motherload example"
+
+[server]
+host = "localhost"
+port = 8080

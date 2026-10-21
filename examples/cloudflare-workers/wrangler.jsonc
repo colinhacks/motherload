@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "motherload-example",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01"
+}

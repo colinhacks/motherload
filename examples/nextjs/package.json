@@ -1,0 +1,25 @@
+{
+  "name": "motherload-example-nextjs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
+    "typecheck": "next typegen && tsc --noEmit --runExternalCode",
+    "build": "next typegen && tsc --noEmit --runExternalCode && next build",
+    "build:webpack": "next typegen && tsc --noEmit --runExternalCode && next build --webpack",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "motherload": "link:../..",
+    "typescript": "7.1.0-beta"
+  }
+}

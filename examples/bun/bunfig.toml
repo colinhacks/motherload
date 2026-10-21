@@ -1,0 +1,6 @@
+# Motherload's preload: `bun main.ts` imports data files with no flag
+preload = ["motherload/register"]
+
+# bun test reads its own preload, not the one above
+[test]
+preload = ["motherload/register"]

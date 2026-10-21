@@ -1,0 +1,24 @@
+{
+  "name": "motherload-example-cloudflare-workers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode",
+    "dev": "vite dev",
+    "build": "tsc --noEmit --runExternalCode && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.64.0",
+    "@cloudflare/vitest-plugin": "1.4.6",
+    "@cloudflare/workers-types": "5.20261019.1",
+    "@types/node": "26.6.5",
+    "motherload": "link:../..",
+    "typescript": "7.1.0-beta",
+    "vite": "8.3.4",
+    "vitest": "5.0.5",
+    "wrangler": "4.151.3"
+  }
+}

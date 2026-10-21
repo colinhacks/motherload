@@ -1,0 +1,19 @@
+{
+  "languages": {
+    "TypeScript": {
+      "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+    },
+    "TSX": {
+      "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+    }
+  },
+  "lsp": {
+    "typescript-ls": {
+      "binary": {
+        "path": "node_modules/typescript/bin/tsc",
+        "arguments": ["--lsp", "--stdio"]
+      },
+      "initialization_options": { "runExternalCode": true }
+    }
+  }
+}

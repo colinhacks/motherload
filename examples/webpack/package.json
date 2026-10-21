@@ -1,0 +1,20 @@
+{
+  "name": "motherload-example-webpack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode",
+    "dev": "node --watch --import motherload/register main.ts",
+    "build": "webpack",
+    "start": "node dist/main.mjs"
+  },
+  "devDependencies": {
+    "@swc/core": "1.16.18",
+    "@types/node": "26.6.5",
+    "motherload": "link:../..",
+    "swc-loader": "0.2.7",
+    "typescript": "7.1.0-beta",
+    "webpack": "5.112.0",
+    "webpack-cli": "7.2.3"
+  }
+}

@@ -37,6 +37,8 @@ jobs:
         working-directory: lab/nextjs
       - run: nub install --frozen-lockfile
         working-directory: lab/jest
+      # each example in examples/ has its own dependencies too (tests/examples.test.ts)
+      - run: for dir in examples/*/; do (cd "$dir" && nub install --frozen-lockfile) || exit 1; done
       - run: nub run typecheck
       - run: nub run test
       - run: nub run build

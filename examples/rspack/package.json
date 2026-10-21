@@ -1,0 +1,18 @@
+{
+  "name": "motherload-example-rspack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode",
+    "dev": "node --watch --import motherload/register main.ts",
+    "build": "rspack build",
+    "start": "node dist/main.mjs"
+  },
+  "devDependencies": {
+    "@rspack/cli": "2.2.9",
+    "@rspack/core": "2.2.9",
+    "@types/node": "26.6.5",
+    "motherload": "link:../..",
+    "typescript": "7.1.0-beta"
+  }
+}

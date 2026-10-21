@@ -1,0 +1,19 @@
+{
+  "name": "motherload-example-bun",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun main.ts",
+    "test": "bun test",
+    "build": "bun build.ts",
+    "start:dist": "bun dist/main.js",
+    "typecheck": "tsc --noEmit --runExternalCode"
+  },
+  "dependencies": {
+    "motherload": "link:../.."
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.3",
+    "typescript": "7.1.0-beta"
+  }
+}

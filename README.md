@@ -20,17 +20,23 @@ It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/ty
 
 ## Setup
 
+Motherload needs:
+
+- **TypeScript 7.1 beta or later**, the first release with content mappers.
+- **Node 24 or later, Bun or nub.**
+
 ```sh
 npm install -D motherload typescript@beta
 ```
 
-> [!NOTE]
-> Motherload is powered by [content mappers](https://github.com/microsoft/typescript-go/pull/4712), a new feature of TypeScript 7.1. TypeScript 7.1 is currently in beta.
+An app that runs under the preload, not as a bundle, loads its data files at run time, so it installs Motherload as a dependency: `npm install motherload`.
 
-Add Motherload to `tsconfig.json`, with the extensions it should own:
+Name Motherload in `tsconfig.json`, with the extensions it should own, and type-check with `--runExternalCode`, the flag that lets `tsc` run content mappers:
 
 ```jsonc
+// tsconfig.json
 {
+  "compilerOptions": { /* ... */ },
   "contentMappers": [
     {
       "package": "motherload",
@@ -43,23 +49,44 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
 }
 ```
 
-Type-check with `--runExternalCode`, without which `tsc` skips content mappers, and run the code with the preload:
+```jsonc
+// package.json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode"
+  }
+}
+```
+
+Load Motherload when your code runs, so that a data-file import works at run time too. On Node:
 
 ```sh
-tsc --noEmit --runExternalCode
 node --import motherload/register main.ts
 ```
 
-Each tool has its setup in [the docs](https://motherload.dev):
+| Runtime or bundler | Setup |
+| --- | --- |
+| Bun | `preload = ["motherload/register"]` in `bunfig.toml` |
+| nub | `"preload": ["motherload/register"]` in `nub.jsonc` |
+| Vite, Vitest, Rollup, Rolldown | `import motherload from "motherload/vite"`, then `motherload()` in `plugins` |
+| esbuild, `Bun.build` | `import motherload from "motherload/esbuild"`, then `motherload()` in `plugins` |
+| webpack, Rspack | `use: "motherload/webpack"` in a rule for the data files, in `module.rules` |
+| Next.js | `motherload/turbopack` for Turbopack and `motherload/webpack` for webpack, with `next build`'s own type check turned off ([setup](https://motherload.dev/#setup-nextjs)) |
+| Jest | `"motherload/jest"` in `transform`, for the data files ([setup](https://motherload.dev/#setup-jest)) |
 
-- [Node.js](https://motherload.dev/#node): `--import motherload/register`
-- [Nub](https://motherload.dev/#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
-- [Next.js](https://motherload.dev/#plugins): `motherload/turbopack` in Turbopack's `rules`, with `next build`'s own type check turned off
-- [Vite, Vitest, Rollup and Rolldown](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/vite`
-- [webpack and Rspack](https://motherload.dev/#plugins): `use: "motherload/webpack"` in a rule for the data files
-- [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
-- [Jest](https://motherload.dev/#plugins): `"motherload/jest"` in `transform`, for the data files
-- [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
+Each setup has a working example project to copy: [examples](https://github.com/colinhacks/motherload/tree/main/examples).
+
+In VS Code or Cursor, install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`) and point it at your project's TypeScript, since the extension bundles TypeScript 7.0:
+
+```jsonc
+// .vscode/settings.json
+{
+  "js/ts.experimental.useTsgo": true,
+  "js/ts.tsdk.path": "./node_modules/typescript"
+}
+```
+
+Then trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Zed takes a few more settings: see [Editors](https://motherload.dev/#editors).
 
 The `motherload` package provides one unified content mapper for all data formats. You can also consume them [à la carte](https://motherload.dev/#loaders-a-la-carte).
 
