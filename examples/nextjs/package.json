@@ -6,8 +6,8 @@
     "dev": "next dev",
     "dev:webpack": "next dev --webpack",
     "typecheck": "next typegen && tsc --noEmit --runExternalCode",
-    "build": "next typegen && tsc --noEmit --runExternalCode && next build",
-    "build:webpack": "next typegen && tsc --noEmit --runExternalCode && next build --webpack",
+    "build": "next build",
+    "build:webpack": "next build --webpack",
     "start": "next start"
   },
   "dependencies": {

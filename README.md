@@ -71,7 +71,7 @@ node --import motherload/register main.ts
 | Vite, Vitest, Rollup, Rolldown | `import motherload from "motherload/vite"`, then `motherload()` in `plugins` |
 | esbuild, `Bun.build` | `import motherload from "motherload/esbuild"`, then `motherload()` in `plugins` |
 | webpack, Rspack | `use: "motherload/webpack"` in a rule for the data files, in `module.rules` |
-| Next.js | `motherload/turbopack` for Turbopack and `motherload/webpack` for webpack, with `next build`'s own type check turned off ([setup](https://motherload.dev/#setup-nextjs)) |
+| Next.js | `import { withMotherload } from "motherload/next"`, then `export default withMotherload(nextConfig)`: the loader for Turbopack and webpack, and the type check inside `next build` ([setup](https://motherload.dev/#setup-nextjs)) |
 | Jest | `"motherload/jest"` in `transform`, for the data files ([setup](https://motherload.dev/#setup-jest)) |
 
 Each setup has a working example project to copy: [examples](https://github.com/colinhacks/motherload/tree/main/examples).

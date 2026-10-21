@@ -8,7 +8,7 @@ One complete, working project for each setup the [docs](https://motherload.dev/#
 | [nub](./nub) | the preload in `nub.jsonc` ([Nub](https://motherload.dev/#setup-nub)) | a script, and tests with `nub --test` |
 | [bun](./bun) | the preload in `bunfig.toml`, and `Bun.build` with `motherload/esbuild` ([Bun](https://motherload.dev/#setup-bun)) | a script, `bun test`, and a bundle |
 | [vite](./vite) | `motherload/vite` in a Vite page ([Vite](https://motherload.dev/#setup-vite)) | the dev server, the build and `vite preview`, and Vitest |
-| [nextjs](./nextjs) | `motherload/turbopack` under Turbopack and `motherload/webpack` under webpack ([Next.js](https://motherload.dev/#setup-nextjs)) | an App Router app: `next dev`, and `next build` and `next start` with each bundler |
+| [nextjs](./nextjs) | `withMotherload` from `motherload/next`: the loader under Turbopack and webpack, and the type check inside `next build` ([Next.js](https://motherload.dev/#setup-nextjs)) | an App Router app: `next dev`, and `next build` and `next start` with each bundler |
 | [esbuild](./esbuild) | `motherload/esbuild` ([esbuild](https://motherload.dev/#setup-esbuild)) | a script, bundled into one ES module that runs with plain Node |
 | [webpack](./webpack) | `motherload/webpack` ([webpack](https://motherload.dev/#setup-webpack)) | a script, bundled into one ES module that runs with plain Node |
 | [rspack](./rspack) | `motherload/webpack` ([Rspack](https://motherload.dev/#setup-rspack)) | a script, bundled into one ES module that runs with plain Node |

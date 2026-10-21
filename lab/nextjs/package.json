@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "typecheck": "next typegen && tsc --noEmit --runExternalCode",
-    "build": "nub run typecheck && next build",
+    "build": "next build",
     "start": "next start"
   },
   "dependencies": {

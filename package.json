@@ -18,6 +18,7 @@
     "./esbuild": "./src/esbuild.ts",
     "./webpack": "./src/webpack.ts",
     "./turbopack": "./src/turbopack.ts",
+    "./next": "./src/next.ts",
     "./vite": "./src/vite.ts",
     "./jest": "./src/jest.ts"
   },

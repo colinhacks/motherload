@@ -88,7 +88,7 @@ Run `nub install`, at the root and in [lab/nextjs](./lab/nextjs) and [lab/jest](
 
 ## Open
 
-- **Next.js's type check:** vercel/next.js#99544, the maintainer's, passes `--runExternalCode` to the `tsc` that `next build` runs when the project's TypeScript is 7.1 or newer; it has been open since 2026-10-01. Once a Next.js release carries it, the Next.js setup drops `typescript.ignoreBuildErrors` and the typecheck script before `next build` ([DESIGN.md](./DESIGN.md#the-webpack-loader)).
+- **Next.js's type check:** since 2026-10-21 `withMotherload` (`motherload/next`) runs the check with `--runExternalCode` inside `next build` itself, in `compiler.runAfterProductionCompile`, with Next.js's own check off ([DESIGN.md](./DESIGN.md#the-webpack-loader)). The maintainer's vercel/next.js#99544, open since 2026-10-01, passes the flag to the `tsc` that `next build` runs when the project's TypeScript is 7.1 or newer; once a Next.js release carries it, `withMotherload` can leave Next.js's check on there and keep only the loader.
 - **Per-import types:** microsoft/TypeScript#64912, the maintainer's, filed on 2026-10-21, asks TypeScript to pass an import's query or its import attributes to a content mapper, so that `./app.yaml?widened` could be typed widened beside the `as const` default. Until then a file's type is chosen by its format alone ([DESIGN.md](./DESIGN.md#how-an-import-chooses)).
 - **`.env` files:** whether to expand `${VAR}` as nub does; how a project claims `.env.local` and `.env.production`, whose suffixes are not `.env`.
 - **TOML date-times:** local dates and times are ISO strings and offset date-times are `Date`s; Temporal types (`Temporal.PlainDate` and the rest) are the alternative once every target runtime has Temporal.

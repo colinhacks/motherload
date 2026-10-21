@@ -147,44 +147,36 @@ export default {
 </Tab>
 <Tab value="Next.js" id="setup-nextjs">
 
+Wrap your Next.js config with `withMotherload`:
+
 ```ts title="next.config.ts"
 import type { NextConfig } from "next";
+import { withMotherload } from "motherload/next";
 
 const nextConfig: NextConfig = {
-  // the build script runs the type check first
-  typescript: { ignoreBuildErrors: true },
-  turbopack: {
-    rules: {
-      // every format but .env, which Next.js loads itself
-      "*.{toml,yaml,yml,jsonc,json5,csv,tsv,txt,md}": {
-        loaders: ["motherload/turbopack"],
-        as: "*.js",
-      },
-    },
-  },
-  webpack(config) {
-    config.module.rules.push({
-      test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/,
-      use: "motherload/webpack",
-    });
-    return config;
-  },
+  // ...
 };
 
-export default nextConfig;
+export default withMotherload(nextConfig);
 ```
 
-Run `tsc` before `next build`, since Next.js's own type check can't run content mappers:
+Your server and client components can now import every format but `.env`, which Next.js loads itself, with Turbopack or webpack, and `next build` fails on a type error in a data file's caller.
+
+To type-check without building, run `next typegen` first, which writes the route types:
 
 ```json title="package.json"
 {
   "scripts": {
-    "dev": "next dev",
-    "typecheck": "next typegen && tsc --noEmit --runExternalCode",
-    "build": "npm run typecheck && next build"
+    "typecheck": "next typegen && tsc --noEmit --runExternalCode"
   }
 }
 ```
+
+<Details summary="How the build checks the types" id="nextjs-type-check">
+
+Next.js type-checks with your project's `tsc` but without `--runExternalCode`, so `withMotherload` turns that check off and runs `tsc --noEmit --runExternalCode` itself, after the compile and before the prerender. Next.js still prints "Skipping validation of types" for its own check.
+
+</Details>
 
 </Tab>
 <Tab value="esbuild" id="setup-esbuild">
