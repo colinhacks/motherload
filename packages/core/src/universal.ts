@@ -177,7 +177,9 @@ export function toMapperHandlers(plugin: LoaderPlugin): MapperHandlers {
       const { fileName, content } = params as { fileName: string; content: string };
       const result = await plugin.types(content, fileName);
       return {
-        extension: ".ts",
+        // An ES module whatever the nearest package.json says, as the preload and the plugins load it:
+        // TypeScript takes a `.ts` module in a package with no "type" for CommonJS.
+        extension: ".mts",
         text: result.types,
         diagnostics: result.problems.map((p) => ({ messageText: p.message, code: p.code, ...utf8Range(content, p.start, p.length) })),
       };

@@ -16,6 +16,7 @@ import "./.env";                        // process.env.PORT: string, loaded when
 - **No top-level keys as named exports.** Node's JSON modules export only `default`, and a key such as `my-key` would not be an identifier.
 - **A `.md` file's default export is the object `{ md, frontmatter }`,** its body and its frontmatter, each also a named export ([below](#the-txt-and-md-modules)).
 - **A `.env` import loads the file into `process.env`;** see "The `.env` module" below.
+- **Every module is an ES module,** whatever the nearest package.json says, the maintainer's preference of 2026-10-20: "I definitely have a strong preference for going ESM first here." The mapper reports its module as `.mts`. TypeScript takes a mapped file's format from the extension the mapper reports and the nearest package.json's `type`, as it does a real file's (`GetImpliedNodeFormatForFile` on the virtual file name, in typescript-go's `internal/compiler/filesparser.go`, read on main on 2026-10-20), and the transform's answer has no other field for it (`MappedOutput`: `text`, `extension`, `mappings`, `diagnosticDirectives`). With `.ts`, a data file in a package with no `type` was typed as CommonJS, so an ES module's default import of it was the whole module and `config.port` was `TS2339`, though the preload and the plugins load the file as an ES module. Measured on 7.1.0-dev.20261002.1 with a data file in a package with no `type`: an `.mts` importer under `nodenext` failed with `.ts` and passes with `.mts`; a CommonJS `.ts` or `.cts` importer passes either way under `nodenext` and `node20`, which let CommonJS `require` an ES module, as the Node 24 Motherload needs does; under `node16` and `node18`, which model a Node that cannot, a CommonJS importer gets `TS1479` with `.mts`; `preserve`, and `esnext` with bundler resolution, pass either way; declaration emit names the file `config.d.toml.ts` either way. The other way out, `"type": "module"` in the nearest package.json, is the project's to write. `tests/fixtures/commonjs` checks it.
 
 ## How an import chooses
 
@@ -296,6 +297,7 @@ The sources started from the loader template in [lab/universal](./lab/universal)
 - **Two functions instead of one `load`:** `load` (synchronous JavaScript for the preload and bundlers, since Node's `registerHooks` is synchronous) and `types` (TypeScript for the checker, which may be asynchronous, since only the mapper calls it).
 - **A RegExp `filter` instead of `extensions` and `test`:** the loaders match `.env` files by name, which an extension list cannot express; Bun and esbuild take a RegExp, and the pattern avoids lookaround for esbuild's RE2.
 - **UTF-8 diagnostic positions** and **option diagnostics** in the mapper adapter.
+- **An `.mts` module, not `.ts`,** above.
 - **A query or hash is left to the next hook,** above.
 - **Problems instead of a thrown error inside `load`,** so one type serves both texts.
 

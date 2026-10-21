@@ -33,6 +33,12 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.doesNotMatch(out, /TS1192/);
 });
 
+test("a data file in a package with no \"type\" is an ES module all the same", () => {
+  const { status, out } = run(TSC, ["-p", "tests/fixtures/commonjs/tsconfig.json", "--noEmit", "--runExternalCode"]);
+  assert.equal(out, "");
+  assert.equal(status, 0);
+});
+
 const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';
 // lab/basic/.env, loaded into process.env when `import "./.env"` runs.
 const GREETING = '"greeting":"hello world"';

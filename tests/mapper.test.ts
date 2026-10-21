@@ -40,7 +40,7 @@ test("the mapper answers the protocol, reports options and places errors in UTF-
     const open = await mapper.call("openProject", { configFileName: `${ROOT}tsconfig.json`, projectHandle: "p", compilerOptions: {}, options: { literal: true } });
     assert.equal(open.result.optionDiagnostics[0].path[0], "literal");
     const ok = await mapper.call("transform", { fileName: `${ROOT}x.toml`, content: "a = 1\n", projectHandle: "p" });
-    assert.equal(ok.result.extension, ".ts");
+    assert.equal(ok.result.extension, ".mts");
     assert.match(ok.result.text, /declare const data: \{ readonly a: 1 \};/);
     // "é" is two bytes in UTF-8: the error after it starts one byte later than its UTF-16 offset.
     const content = 'name = "é"\nport = nope\n';
