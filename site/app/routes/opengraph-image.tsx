@@ -1,27 +1,22 @@
-// The link preview motherload.dev shows on X, Slack, Discord, LinkedIn and the rest: Next.js links
-// this image from the page as og:image, and as X's image too, with a hash of this file's text in its
-// URL. The card is drawn here rather than in a module this file imports, so that a change to the
-// card changes the URL and the caches of X and Slack fetch the new card.
+// The link preview motherload.dev shows on X, Slack, Discord, LinkedIn and the rest, written to
+// build/client/opengraph-image.png at build time: the page links it as og:image, and as X's image
+// too, with a hash of this file's text in its URL (lib/og.ts). The card is drawn here rather than in
+// a module this file imports, so that a change to the card changes the URL and the caches of X and
+// Slack fetch the new card.
 //
 // The wordmark and the address over the headline, stacked on the left, beside the hero's main.ts
 // with every import, as the page's code tabs show it: the maintainer's pick on 2026-10-20 of six
 // candidates ("I like the headline beside the hero, option F"), over Reylo's layout with one import
 // and its typed popup, the formats as chips, a YAML file beside its type, and the bars alone. Drawn
-// by Next.js's ImageResponse (Satori) in the dark Lantern theme of app/global.css: IBM Plex Sans and
+// by @vercel/og's ImageResponse (Satori) in the dark Lantern theme of app/global.css: IBM Plex Sans and
 // IBM Plex Mono (assets/fonts, SIL Open Font License, from IBM's releases) on the coal page with
 // its amber glow, the code in the page's colours (lib/mdx-options.ts). Satori lays out flex boxes
 // only, so every element with more than one child is a flex box. X lays the domain over the card's
 // bottom-left corner, about 380 × 90 of it on a phone, which the layout leaves empty.
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { ImageResponse } from 'next/og';
 import type { CSSProperties, ReactNode } from 'react';
-
-export const size = { width: 1200, height: 630 };
-export const contentType = 'image/png';
-
-export const alt =
-  'Motherload: import data files into TypeScript, fully typed. A main.ts imports plans.toml, team.yaml, strings.json5, posts.csv, notes.md, user.schema.jsonc and .env.';
+import { ogSize } from '@/lib/og';
 
 // The dark theme of app/global.css, with its glow, and the dark code colours of lib/mdx-options.ts.
 const color = {
@@ -189,12 +184,17 @@ const font = async (file: string, name: string, weight: 400 | 500 | 600) => ({
   data: await readFile(join(process.cwd(), 'assets/fonts', file)),
 });
 
-/** The preview as a PNG, built once, with the site. */
-export default async function Image() {
+/**
+ * The preview as a PNG, built once, with the site. @vercel/og is 0.11.1, the version Next.js 16.3
+ * bundled (1.0.3 fails under Node 26 with "Dynamic require of fs is not supported"), loaded here so
+ * that only the build loads it.
+ */
+export async function loader() {
+  const { ImageResponse } = await import('@vercel/og');
   const fonts = await Promise.all([
     font('IBMPlexSans-SemiBold.ttf', SANS, 600),
     font('IBMPlexMono-Regular.ttf', MONO, 400),
     font('IBMPlexMono-Medium.ttf', MONO, 500),
   ]);
-  return new ImageResponse(<Card />, { ...size, fonts });
+  return new ImageResponse(<Card />, { ...ogSize, fonts });
 }

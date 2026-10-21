@@ -1,6 +1,5 @@
 node_modules/
-.next/
-out/
 .source/
+.react-router/
+build/
 *.tsbuildinfo
-next-env.d.ts

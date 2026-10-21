@@ -1,0 +1,278 @@
+---
+title: "Setup"
+---
+
+## Setup
+
+<AgentPrompt>
+
+```text
+Set up Motherload in this project. Motherload lets TypeScript
+import data files as typed modules (.toml, .yaml, .json5, .jsonc,
+.env, .csv, .tsv, .txt and .md), and a JSON Schema in a
+.schema.jsonc file as its type and a validator. Its docs are one
+page, https://motherload.dev: follow the section linked at each
+step. A working project that imports every format, with its
+tsconfig.json and main.ts:
+https://github.com/colinhacks/motherload/tree/main/lab/basic
+It runs from the repository's own build: install from npm.
+
+1. Check the requirements and install motherload and TypeScript
+   7.1 (typescript@next): https://motherload.dev/#install
+   A project that reads only some formats can install each
+   format's package instead:
+   https://motherload.dev/#one-format-at-a-time
+2. Add Motherload to tsconfig.json as a content mapper, listing
+   the extensions the project imports, add motherload/client to
+   its types, and add a typecheck script that runs
+   tsc --noEmit --runExternalCode:
+   https://motherload.dev/#typescript
+3. Make the imports load wherever the project runs code, with
+   Node's --import (https://motherload.dev/#node) or the preload
+   or plugin for Nub or esbuild (https://motherload.dev/#plugins).
+4. Set up the editor the project uses:
+   https://motherload.dev/#editors
+5. Import a data file and use its values. What each format's
+   module holds: https://motherload.dev/#loaders
+6. Run the typecheck script. Invalid data in a file is a type
+   error at its line and column: https://motherload.dev/#errors
+```
+
+</AgentPrompt>
+
+Install Motherload, add it to `tsconfig.json`, then add it to each tool that loads your code.
+
+### Install
+
+```sh
+npm install -D motherload
+# content mappers are in the TypeScript 7.1 dev builds
+npm install -D typescript@next
+```
+
+The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`. Each format is also a package of its own, for a project that reads only some of them: see [One format at a time](#one-format-at-a-time).
+
+### TypeScript
+
+Add Motherload to `tsconfig.json`, with the extensions it should own. The `types` entry types `?raw` imports.
+
+```jsonc title="tsconfig.json"
+{
+  "compilerOptions": {
+    "types": ["motherload/client"] // [!code ++]
+  },
+  "contentMappers": [ // [!code ++]
+    { // [!code ++]
+      "package": "motherload", // [!code ++]
+      "extensions": [ // [!code ++]
+        ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", // [!code ++]
+        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc" // [!code ++]
+      ] // [!code ++]
+    } // [!code ++]
+  ] // [!code ++]
+}
+```
+
+Type-check with `--runExternalCode`. Without the flag, `tsc` ignores content mappers.
+
+```json title="package.json"
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit --runExternalCode"
+  }
+}
+```
+
+### Editors
+
+The editor needs the TypeScript 7.1 language server, with content mappers on.
+
+<Accordions type="multiple">
+<Accordion title="VS Code" id="editor-vscode">
+
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
+2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
+
+   ```json title=".vscode/settings.json"
+   {
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript"
+   }
+   ```
+
+3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
+
+To suggest the extension to everyone who opens the project:
+
+```json title=".vscode/extensions.json"
+{ "recommendations": ["TypeScriptTeam.native-preview"] }
+```
+
+</Accordion>
+<Accordion title="Cursor" id="editor-cursor">
+
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
+2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
+
+   ```json title=".vscode/settings.json"
+   {
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript"
+   }
+   ```
+
+3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
+
+To suggest the extension to everyone who opens the project:
+
+```json title=".vscode/extensions.json"
+{ "recommendations": ["TypeScriptTeam.native-preview"] }
+```
+
+</Accordion>
+<Accordion title="Zed" id="editor-zed">
+
+1. Install the **TypeScript Language Server** extension by Zed Industries (search for "tsgo").
+2. Point it at the project's TypeScript, with content mappers on:
+
+   ```jsonc title=".zed/settings.json"
+   {
+     "languages": {
+       "TypeScript": {
+         "language_servers": [
+           "typescript-ls",
+           "!vtsls",
+           "!typescript-language-server",
+           "..."
+         ]
+       },
+       "TSX": {
+         "language_servers": [
+           "typescript-ls",
+           "!vtsls",
+           "!typescript-language-server",
+           "..."
+         ]
+       }
+     },
+     "lsp": {
+       "typescript-ls": {
+         // the extension's own download is TypeScript 7.0, which has no content mappers
+         "binary": {
+           "path": "node_modules/typescript/bin/tsc",
+           "arguments": ["--lsp", "--stdio"]
+         },
+         "initialization_options": { "runExternalCode": true }
+       }
+     }
+   }
+   ```
+
+3. Trust the folder. In restricted mode, Zed starts no language server.
+
+After a change to `binary.path`, close the window and open it again. In a monorepo whose TypeScript is installed at the root, `binary.path` points at that copy.
+
+</Accordion>
+</Accordions>
+
+### Node
+
+Node loads Motherload with `--import`, which turns each data file into a module as it loads:
+
+```sh
+node --import motherload/register main.ts
+```
+
+### Plugins
+
+Everywhere else, a plugin turns each data file into a module: Nub loads Motherload's preload from its config file, and a bundler builds each module at build time, so a bundled app needs no `--import` and no preload, and Motherload stays a development dependency.
+
+<Accordions type="multiple">
+<Accordion title="Nub" id="setup-nub">
+
+Nub takes the preload in `nub.jsonc`, so `nub main.ts` needs no flag:
+
+```jsonc title="nub.jsonc"
+{
+  "preload": ["motherload/register"]
+}
+```
+
+</Accordion>
+<Accordion title="esbuild" id="setup-esbuild">
+
+```js title="build.mjs"
+import * as esbuild from "esbuild";
+import motherload from "motherload/esbuild";
+
+await esbuild.build({
+  entryPoints: ["main.ts"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  plugins: [motherload()],
+  outfile: "dist/main.mjs",
+});
+```
+
+Use `build`: esbuild runs plugins in `build` only, and `buildSync` throws.
+
+</Accordion>
+</Accordions>
+
+### One format at a time
+
+`motherload` is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
+
+| Package | Extensions |
+| --- | --- |
+| `@motherload/toml` | `.toml` |
+| `@motherload/yaml` | `.yaml`, `.yml` |
+| `@motherload/json5` | `.json5` |
+| `@motherload/jsonc` | `.jsonc` |
+| `@motherload/env` | `.env` |
+| `@motherload/csv` | `.csv`, `.tsv` |
+| `@motherload/txt` | `.txt` |
+| `@motherload/md` | `.md` |
+| `@motherload/schema` | `.schema.jsonc` |
+
+A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers`, its `client` in `types`, and its preload or its esbuild plugin. A project that reads YAML and TOML:
+
+```sh
+npm install -D @motherload/yaml @motherload/toml
+```
+
+```jsonc title="tsconfig.json"
+{
+  "compilerOptions": {
+    "types": ["@motherload/yaml/client", "@motherload/toml/client"] // [!code ++]
+  },
+  "contentMappers": [ // [!code ++]
+    { "package": "@motherload/yaml", "extensions": [".yaml", ".yml"] }, // [!code ++]
+    { "package": "@motherload/toml", "extensions": [".toml"] } // [!code ++]
+  ] // [!code ++]
+}
+```
+
+```sh tab="Node"
+node --import @motherload/yaml/register --import @motherload/toml/register main.ts
+```
+
+```js tab="esbuild"
+import * as esbuild from "esbuild";
+import yaml from "@motherload/yaml/esbuild";
+import toml from "@motherload/toml/esbuild";
+
+await esbuild.build({
+  entryPoints: ["main.ts"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  plugins: [yaml(), toml()],
+  outfile: "dist/main.mjs",
+});
+```
+
+- **One package per extension.** Two packages that claim one extension fail the type check, so list `motherload` or a format's package for each extension, never both.
+- **A process per package.** TypeScript runs one content mapper process per package, so two format packages are two processes; `motherload` serves every format from one.
+- **A schema stays a schema beside `.jsonc`.** With `@motherload/jsonc` and `@motherload/schema` both listed, TypeScript gives `user.schema.jsonc` to the entry with the longer suffix, and the preloads and plugins do the same, in any order.

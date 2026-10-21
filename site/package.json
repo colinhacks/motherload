@@ -3,28 +3,34 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3312",
-    "build": "next build",
-    "start": "next start --port 3312"
+    "dev": "react-router dev",
+    "build": "react-router typegen && tsc && react-router build",
+    "start": "vite preview --outDir build/client --port 3312"
   },
   "dependencies": {
+    "@react-router/node": "8.5.0",
     "docs-kit": "link:./docs-kit",
     "fumadocs-core": "^16.15.1",
     "fumadocs-mdx": "^15.3.1",
     "fumadocs-twoslash": "3.3.1",
     "fumadocs-ui": "^16.15.1",
-    "next": "^16.3.2",
+    "isbot": "^5.2.2",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router": "8.5.0"
   },
   "devDependencies": {
+    "@mdx-js/mdx": "3.1.1",
+    "@react-router/dev": "8.5.0",
     "@shikijs/twoslash": "4.4.3",
-    "@tailwindcss/postcss": "^4.1.0",
+    "@tailwindcss/vite": "^4.1.0",
     "@types/mdx": "^2.0.13",
     "@types/node": "^26.3.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@vercel/og": "0.11.1",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vite": "8.3.4"
   }
 }

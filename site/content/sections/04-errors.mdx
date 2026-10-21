@@ -1,0 +1,27 @@
+---
+title: "Errors"
+---
+
+## Errors
+
+Invalid data in a file is a type error. Each loader hands its parser's error to the TypeScript compiler with the file, line, column, span and message, so `tsc` and the editor report it where it is:
+
+```ansi title="Terminal"
+$ tsc --noEmit --runExternalCode
+[96mconfig.toml[0m:[93m3[0m:[93m1[0m - [91merror[0m[90m motherload1: [0mInvalid TOML document: trying to redefine an already defined table or value
+
+[90m3[0m port = 9090
+[90m [0m [91m~[0m
+
+[96musers.csv[0m:[93m3[0m:[93m1[0m - [91merror[0m[90m motherload1: [0mThis row has 3 fields; the header has 2.
+
+[90m3[0m Grace,grace@example.com,extra
+[90m [0m [91m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Found 2 errors in 2 files.
+
+Errors  Files
+     1  config.toml[90m:3[0m
+     1  users.csv[90m:3[0m
+```

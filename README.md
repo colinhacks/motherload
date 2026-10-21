@@ -52,12 +52,12 @@ node --import motherload/register main.ts
 
 Each tool has its setup in the docs:
 
-- [Node.js](site/content/docs/index.mdx#node): `--import motherload/register`
-- [Nub](site/content/docs/index.mdx#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
-- [esbuild](site/content/docs/index.mdx#plugins): `plugins: [motherload()]` from `motherload/esbuild`
-- [VS Code, Cursor and Zed](site/content/docs/index.mdx#editors): the TypeScript 7.1 language server, with content mappers on
+- [Node.js](site/content/sections/02-setup.mdx#node): `--import motherload/register`
+- [Nub](site/content/sections/02-setup.mdx#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
+- [esbuild](site/content/sections/02-setup.mdx#plugins): `plugins: [motherload()]` from `motherload/esbuild`
+- [VS Code, Cursor and Zed](site/content/sections/02-setup.mdx#editors): the TypeScript 7.1 language server, with content mappers on
 
-Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](site/content/docs/index.mdx#one-format-at-a-time).
+Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](site/content/sections/02-setup.mdx#one-format-at-a-time).
 
 ## Loaders
 

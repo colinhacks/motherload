@@ -3,6 +3,17 @@
    collapsibles, tabs and the cursors. Below it, only what is Motherload's own: its palette, the
    lantern's glow and the showcase. */
 @import 'docs-kit/style.css';
+@import './fonts.css';
+
+/* The page's three faces (app/fonts.css, the files next/font served before the site left Next.js),
+   as the variables docs-kit's stylesheet reads: IBM Plex Sans for text, behind it its size-adjusted
+   Arial; IBM Plex Mono for code, behind it the system's monospace; Caveat for the "Leave a star!"
+   note. IBM Plex, one family for text and code, is the maintainer's choice of 2026-10-06. */
+:root {
+  --font-text: 'IBM Plex Sans', 'IBM Plex Sans Fallback';
+  --font-code: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-hand: 'Caveat', 'Caveat Fallback';
+}
 
 /* ── Motherload: Lantern ───────────────────────────────────────────────────────
    The colours are the maintainer's choice of 2026-10-06, "Lantern": by day, ash
@@ -90,7 +101,7 @@
   opacity: 0.9;
 }
 
-/* ── The showcase (app/showcase/page.tsx) ─────────────────────────────────────
+/* ── The showcase (app/routes/showcase.tsx) ─────────────────────────────────────
    An unlisted page for screenshots: each of the hero's imports as one block,
    main.ts and its file side by side, in a frame that wraps the block with the
    padding set in the bar. The block resizes from its edges and its divider

@@ -7,6 +7,7 @@ import {
   Children,
   cloneElement,
   createContext,
+  Fragment,
   isValidElement,
   use,
   useEffect,
@@ -21,7 +22,7 @@ import {
 } from 'react';
 
 /*
- * The client half of the showcase page (app/showcase/page.tsx): the bar above the frames; the
+ * The client half of the showcase page (app/routes/showcase.tsx): the bar above the frames; the
  * frames, each example as a split block and as code tabs, whose blocks resize from their edges and
  * whose split panes divide where the divider is dragged; and Twoslash's hover popups made to stay
  * open when their name is clicked, so a type can be screenshotted without holding the pointer still.
@@ -154,6 +155,14 @@ function swallowNextClick() {
   setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 0);
 }
 
+/**
+ * The rendered code blocks among an element's children. The compiled MDX wraps each block in a
+ * fragment, which a server component passed to this client one flattened when the site ran on
+ * Next.js; here they are unwrapped.
+ */
+const blocks = (children: ReactNode): ReactNode[] =>
+  Children.toArray(children).flatMap((child) => (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment ? blocks(child.props.children) : [child]));
+
 /** A rendered code block's file name, from rehype-code's `title`. */
 const titleOf = (pane: ReactElement) => String((pane.props as { title?: unknown }).title ?? '');
 
@@ -162,7 +171,7 @@ const titleOf = (pane: ReactElement) => String((pane.props as { title?: unknown 
  * the docs page's hero shows its files. Both are drawn from the same two rendered panes.
  */
 export function Shot({ file, children }: { file: string; children: ReactNode }) {
-  const panes = Children.toArray(children).filter(isValidElement);
+  const panes = blocks(children).filter(isValidElement);
   return (
     <>
       <Frame storage={`motherload-showcase-layout:${file}`} label={`${file} · split`} kind="split">
@@ -300,7 +309,7 @@ function Frame({ storage, label, kind, children }: { storage: string; label: str
           <div className="ml-grip" data-grip="corner" onPointerDown={drag('corner')} />
         </div>
         <div className="ml-shot-logo" aria-hidden>
-          {/* public/motherload.svg, the same drawing as app/icon.svg. */}
+          {/* public/motherload.svg, the same drawing as public/icon.svg. */}
           <img src="/motherload.svg" alt="" width={20} height={20} />
           Motherload
         </div>

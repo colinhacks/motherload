@@ -103,7 +103,7 @@ export function docsTwoslash(options: DocsTwoslashOptions = {}) {
   const key = createHash('sha256').update(JSON.stringify(twoslash)).update(lockfile(site)).digest('hex').slice(0, 12);
   const transformer = transformerTwoslash({
     twoslashOptions: twoslash,
-    typesCache: createFileSystemTypesCache({ cwd: site, dir: `.next/cache/twoslash/${key}` }),
+    typesCache: createFileSystemTypesCache({ cwd: site, dir: `node_modules/.cache/docs-kit/twoslash/${key}` }),
     rendererRich: {
       processHoverInfo: (info) => {
         const text = defaultHoverInfoProcessor(info);

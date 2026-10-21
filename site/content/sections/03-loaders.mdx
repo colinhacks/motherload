@@ -1,0 +1,255 @@
+---
+title: "Loaders"
+---
+
+## Loaders
+
+A loader turns a file into a module. Each file is parsed when the module is built, so a bundle holds the data as an object literal and no parser.
+
+The default export is the file's data, typed as `as const` would type it:
+
+```ts twoslash title="main.ts"
+import plans from "./plans.toml";
+
+const pro = plans.pro;
+//    ^?
+```
+
+Add `?raw` to an import for the file's text:
+
+```ts twoslash title="main.ts"
+import text from "./plans.toml?raw";
+//     ^?
+```
+
+### `.toml`
+
+Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml). TOML has four kinds of date. Only an offset date-time names an instant, so only that one becomes a `Date`:
+
+```ts twoslash tab="main.ts"
+import release from "./release.toml";
+//     ^?
+```
+
+```toml tab="release.toml"
+published = 1979-05-27T07:32:00Z   # offset date-time
+day = 1979-05-27                   # local date
+at = 07:32:00                      # local time
+downloads = 9007199254740993       # past 2^53
+ratio = inf
+```
+
+A local date-time, date or time is its ISO text. An integer that a `number` cannot hold exactly is a `bigint`.
+
+### `.yaml`
+
+Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/), so `yes` is a string. Merge keys (`<<`) are read, and a duplicate key is an error. A `.yml` file is read the same way.
+
+```ts twoslash tab="main.ts"
+import app from "./app.yaml";
+
+const production = app.production;
+//    ^?
+const enabled = app.enabled;
+//    ^?
+```
+
+```yaml tab="app.yaml"
+defaults: &defaults
+  retries: 3
+  timeout: 1.5
+production:
+  <<: *defaults
+  host: example.com
+enabled: yes
+```
+
+A file of several documents (`---`) is the list of them:
+
+```ts twoslash tab="main.ts"
+import deploy from "./deploy.yaml";
+//     ^?
+```
+
+```yaml tab="deploy.yaml"
+kind: Service
+---
+kind: Deployment
+replicas: 2
+```
+
+### `.json5`
+
+Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser.
+
+```ts twoslash tab="main.ts"
+import data from "./data.json5";
+//     ^?
+```
+
+```json5 tab="data.json5"
+{
+  unquoted: 'single quotes',
+  hex: 0x10,
+  limit: Infinity,
+  list: [1, 2, 3,],
+}
+```
+
+### `.jsonc`
+
+Motherload reads JSON with comments with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser). Comments and trailing commas are allowed.
+
+```ts twoslash tab="main.ts"
+import settings from "./settings.jsonc";
+//     ^?
+```
+
+```jsonc tab="settings.jsonc"
+{
+  // the editor's font size
+  "editor.fontSize": 14,
+  "files.exclude": ["dist", "node_modules",],
+}
+```
+
+### `.csv`
+
+Motherload reads CSV with [csv-parse](https://csv.js.org/parse/). The first row names the columns, and each later row is an object of strings keyed by them:
+
+```ts twoslash tab="main.ts"
+import users from "./users.csv";
+//     ^?
+```
+
+```csv tab="users.csv"
+name,email,zip
+Ada Lovelace,ada@example.com,02134
+"Hopper, Grace",grace@example.com,10001
+```
+
+Values stay as written, so a zip code such as `02134` keeps its leading zero. A quoted field can hold commas, doubled quotes and line breaks. Blank lines are skipped. A row whose field count differs from the header's is an error, as is an empty or repeated column name.
+
+### `.tsv`
+
+A `.tsv` file is read the same way, with a tab between fields. Quotes are ordinary characters, so a field is exactly the text between two tabs.
+
+```ts twoslash tab="main.ts"
+import scores from "./scores.tsv";
+//     ^?
+```
+
+```tsv tab="scores.tsv"
+player	score
+Ada	42
+Grace	37
+```
+
+### `.txt`
+
+Importing a `.txt` file gives its text as a string.
+
+```ts twoslash tab="main.ts"
+import notes from "./notes.txt";
+//     ^?
+```
+
+```txt tab="notes.txt"
+Notes from the lab.
+A second line.
+```
+
+### `.md`
+
+Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is (`{}` for a file without one), and `md`, the Markdown body without the frontmatter:
+
+```ts twoslash tab="main.ts"
+import post from "./post.md";
+//     ^?
+```
+
+```md tab="post.md"
+---
+title: Hello, world
+draft: false
+tags: [data, types]
+---
+# Hello
+
+The body of the post.
+```
+
+Each part is also a named export. A page that lists posts can import only `frontmatter` from each, and the bundle leaves the bodies out.
+
+### `.schema.jsonc`
+
+A `.schema.jsonc` file is a schema, not data. Its module is the type the schema describes and a validator for it.
+
+```ts twoslash tab="main.ts"
+declare const input: unknown;
+// ---cut---
+import user, { type Type as User } from "./user.schema.jsonc";
+
+const ada = user.parse(input);       // or a TypeError listing every issue
+//    ^?
+
+user.is(input);                      // input is User
+user["~standard"].validate(input);   // Standard Schema v1
+user["~standard"].jsonSchema;        // Standard JSON Schema v1
+user.schema;                         // the schema, as a literal type
+```
+
+```jsonc tab="user.schema.jsonc"
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "email": { "type": "string", "format": "email" },
+    "role": { "enum": ["admin", "member"] }
+  },
+  "required": ["name", "role"],
+  "additionalProperties": false
+}
+```
+
+The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev), or that wants the schema as JSON Schema: `~standard.jsonSchema` gives it in draft-07 or 2020-12, with every file it refers to folded in. Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
+
+- **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`. A schema with no `$schema` is draft-07. A keyword the draft does not define is ignored, by the validator and the type alike: another draft's, such as `prefixItems` in draft-07, a vendor's, such as `x-label`, and ajv's own, `$async` and `nullable`.
+- **Types:** a schema's type admits exactly what the schema allows. Without `"type": "object"`, `properties` applies to objects alone and every other value passes, so `{ "properties": { "a": { "type": "string" } } }` is `{ a?: string } | unknown[] | string | number | boolean | null`; declare the type where you mean one.
+- **Formats:** checked, with [ajv-formats](https://ajv.js.org/packages/ajv-formats.html).
+- **References:** a `$ref` within the file is followed, and so is one to another schema file, by a path relative to this one: `./address.schema.jsonc` is that file's `Type`, and `./shared.schema.jsonc#/$defs/tag` the type it declares for `tag`, each imported from that file's module, and the validator checks the other file's rules too. A `$ref` to a URL is an error.
+- **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
+
+<Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
+
+### `.env`
+
+Importing a `.env` file loads it: its variables are set on `process.env` when the module runs, with no dotenv and no `--env-file`. The import also adds each of them to the type of `process.env`, across the whole project, so the editor completes their names and each one is a `string`:
+
+```ts twoslash tab="main.ts"
+// @errors: 2345
+import "./.env";
+
+process.env.D;
+//           ^|
+
+const url = new URL(process.env.DATABASE_URL);
+//                              ^?
+const typo = new URL(process.env.DATABSE_URL);
+```
+
+```sh tab=".env"
+DATABASE_URL=postgres://localhost/app
+PORT=3000
+```
+
+A name the file does not set keeps the type `@types/node` gives every variable, `string | undefined`, so a misspelled one is an error wherever a string is needed.
+
+A variable the environment already sets keeps its value. No value from the file is in the module or in a bundle. A bundle reads the file from the working directory when it runs, and loads nothing if the file is absent.
+
+The `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.env`. A file such as `.env.local` ends in `.local`, which the entry does not reach.
+
+### `.sql`
+
+To import type-safe SQL files, use Motherload's sister project, [Reylo](https://reylo.dev).

@@ -7,11 +7,13 @@
   "exports": {
     "./style.css": "./src/style.css",
     "./next": "./src/next.mjs",
+    "./vite": "./src/vite.ts",
     "./mdx-dev-loader": "./src/mdx-dev-loader.mjs",
     "./mdx": "./src/mdx/index.ts",
     "./remark-sections": "./src/mdx/remark-sections.ts",
     "./shell": "./src/components/shell.tsx",
     "./root": "./src/components/root.tsx",
+    "./document": "./src/components/document.tsx",
     "./components": "./src/components/index.ts",
     "./chrome": "./src/components/chrome.tsx"
   },
@@ -20,7 +22,9 @@
     "README.md"
   ],
   "peerDependencies": {
+    "@react-router/dev": "^8.5.0",
     "@shikijs/twoslash": "^4.4.3",
+    "@tailwindcss/vite": "^4.1.0",
     "fumadocs-core": "^16.15.1",
     "fumadocs-mdx": "^15.3.1",
     "fumadocs-twoslash": "3.3.1",
@@ -28,7 +32,9 @@
     "next": "^16.3.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwindcss": "^4.1.0"
+    "react-router": "^8.5.0",
+    "tailwindcss": "^4.1.0",
+    "vite": "^8.3.4"
   },
   "scripts": {
     "sync": "node src/sync.mjs"

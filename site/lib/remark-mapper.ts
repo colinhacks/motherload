@@ -1,5 +1,9 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { createProcessor } from '@mdx-js/mdx';
+import { remarkCodeTab } from 'fumadocs-core/mdx-plugins';
+import { pageFiles } from './page-files.ts';
 
 // Twoslash runs TypeScript's JavaScript API (6.0, from fumadocs-twoslash), which cannot run a
 // content mapper. So each `ts twoslash` block that imports a file shown on the page (a code block
@@ -31,27 +35,59 @@ const DATA = /(\.schema\.jsonc|\.schema\.json5|\.toml|\.ya?ml|\.json5|\.jsonc|\.
 // `import config from "./config.toml"` and a bare `import "./.env"`.
 const IMPORT = /\b(?:from|import)\s+["']\.\/([^"']+)["']/g;
 
+/** A file of the page as Fumadocs has it when this plugin runs: MDX parsed, then code tabs grouped. */
+function parse(file: string): Node {
+  // fumadocs-mdx takes the frontmatter off before it parses.
+  const text = readFileSync(file, 'utf8').replace(/^---\n[\s\S]*?\n---\n/, (m) => '\n'.repeat(m.split('\n').length - 1));
+  const processor = createProcessor();
+  const tree = processor.parse(text) as unknown as Node;
+  (remarkCodeTab as unknown as (this: unknown) => (tree: Node) => void).call(processor)(tree);
+  return tree;
+}
+
+const parsed = new Map<string, { stamp: string; blocks: Code[] }>();
+
+/** The code blocks of one of the page's other files, parsed again only when the file changes. */
+function blocksOf(file: string): Code[] {
+  const stat = statSync(file);
+  const stamp = `${stat.mtimeMs}:${stat.size}`;
+  const hit = parsed.get(file);
+  if (hit?.stamp === stamp) return hit.blocks;
+  const blocks = codeBlocks(parse(file));
+  parsed.set(file, { stamp, blocks });
+  return blocks;
+}
+
 export function remarkMapper() {
   // The build runs in site/.
   const site = process.cwd();
-  return (tree: Node) => {
-    // Each import is typed from the nearest block above it with the file's name, so a page can show
-    // a file twice, such as a working config.toml and then a broken one; failing that, from the
-    // first one below it, as in a group of tabs whose first tab is main.ts.
-    const blocks = codeBlocks(tree);
+  return (tree: Node, file: { path?: string; data?: Record<string, unknown> }) => {
+    // The page is several files, shown in order (lib/page-files.ts): its opening, then a file per
+    // section. Each import is typed from the nearest block above it with the file's name, across
+    // all of them, so a page can show a file twice, such as a working config.toml and then a broken
+    // one; failing that, from the first one below it, as in a group of tabs whose first tab is
+    // main.ts.
+    const own = codeBlocks(tree);
+    const page = pageFiles(site);
+    const at = file.path ? page.indexOf(path.resolve(file.path)) : -1;
+    const around = (list: string[]) => list.flatMap((f) => blocksOf(f).map((node) => ({ node, file: f })));
+    const before = at < 0 ? [] : around(page.slice(0, at));
+    const blocks = [...before, ...own.map((node) => ({ node, file: undefined as string | undefined })), ...(at < 0 ? [] : around(page.slice(at + 1)))];
     const fileAt = (name: string, index: number) => {
-      const isFile = (node: Code) => titleOf(node) === name;
-      const before = blocks.slice(0, index).findLast(isFile);
-      return (before ?? blocks.slice(index + 1).find(isFile))?.value;
+      const isFile = (block: (typeof blocks)[number]) => titleOf(block.node) === name;
+      return blocks.slice(0, index).findLast(isFile) ?? blocks.slice(index + 1).find(isFile);
     };
+    // A file another section shows is a dependency, so an edit to it types this section again.
+    const compiler = file.data?._compiler as { addDependency(file: string): void } | undefined;
     const typed: { node: Code; imports: { name: string; text: string }[] }[] = [];
-    blocks.forEach((node, index) => {
+    own.forEach((node, i) => {
       if (node.lang !== 'ts' || !node.meta?.includes('twoslash')) return;
       const imports = [...new Set([...node.value.matchAll(IMPORT)].map((m) => m[1]!))]
         .filter((name) => DATA.test(name))
         .flatMap((name) => {
-          const text = fileAt(name, index);
-          return text === undefined ? [] : [{ name, text }];
+          const shown = fileAt(name, before.length + i);
+          if (shown?.file) compiler?.addDependency(shown.file);
+          return shown === undefined ? [] : [{ name, text: shown.node.value }];
         });
       if (imports.length) typed.push({ node, imports });
     });

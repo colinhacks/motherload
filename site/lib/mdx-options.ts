@@ -11,8 +11,8 @@ type Environment = Parameters<ReturnType<typeof applyMdxPreset>>[0];
  */
 export async function mdxOptions(environment: Environment) {
   const { docsMdxOptions } = await import('docs-kit/mdx');
-  const { remarkMapper } = await import('./remark-mapper');
-  const { motherloadTwoslash } = await import('./twoslash');
+  const { remarkMapper } = await import('./remark-mapper.ts');
+  const { motherloadTwoslash } = await import('./twoslash.ts');
   return docsMdxOptions(environment, {
     remarkPlugins: [remarkMapper],
     twoslash: motherloadTwoslash(),

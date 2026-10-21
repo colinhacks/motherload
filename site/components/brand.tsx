@@ -3,7 +3,7 @@ export function Brand() {
   return (
     <div className="flex items-center gap-2.5">
       <a href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight text-fd-headings">
-        {/* public/motherload.svg, the same drawing as app/icon.svg. Raised 0.5px. Centred on the
+        {/* public/motherload.svg, the same drawing as public/icon.svg. Raised 0.5px. Centred on the
             line box, the bars' ink hung 2.25px below the baseline. Raised 1.5px, which matched the
             ink's centre of mass to the word's within 0.12px, the bars still looked high to the
             maintainer, 2026-10-20: "move the Motherload icon down by a pixel relative to the
