@@ -1,7 +1,7 @@
 <p align="center">
-  <h1 align="center"><img src="https://motherload.dev/motherload.svg" width="56" height="56" alt=""><br/>Motherload</h1>
+  <h1 align="center"><img src="https://raw.githubusercontent.com/colinhacks/motherload/main/site/public/motherload.svg" width="56" height="56" alt=""><br/>Motherload</h1>
   <p align="center">
-    Import a data file and get a typed module
+    Import data files into TypeScript, fully typed
     <br/>
     by <a href="https://x.com/colinhacks">@colinhacks</a>
   </p>
