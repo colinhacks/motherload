@@ -10,6 +10,7 @@ import "./.env";
 import user, { type Type as User } from "./user.schema.jsonc";
 import point, { type Type as Point } from "./point.schema.json5";
 import team, { type Type as Team } from "./team.schema.jsonc";
+import event, { type Type as Event } from "./event.schema.jsonc";
 import plain from "./plain.json" with { type: "json" };
 import users from "./users.csv";
 import scores from "./scores.tsv";
@@ -60,6 +61,21 @@ expect<Equal<typeof point.schema.properties.label.maxLength, 16>>();
 expect<Equal<Team, { lead: User; members: User[]; office?: { city: string; manager?: User } }>>();
 // @ts-expect-error a member is a User, whose role is required
 const noRole: Team = { lead: { name: "Ada", role: "admin" }, members: [{ name: "Grace" }] };
+// A oneOf whose variants a `const` tells apart narrows: each case sees its own variant, and with no
+// default the switch type-checks only because it is exhaustive.
+const describe = (e: Event): string => {
+  switch (e.kind) {
+    case "click":
+      return `${e.x},${e.y}`;
+    case "visit":
+      return e.url;
+  }
+};
+const clickX = (e: Event): number => {
+  if (e.kind === "click") return e.x;
+  // @ts-expect-error past the click branch e is a visit, whose x is not known to be a number
+  return e.x;
+};
 
 // @ts-expect-error port is a number
 const wrong: string = config.port;
@@ -109,5 +125,15 @@ console.log(
       team.is({ lead: { name: "Ada", role: "admin" }, members: [{ name: "", role: "member" }] }),
       team.is({ lead: { name: "Ada", role: "admin" }, members: [], office: { city: "" } }),
     ],
+    // A click and a visit; then a date-time, a uri and a variant that fail (ajv-formats' function formats, inlined).
+    events: [
+      event.is({ at: "2026-10-20T09:00:00Z", kind: "click", x: 1, y: 2 }),
+      event.is({ at: "2026-10-20T09:00:00Z", kind: "visit", url: "https://example.com/a" }),
+      event.is({ at: "yesterday", kind: "click", x: 1, y: 2 }),
+      event.is({ at: "2026-10-20T09:00:00Z", kind: "visit", url: "not a uri" }),
+      event.is({ at: "2026-10-20T09:00:00Z", kind: "click", url: "https://example.com/a" }),
+    ],
+    described: describe(event.parse({ at: "2026-10-20T09:00:00Z", kind: "click", x: 3, y: 4 })),
+    clickX: clickX(event.parse({ at: "2026-10-20T09:00:00Z", kind: "click", x: 5, y: 6 })),
   }),
 );

@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
+import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
 import { collect, forAjv, parseSchemaFile, type Files } from "./refs.ts";
 import { schemaDeclarations } from "./schema-types.ts";
@@ -40,7 +41,7 @@ function ajvEntry(schema: Value): { entry: string } | { error: string } {
   return { error: `ajv validates JSON Schema drafts 06, 07, 2019-09 and 2020-12; this schema declares ${declared}.` };
 }
 
-type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?: string): unknown };
+type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?: string): unknown; addMetaSchema(schema: unknown): unknown };
 
 /**
  * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
@@ -60,6 +61,9 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
   // allErrors: a Standard Schema result lists every issue. strict: false and no logger: a schema
   // written for another validator (unknown keywords, formats) still compiles, as the spec allows.
   const ajv = new AjvClass({ allErrors: true, strict: false, logger: false, ...(standalone ? { code: { source: true } } : {}) });
+  // ajv's default class knows draft-07's meta-schema alone; draft-06's is added for a schema, or a
+  // file it refers to, that declares it (ajv's documentation, "JSON Schema draft-06").
+  if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
   try {
     const formats = require("ajv-formats");
     (formats.default ?? formats)(ajv);
@@ -105,7 +109,9 @@ export function schemaTypes(source: string, path: string, typesFrom = "@motherlo
   const problems: Problem[] = [...files.problems];
   const loaded = loadAjv(path, schema, false);
   // A reference that cannot be followed is the problem; ajv would only add that it cannot resolve it.
-  if ("ajv" in loaded && !problems.length) {
+  // A draft ajv does not validate is reported here too, where it was found only when the module was built.
+  if ("error" in loaded) problems.push(problem(loaded.error));
+  else if (!problems.length) {
     const compiled = compile(loaded.ajv, files, path);
     if ("problem" in compiled) problems.push(compiled.problem);
   }
@@ -211,9 +217,11 @@ export function schemaCode(source: string, path: string): { code: string; proble
   } catch (error) {
     return failed([problem(`The schema is not valid: ${(error as Error).message}`)], files.watched);
   }
-  const entryFile = loaded.require.resolve("ajv");
+  // The standalone code requires ajv's run-time helpers and ajv-formats' format functions
+  // (`date-time`, `uri`), both dependencies of this package, so they resolve from this module:
+  // from ajv's own directory ajv-formats does not resolve, and was left a bare `require`.
   return {
-    code: [inline(standalone, entryFile), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, ""].join("\n"),
+    code: [inline(standalone, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, ""].join("\n"),
     problems: [],
     watchFiles: files.watched,
   };

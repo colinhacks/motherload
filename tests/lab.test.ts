@@ -42,6 +42,8 @@ const TABLES = '"zip":"02134","grace":"Hopper, Grace","score":"37","notes":"Note
 const POINTS = '"points":[true,false,false]';
 // lab/basic/team.schema.jsonc: valid, then failing user.schema.jsonc's and shared/place.schema.jsonc's rules through its $refs.
 const TEAM = '"team":[true,false,false]';
+// lab/basic/event.schema.jsonc: a click and a visit, then a bad date-time, a bad uri and a click with a visit's field; then main.ts's narrowing functions.
+const EVENTS = '"events":[true,true,false,false,false],"described":"3,4","clickX":5';
 
 test("lab/basic runs under the preload", () => {
   const { status, out } = run(process.execPath, ["--import", "motherload/register", "main.ts"], `${ROOT}lab/basic`);
@@ -51,6 +53,7 @@ test("lab/basic runs under the preload", () => {
   assert.ok(out.includes(TABLES), out);
   assert.ok(out.includes(POINTS), out);
   assert.ok(out.includes(TEAM), out);
+  assert.ok(out.includes(EVENTS), out);
   assert.ok(out.includes('"invalid":"name: must NOT have fewer than 1 characters; email: must match format \\"email\\"; role: must be equal to one of the allowed values"'), out);
 });
 
@@ -59,7 +62,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/basic`);
   assert.equal(built.status, 0, built.out);
   // team.schema.jsonc is one input: the schemas it refers to are compiled into its validator.
-  assert.match(built.out, /errors=0 inputs=16 node_modules=0/);
+  assert.match(built.out, /errors=0 inputs=17 node_modules=0/);
   // The bundle reads .env when it runs; no value from the file is in it.
   assert.doesNotMatch(readFileSync(`${ROOT}lab/basic/dist/main.mjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
   const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/basic`);
@@ -69,6 +72,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   assert.ok(ran.out.includes(TABLES), ran.out);
   assert.ok(ran.out.includes(POINTS), ran.out);
   assert.ok(ran.out.includes(TEAM), ran.out);
+  assert.ok(ran.out.includes(EVENTS), ran.out);
 });
 
 // lab/packages: three formats, each from its own package, with the JSONC package's hook and plugin

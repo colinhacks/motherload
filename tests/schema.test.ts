@@ -180,9 +180,31 @@ test("an invalid schema is a problem in both texts", () => {
   assert.match(schemaCode(invalid, PATH).problems[0]!.message, /not valid/);
 });
 
-test("draft-04 is refused with the drafts ajv validates", () => {
-  const { problems } = schemaCode(JSON.stringify({ $schema: "http://json-schema.org/draft-04/schema#", type: "string" }), PATH);
-  assert.match(problems[0]!.message, /drafts 06, 07, 2019-09 and 2020-12/);
+test("draft-04 is refused with the drafts ajv validates, by the type check as well as the build", () => {
+  const draft04 = JSON.stringify({ $schema: "http://json-schema.org/draft-04/schema#", type: "string" });
+  assert.match(schemaCode(draft04, PATH).problems[0]!.message, /drafts 06, 07, 2019-09 and 2020-12/);
+  assert.match(schemaTypes(draft04, PATH).problems[0]!.message, /drafts 06, 07, 2019-09 and 2020-12/);
+});
+
+test("each draft ajv validates compiles, draft-06 with the meta-schema ajv's default class lacks", async () => {
+  for (const $schema of ["http://json-schema.org/draft-06/schema#", "http://json-schema.org/draft-07/schema#", "https://json-schema.org/draft/2019-09/schema", "https://json-schema.org/draft/2020-12/schema"]) {
+    const schema = JSON.stringify({ $schema, type: "integer", minimum: 1 });
+    assert.deepEqual(schemaTypes(schema, PATH).problems, [], $schema);
+    const { code, problems } = schemaCode(schema, PATH);
+    assert.deepEqual(problems, [], $schema);
+    const { default: s } = await evaluate(code);
+    assert.deepEqual([s.is(2), s.is(0)], [true, false], $schema);
+  }
+});
+
+test("a format ajv-formats checks with a function, such as date-time or uri, is inlined: the module requires nothing", async () => {
+  const { code, problems } = schemaCode(JSON.stringify({ type: "object", properties: { at: { type: "string", format: "date-time" }, url: { type: "string", format: "uri" } } }), PATH);
+  assert.deepEqual(problems, []);
+  assert.doesNotMatch(code, /[^_\w]require\(/);
+  const { default: s } = await evaluate(code);
+  assert.equal(s.is({ at: "2026-10-20T22:14:00Z", url: "https://example.com/a" }), true);
+  assert.equal(s.is({ at: "yesterday" }), false);
+  assert.equal(s.is({ url: "not a uri" }), false);
 });
 
 test("a schema outside any project that installs ajv still validates: ajv is Motherload's own dependency", async () => {

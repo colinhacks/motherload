@@ -248,7 +248,8 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles): string {
           : ["items", "prefixItems", "additionalItems"].some((k) => Object.hasOwn(schema, k))
             ? ["array"]
             : [];
-      if (types.length) parts.push(union(types.map((name) => typeOf(name, schema, indent))));
+      // OpenAPI 3.0's `nullable: true`, which ajv reads beside `type`, admits null too.
+      if (types.length) parts.push(union([...types.map((name) => typeOf(name, schema, indent)), ...(schema["nullable"] === true ? ["null"] : [])]));
     }
     for (const member of Array.isArray(schema["allOf"]) ? schema["allOf"] : []) parts.push(emit(member, indent));
     for (const keyword of ["anyOf", "oneOf"]) {

@@ -44,6 +44,16 @@ test("const, enum, combinators, and the keywords that only narrow", () => {
   assert.equal(emit({ type: "string", allOf: [false] }), "export type Type = never;");
   assert.equal(emit({}), "export type Type = unknown;");
   assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n}");
+  // OpenAPI 3.0's `nullable`, which ajv honours beside `type`.
+  assert.equal(emit({ type: "string", nullable: true }), "export type Type = string | null;");
+  assert.equal(emit({ type: ["string", "number"], nullable: false }), "export type Type = string | number;");
+});
+
+test("a oneOf of objects told apart by a `const` is a union TypeScript narrows", () => {
+  assert.equal(
+    emit({ oneOf: [{ type: "object", properties: { kind: { const: "circle" }, r: { type: "number" } }, required: ["kind", "r"], additionalProperties: false }, { type: "object", properties: { kind: { const: "square" }, side: { type: "number" } }, required: ["kind", "side"], additionalProperties: false }] }),
+    'export type Type = {\n  kind: "circle";\n  r: number;\n} | {\n  kind: "square";\n  side: number;\n};',
+  );
 });
 
 test("each definition is a named type, and a reference to it is its name", () => {

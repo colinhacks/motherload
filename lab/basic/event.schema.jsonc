@@ -1,0 +1,15 @@
+// A discriminated union: shared properties beside a oneOf whose variants a `const` tells apart, with
+// two formats ajv-formats checks with a function (date-time, uri).
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "at": { "type": "string", "format": "date-time" },
+    "kind": { "enum": ["click", "visit"] },
+  },
+  "required": ["at", "kind"],
+  "oneOf": [
+    { "properties": { "kind": { "const": "click" }, "x": { "type": "number" }, "y": { "type": "number" } }, "required": ["x", "y"] },
+    { "properties": { "kind": { "const": "visit" }, "url": { "type": "string", "format": "uri" } }, "required": ["url"] },
+  ],
+}

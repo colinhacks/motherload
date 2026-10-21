@@ -47,13 +47,16 @@ function project(lab: string, dependencies: string[], commands: [string, string[
 // What each lab prints, as tests/lab.test.ts checks it in the repository.
 const BASIC = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","raw":"# A TOML file with each kind of value.","tags":2';
 const TEAM = '"team":[true,false,false]';
+const EVENTS = '"events":[true,true,false,false,false],"described":"3,4","clickX":5';
 const PACKAGES = '{"name":"packages","raw":"# A TOML file read by @motherload/toml alone.","fontSize":14,"ada":{"name":"Ada","role":"admin"},"valid":true,"invalid":false}';
 project("basic", ["motherload"], [
   [process.execPath, ["--import", "motherload/register", "main.ts"], BASIC],
   [process.execPath, ["--import", "motherload/register", "main.ts"], TEAM],
-  [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=16 node_modules=0"],
+  [process.execPath, ["--import", "motherload/register", "main.ts"], EVENTS],
+  [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=17 node_modules=0"],
   [process.execPath, ["dist/main.mjs"], BASIC],
   [process.execPath, ["dist/main.mjs"], TEAM],
+  [process.execPath, ["dist/main.mjs"], EVENTS],
 ]);
 project("packages", ["@motherload/toml", "@motherload/jsonc", "@motherload/schema"], [
   [process.execPath, ["--import", "@motherload/schema/register", "--import", "@motherload/jsonc/register", "--import", "@motherload/toml/register", "main.ts"], PACKAGES],
