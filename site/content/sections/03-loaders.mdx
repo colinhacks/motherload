@@ -176,23 +176,19 @@ Each part is also a named export. A page that lists posts can import only `front
 
 ### `.schema.jsonc`
 
-A `.schema.jsonc` file is a schema, not data. Its module is the type the schema describes and a validator for it.
+A `.schema.jsonc` file is a JSON Schema. Importing it gives a validator for the schema, compiled by [ajv](https://ajv.js.org) when the module is built, and the type the schema describes:
 
 ```ts twoslash tab="main.ts"
 declare const input: unknown;
 // ---cut---
-import user, { type Type as User } from "./user.schema.jsonc";
+import user from "./user.schema.jsonc";
 
-const result = user.validate(input); // every issue; never throws
-if (!result.issues) {
-  const ada = result.value;          // input itself
-  //    ^?
+const result = user.validate(input);
+if (result.issues) {
+  console.log(result.issues);
+} else {
+  const ada = result.value;
 }
-
-user.is(input);                      // input is User; stops at the first failure
-user["~standard"].validate(input);   // Standard Schema v1: the same function as validate
-user["~standard"].jsonSchema;        // Standard JSON Schema v1
-user.schema;                         // the schema, as a literal type
 ```
 
 ```jsonc tab="user.schema.jsonc"
@@ -209,17 +205,44 @@ user.schema;                         // the schema, as a literal type
 }
 ```
 
-The schema's type is always exported as `Type`, a type-only import: `import { type Type as User }`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev), or that wants the schema as JSON Schema: `~standard.jsonSchema` gives it in draft-07 or 2020-12, with every file it refers to folded in. Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
+`is` checks a value and narrows it:
 
-- **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`. A schema with no `$schema` is draft-07. A keyword the draft does not define is ignored, by the validator and the type alike: another draft's, such as `prefixItems` in draft-07, a vendor's, such as `x-label`, and ajv's own, `$async` and `nullable`.
-- **Types:** a schema's type admits exactly what the schema allows. Without `"type": "object"`, `properties` applies to objects alone and every other value passes, so `{ "properties": { "a": { "type": "string" } } }` is `{ a?: string | undefined } | unknown[] | string | number | boolean | null`; declare the type where you mean one.
-- **Issues:** `validate` lists every way a value fails, each issue with ajv's `message`, the `keyword` that failed and a `path` that holds object keys as strings and array indexes as numbers and ends with the key of a missing or unexpected property, such as `["members", 1, "name"]` or `["role"]`. On success it returns the value it was given, unchanged. Neither method throws: a value the validator cannot check, such as one nested deeper than the stack, is one issue with the keyword `error`, and `is` returns `false` for it.
-- **Unions:** for a `oneOf` whose variants each fix one required property to a different string, such as `"kind": { "const": "click" }`, the issues are those of the variant the value's `kind` names, not every variant's.
-- **Defaults:** a `default` in the schema is not applied, so `validate` returns the value as given and a property with a default stays optional in the type.
-- **`schema` and `jsonSchema`:** `user.schema` is the file as written, with its `$ref`s to other files and the keywords Motherload ignores. To hand the schema to another tool, such as an OpenAPI document or a tool definition, use `user["~standard"].jsonSchema.input({ target: "draft-2020-12" })` or `"draft-07"`, one self-contained schema in that draft.
-- **Formats:** checked, with [ajv-formats](https://ajv.js.org/packages/ajv-formats.html).
-- **References:** a `$ref` within the file is followed, and so is one to another schema file, by a path relative to this one: `./address.schema.jsonc` is that file's `Type`, and `./shared.schema.jsonc#/$defs/tag` the type it declares for `tag`, each imported from that file's module, and the validator checks the other file's rules too. A `$ref` to a URL is an error.
-- **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
+```ts twoslash title="main.ts"
+declare const input: unknown;
+// ---cut---
+import user from "./user.schema.jsonc";
+
+if (user.is(input)) {
+  input.role;
+  //    ^?
+}
+```
+
+The type is the export `Type`:
+
+```ts twoslash title="main.ts"
+// @errors: 2322
+import type { Type as User } from "./user.schema.jsonc";
+
+const ada: User = { name: "Ada", role: "admin" };
+const bob: User = { name: "Bob", role: "owner" };
+```
+
+A `$ref` can point to another schema file, by a path relative to this one:
+
+```jsonc title="team.schema.jsonc"
+{
+  "type": "object",
+  "properties": {
+    "members": {
+      "type": "array",
+      "items": { "$ref": "./user.schema.jsonc" }
+    }
+  }
+}
+```
+
+`$schema` picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
 
 <Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
 
