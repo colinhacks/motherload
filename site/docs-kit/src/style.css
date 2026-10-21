@@ -780,6 +780,61 @@ code {
   }
 }
 
+/* ── <Callout> (components/callout.tsx) ──────────────────────────────────────
+   A flat card like a code block's frame, with no shadow: a header bar, ruled off like a titled
+   code block's and a shade darker, holds the amber icon and the label; the text below is a step
+   under body size, in the body's colour. A code block inside sits on the page's colour, so it reads
+   as a block within the card. */
+
+#nd-page .dk-callout {
+  margin-block: 1.5rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--color-fd-card);
+  overflow: hidden;
+}
+
+#nd-page .dk-callout-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 2.375rem;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--color-fd-border);
+  background: color-mix(in oklab, var(--color-fd-foreground) 4%, var(--color-fd-card));
+  font-size: 0.90625rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-fd-headings);
+}
+
+#nd-page .dk-callout-head svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--dk-accent);
+}
+
+#nd-page .dk-callout-body {
+  padding: 14px 20px 16px;
+  font-size: 0.96875rem;
+  line-height: 1.75;
+  color: var(--dk-prose);
+}
+
+#nd-page .dk-callout-body > :first-child {
+  margin-top: 0;
+}
+
+#nd-page .dk-callout-body > :last-child {
+  margin-bottom: 0;
+}
+
+#nd-page .dk-callout-body figure.shiki {
+  margin-block: 0.875rem 0;
+  background: var(--color-fd-background);
+}
+
 /* ── <Details> ───────────────────────────────────────────────────────────────
    A secondary detail: one muted line with a chevron, no box, so it reads as an aside and not as
    the most important thing in its section; opened, its text hangs from a thin rule. The line is

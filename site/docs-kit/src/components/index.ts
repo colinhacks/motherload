@@ -1,4 +1,5 @@
 export { AgentPrompt } from './agent-prompt';
+export { Callout } from './callout';
 export { CodeTabs } from './code-tabs';
 export { CopyAgentPrompt } from './copy-agent-prompt';
 export { Details } from './details';

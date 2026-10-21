@@ -1,10 +1,11 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "b97431a",
+  "commit": "cbe86a6",
   "files": {
     "package.json": "76f8d44da08785898565422d0d53c698acf23b84357ecf9cc814befd7f910905",
-    "README.md": "351f07130d1475a694365f9f8cad4b655bd60fcb31bf9d9a2fd801c1a52951d2",
+    "README.md": "92b245b928b05aeb9f62921d3dcace002c161bbd81179943651ddfa9db483475",
     "src/components/agent-prompt.tsx": "742210664acc0786994b1640d96bb2430a99aa69b82c89157d312c641bf66422",
+    "src/components/callout.tsx": "a2206348adc587a519c59618f9aa5991ad579b3274f11f189ca162b0aef4139e",
     "src/components/chrome.tsx": "2406305d9db24be97199d4cc774425e596e7ea56b4c6f4664d59ffa9c73b2c26",
     "src/components/code-tabs.tsx": "392de2165f31253907c82c010f44cfe29ed5aac179e5577314a71d373e60d4d9",
     "src/components/copy-agent-prompt.tsx": "909074a5c6c70e3c098dab57ff502d9261dfda3baa7c89caad6f18205de2fef8",
@@ -12,8 +13,8 @@
     "src/components/document.tsx": "5690b0d241419124fe08a1b83641976770874f8f5cafbac787971815be72c50a",
     "src/components/head-scripts.ts": "9afe1c4081b7b4e8f83a8e1af93ad8373080430324a2c80ae5129d009f9516d9",
     "src/components/heading.tsx": "ceab616ee1d3abb4297979e3af6be79084bf34b5fe918067065bef18c4cdff66",
-    "src/components/index.ts": "656fbbdb6e29ec6db6fc1cd6e77275a656466fecacca163c8ffc80193b8f0fd3",
-    "src/components/mdx.tsx": "baf0a411394395d606e58c87a725aa9e102dbdc20d9ad2d8fad2538b2fa3ab5e",
+    "src/components/index.ts": "746411a3a1f3b4486b9c980f7f2b7e9f74f8b01f95bc04cac846bfe4e13a6955",
+    "src/components/mdx.tsx": "1d6b7ed99405e4a7e2473978051c3a5772f3609d8277530e93c067ef92866890",
     "src/components/prepaint.tsx": "c51099f537a1b52dd96c4ddc5e51f3334cf4deb28a6bc51f4b18beb6eaf88ae3",
     "src/components/shell.tsx": "3c74698dc039177bf14af31dc5ca2b2d833b1cd80a8fac5f3ac57cab6a30eba0",
     "src/components/variant-tabs.tsx": "c62ed24a2ea6ff1c50b14ec0092060ccbe5c2bffe7529c75aebe9b53b84e35d2",
@@ -23,7 +24,7 @@
     "src/mdx/recma-shared-popups.ts": "b12d67312b9875a469adba9ed4ca77b788f8f7958c0119451a9b4e16638ae427",
     "src/mdx/remark-sections.ts": "d1bf51eb2a1d2cab1edbc12591681c3219d8557e92241ef1b85218795d0a54d9",
     "src/mdx/twoslash.ts": "35833951145c3614c7ac1df72f9379b5f77ce5a4a8a85afb86d69f5dd729a532",
-    "src/style.css": "4cdbe3b7345c8dbc63f6c39bf6b32555417f0257340d60300f98c93bc7a766f6",
+    "src/style.css": "43bda269db68e171a3b026aaeb0015e76a91c88d2ae066ab773f4b85f28cc08a",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626",
     "src/vite.ts": "e8f8a6a49951ec991b24872d664efdd46cbb2121802d14279e0ea917f3f6763e"
   }
