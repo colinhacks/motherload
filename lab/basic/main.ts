@@ -9,6 +9,7 @@ import data from "./data.json5";
 import "./.env";
 import user, { type Type as User } from "./user.schema.jsonc";
 import point, { type Type as Point } from "./point.schema.json5";
+import team, { type Type as Team } from "./team.schema.jsonc";
 import plain from "./plain.json" with { type: "json" };
 import users from "./users.csv";
 import scores from "./scores.tsv";
@@ -54,6 +55,11 @@ expect<Equal<ReturnType<typeof user.parse>, User>>();
 // A schema written in JSON5 is the same module.
 expect<Equal<Point, { x: number; y: number; label?: string }>>();
 expect<Equal<typeof point.schema.properties.label.maxLength, 16>>();
+// A $ref to another schema file is that file's type: its root, or the definition it points to.
+// Nothing here imports shared/place.schema.jsonc; TypeScript reaches it through team's module.
+expect<Equal<Team, { lead: User; members: User[]; office?: { city: string; manager?: User } }>>();
+// @ts-expect-error a member is a User, whose role is required
+const noRole: Team = { lead: { name: "Ada", role: "admin" }, members: [{ name: "Grace" }] };
 
 // @ts-expect-error port is a number
 const wrong: string = config.port;
@@ -97,5 +103,11 @@ console.log(
     invalid,
     standardIssues: "issues" in standard ? standard.issues?.length : 0,
     points: [point.is({ x: 1, y: 2, label: "origin" }), point.is({ x: 1.5, y: 2 }), point.is({ x: 1, y: 2, label: "seventeen letters" })],
+    // Valid; a member with an empty name (user.schema.jsonc's minLength); an office with no city (shared/place.schema.jsonc's).
+    team: [
+      team.is({ lead: { name: "Ada", role: "admin" }, members: [{ name: "Grace", role: "member" }], office: { city: "London", manager: { name: "Ada", role: "admin" } } }),
+      team.is({ lead: { name: "Ada", role: "admin" }, members: [{ name: "", role: "member" }] }),
+      team.is({ lead: { name: "Ada", role: "admin" }, members: [], office: { city: "" } }),
+    ],
   }),
 );

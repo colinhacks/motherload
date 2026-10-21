@@ -51,6 +51,21 @@ test("`?raw` is typed by client.d.ts and served by the Node hook and esbuild for
   for (const ext of EXTENSIONS) assert.ok(bundle.outputFiles[0]!.text.includes(`the text of ${ext}`), ext);
 });
 
+test("esbuild watches the files a schema refers to, and still does when one is missing", () => {
+  writeFileSync(join(dir, "tag.schema.jsonc"), '{ "type": "string" }');
+  writeFileSync(join(dir, "team.schema.jsonc"), '{ "properties": { "tag": { "$ref": "./tag.schema.jsonc" } } }');
+  writeFileSync(join(dir, "lost.schema.jsonc"), '{ "properties": { "tag": { "$ref": "./gone.schema.jsonc" } } }');
+  let onLoad: ((args: { path: string; suffix?: string }) => any) | undefined;
+  toEsbuildPlugin(plugin).setup({ onLoad: (_options, callback) => void (onLoad = callback) });
+  const team = onLoad!({ path: join(dir, "team.schema.jsonc") });
+  assert.equal(team.loader, "js");
+  assert.deepEqual(team.watchFiles, [join(dir, "tag.schema.jsonc")]);
+  const lost = onLoad!({ path: join(dir, "lost.schema.jsonc") });
+  assert.match(lost.errors[0].text, /The \$ref "\.\/gone\.schema\.jsonc" names a file that does not exist\./);
+  assert.deepEqual(lost.watchFiles, [join(dir, "gone.schema.jsonc")]);
+  assert.deepEqual(onLoad!({ path: join(dir, "app.toml") }).watchFiles, []);
+});
+
 test("ranges convert from UTF-16 code units to UTF-8 bytes", () => {
   assert.deepEqual(utf8Range("é = x", 4, 1), { start: 5, length: 1 });
   assert.deepEqual(utf8Range("a = 😀", 4, 2), { start: 4, length: 4 });

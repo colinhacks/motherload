@@ -8,21 +8,27 @@
 //
 // The types come from Motherload's own emitter (schema-types.ts), the validator from ajv, a
 // dependency of Motherload's, resolved from this module. The generated module imports nothing:
-// ajv's standalone code is inlined with the few run-time helpers it requires.
+// ajv's standalone code is inlined with the few run-time helpers it requires. A `$ref` to another
+// schema file is followed (refs.ts): the types import that file's module, and the validator is
+// compiled from every file the schema reaches.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
-import { parseJson5File } from "@motherload/json5/loader";
-import { parseJsoncFile } from "@motherload/jsonc/loader";
-import { CODES, literal, toJs, type Parsed, type Problem, type Value } from "@motherload/core";
+import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
+import { collect, forAjv, parseSchemaFile, type Files } from "./refs.ts";
 import { schemaDeclarations } from "./schema-types.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
-const problem = (message: string, code: number = CODES.schema): Problem => ({ message, start: 0, length: 1, code });
+const problem = (message: string, place: { start: number; length: number } = { start: 0, length: 1 }): Problem => ({ message, ...place, code: CODES.schema });
 
-/** A schema is read in the dialect its suffix names: JSON5 for `.schema.json5`, JSON with comments for `.schema.jsonc`. */
-const parseSchemaFile = (source: string, path: string): Parsed => (path.endsWith(".schema.json5") ? parseJson5File(source) : parseJsoncFile(source));
+/** The draft a schema declares, as the ajv entry point that compiles it (drafts 06 and 07 share one), or undefined when it declares none. */
+function declaredDraft(schema: Value): string | undefined {
+  const declared = typeof schema === "object" && schema !== null && !Array.isArray(schema) ? (schema as Record<string, Value>)["$schema"] : undefined;
+  if (typeof declared !== "string") return undefined;
+  const entry = ajvEntry(schema);
+  return "error" in entry ? declared : entry.entry;
+}
 
 /** The draft a schema declares, as the ajv entry point that validates it. */
 function ajvEntry(schema: Value): { entry: string } | { error: string } {
@@ -34,7 +40,7 @@ function ajvEntry(schema: Value): { entry: string } | { error: string } {
   return { error: `ajv validates JSON Schema drafts 06, 07, 2019-09 and 2020-12; this schema declares ${declared}.` };
 }
 
-type Ajv = { compile(schema: unknown): unknown; errorsText?(errors: unknown): string };
+type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?: string): unknown };
 
 /**
  * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
@@ -63,30 +69,50 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
   return { ajv, require };
 }
 
+/** The schema and every file it reaches, with the problems of their references; ajv's default, draft-07, is the draft of a root that declares none. */
+const filesOf = (source: string, path: string, schema: Value): Files => collect(path, schema, source, { of: declaredDraft, none: "ajv" });
+
+/** The validator, compiled from the root with every other file added to ajv under its id; a problem when a file is not a valid schema. */
+function compile(ajv: Ajv, files: Files, path: string): { validate: unknown } | { problem: Problem } {
+  const { root, others } = forAjv(files, path);
+  for (const other of others) {
+    try {
+      ajv.addSchema(other.schema, other.id);
+    } catch (error) {
+      return { problem: problem(`${basename(other.path)} is not a valid schema: ${(error as Error).message}`, files.places.get(other.path)) };
+    }
+  }
+  try {
+    return { validate: ajv.compile(root) };
+  } catch (error) {
+    return { problem: problem(`The schema is not valid: ${(error as Error).message}`) };
+  }
+}
+
 // ---- types --------------------------------------------------------------------------------------
 
 /**
  * The module's types. They import the `Schema` type from `typesFrom`, the package the project
  * installed and the type check resolves from the schema's directory: `@motherload/schema`, or
- * `motherload`, which carries the same types.
+ * `motherload`, which carries the same types. A `$ref` to another schema file is a type imported
+ * from that file's module, which TypeScript sends through the mapper in turn.
  */
 export function schemaTypes(source: string, path: string, typesFrom = "@motherload/schema"): { types: string; problems: Problem[] } {
   const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
-  const problems: Problem[] = [];
+  const files = filesOf(source, path, schema);
+  const problems: Problem[] = [...files.problems];
   const loaded = loadAjv(path, schema, false);
-  if ("ajv" in loaded) {
-    try {
-      loaded.ajv.compile(schema);
-    } catch (error) {
-      problems.push(problem(`The schema is not valid: ${(error as Error).message}`));
-    }
+  // A reference that cannot be followed is the problem; ajv would only add that it cannot resolve it.
+  if ("ajv" in loaded && !problems.length) {
+    const compiled = compile(loaded.ajv, files, path);
+    if ("problem" in compiled) problems.push(compiled.problem);
   }
   return {
     types: [
       `import type { Schema as __MotherloadSchema } from ${JSON.stringify(typesFrom)};`,
-      schemaDeclarations(schema),
+      schemaDeclarations(schema, { path, read: (other) => files.schemas.get(other) }),
       `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
       "export default schema;",
       "",
@@ -163,23 +189,32 @@ const schema = {
 export default schema;
 `;
 
-/** The module's JavaScript. Throws when the validator cannot be built: a bundler or the preload reports it as a load error. */
-export function schemaCode(source: string, path: string): { code: string; problems: Problem[] } {
+/**
+ * The module's JavaScript, with problems in place of a validator that cannot be built, which a
+ * bundler or the preload reports as a load error. `watchFiles` are the other schema files the
+ * validator was compiled from, for a bundler to rebuild the module when one changes.
+ */
+export function schemaCode(source: string, path: string): { code: string; problems: Problem[]; watchFiles: string[] } {
+  const failed = (problems: Problem[], watchFiles: string[] = []) => ({ code: "export default undefined;\n", problems, watchFiles });
   const parsed = parseSchemaFile(source, path);
-  if (!parsed.ok) return { code: "export default undefined;\n", problems: parsed.problems };
+  if (!parsed.ok) return failed(parsed.problems);
+  const files = filesOf(source, path, parsed.value);
+  if (files.problems.length) return failed(files.problems, files.watched);
   const loaded = loadAjv(path, parsed.value, true);
-  if ("error" in loaded) return { code: "export default undefined;\n", problems: [problem(loaded.error)] };
+  if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
+  const compiled = compile(loaded.ajv, files, path);
+  if ("problem" in compiled) return failed([compiled.problem], files.watched);
   let standalone: string;
   try {
-    const validate = loaded.ajv.compile(parsed.value);
     const standaloneModule = loaded.require("ajv/dist/standalone");
-    standalone = (standaloneModule.default ?? standaloneModule)(loaded.ajv, validate);
+    standalone = (standaloneModule.default ?? standaloneModule)(loaded.ajv, compiled.validate);
   } catch (error) {
-    return { code: "export default undefined;\n", problems: [problem(`The schema is not valid: ${(error as Error).message}`)] };
+    return failed([problem(`The schema is not valid: ${(error as Error).message}`)], files.watched);
   }
   const entryFile = loaded.require.resolve("ajv");
   return {
     code: [inline(standalone, entryFile), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, ""].join("\n"),
     problems: [],
+    watchFiles: files.watched,
   };
 }

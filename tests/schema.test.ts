@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { CODES } from "../packages/core/src/problems.ts";
 import { schemaCode, schemaTypes } from "../packages/schema/src/schema.ts";
 import { evaluate, ROOT } from "./helpers.ts";
@@ -80,10 +80,98 @@ test("a .schema.json5 schema is JSON5 in both texts, and the suffix names the di
   assert.equal(broken[0]!.start, 19);
 });
 
-test("a $ref to another file is a problem, not a read", () => {
-  const { problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "./other.schema.jsonc" } } }), PATH);
+/** A directory of schema files, each written as JSON (JSON5 for `.schema.json5`), with the root's path and text. */
+function project(files: Record<string, unknown>, root = "user.schema.jsonc") {
+  const dir = mkdtempSync(join(tmpdir(), "motherload-refs-"));
+  for (const [name, schema] of Object.entries(files)) {
+    mkdirSync(dirname(join(dir, name)), { recursive: true });
+    writeFileSync(join(dir, name), JSON.stringify(schema, null, 2));
+  }
+  return { dir, path: join(dir, root), source: readFileSync(join(dir, root), "utf8") };
+}
+
+test("a $ref to another file is followed: its type is imported from that file's module, and the validator is compiled from both", async () => {
+  const { dir, path, source } = project({
+    "user.schema.jsonc": {
+      type: "object",
+      properties: {
+        tag: { $ref: "./shared/tag.schema.jsonc#/$defs/tag" },
+        group: { $ref: "shared/tag.schema.jsonc" },
+        label: { $ref: "./shared/tag.schema.jsonc#/properties/name" },
+        at: { $ref: "./point.schema.json5" },
+      },
+      required: ["tag"],
+      additionalProperties: false,
+    },
+    // It refers back to the root: a cycle through two files.
+    "shared/tag.schema.jsonc": { $defs: { tag: { type: "string", minLength: 2 } }, type: "object", properties: { name: { $ref: "#/$defs/tag" }, parent: { $ref: "../user.schema.jsonc" } }, required: ["name"], additionalProperties: false },
+    "point.schema.json5": { type: "object", properties: { x: { type: "integer" } }, required: ["x"] },
+  });
+  const typed = schemaTypes(source, path);
+  assert.deepEqual(typed.problems, []);
+  // The definition keeps the name its own module gives it; the other files' roots are named for their files.
+  assert.match(typed.types, /^import type \{ Tag, Type as Tag2 \} from "\.\/shared\/tag\.schema\.jsonc";\nimport type \{ Type as Point \} from "\.\/point\.schema\.json5";$/m);
+  // A pointer that is not a definition is inlined from the other file, its own references imported.
+  assert.match(typed.types, /export interface Type \{\n  tag: Tag;\n  group\?: Tag2;\n  label\?: Tag;\n  at\?: Point;\n\}/);
+  const tag = join(dir, "shared/tag.schema.jsonc");
+  const tagTypes = schemaTypes(readFileSync(tag, "utf8"), tag);
+  assert.match(tagTypes.types, /^import type \{ Type as User \} from "\.\.\/user\.schema\.jsonc";$/m);
+
+  const { code, problems, watchFiles } = schemaCode(source, path);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(watchFiles.sort(), [join(dir, "point.schema.json5"), tag]);
+  // ajv's standalone code embeds each schema's id; none is a path on the machine that built it.
+  assert.ok(!code.includes(dir), "the module names no path");
+  assert.doesNotMatch(code, /^import /m);
+  const { default: user } = await evaluate(code);
+  assert.equal(user.is({ tag: "ab" }), true);
+  assert.equal(user.is({ tag: "a" }), false); // the other file's minLength
+  assert.equal(user.is({ tag: "ab", group: { name: "cd", parent: { tag: "ef" } } }), true);
+  assert.equal(user.is({ tag: "ab", group: { name: "cd", parent: { tag: "e" } } }), false); // back through the cycle
+  assert.equal(user.is({ tag: "ab", label: "x" }), false);
+  assert.equal(user.is({ tag: "ab", at: { x: 1.5 } }), false);
+  assert.deepEqual(schemaCode(readFileSync(tag, "utf8"), tag).problems, []);
+});
+
+test("a $ref that cannot be followed is a problem at the $ref, in both texts, and its type is unknown", () => {
+  const { path, source } = project({
+    "user.schema.jsonc": {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      type: "object",
+      properties: {
+        missing: { $ref: "./missing.schema.jsonc" },
+        data: { $ref: "./data.json" },
+        nope: { $ref: "./tag.schema.jsonc#/$defs/nope" },
+        old: { $ref: "./old.schema.jsonc" },
+        via: { $ref: "./via.schema.jsonc" },
+      },
+    },
+    "tag.schema.jsonc": { $defs: { tag: { type: "string" } } },
+    "old.schema.jsonc": { $schema: "http://json-schema.org/draft-07/schema#", type: "string" },
+    "via.schema.jsonc": { $ref: "./gone.schema.jsonc" },
+  });
+  const { types, problems } = schemaTypes(source, path);
+  const at = (ref: string) => source.indexOf(`"${ref}"`) + 1;
+  assert.deepEqual(
+    problems.map((p) => [p.message, p.start, p.length, p.code]),
+    [
+      ['The $ref "./missing.schema.jsonc" names a file that does not exist.', at("./missing.schema.jsonc"), 22, CODES.schema],
+      ['The $ref "./data.json" names a file that is not a schema: a $ref to another file names a .schema.jsonc or .schema.json5 file.', at("./data.json"), 11, CODES.schema],
+      ['The $ref "./tag.schema.jsonc#/$defs/nope" points to nothing: ./tag.schema.jsonc has no #/$defs/nope.', at("./tag.schema.jsonc#/$defs/nope"), 30, CODES.schema],
+      ['The $ref "./old.schema.jsonc" names a schema whose $schema is "http://json-schema.org/draft-07/schema#", and this schema\'s is "https://json-schema.org/draft/2020-12/schema": a schema and the files it refers to are compiled in one draft.', at("./old.schema.jsonc"), 18, CODES.schema],
+      // A problem in a file reached through another is placed at the root's reference to that file.
+      ['./via.schema.jsonc: The $ref "./gone.schema.jsonc" names a file that does not exist.', at("./via.schema.jsonc"), 18, CODES.schema],
+    ],
+  );
+  assert.match(types, /missing\?: unknown;\n  data\?: unknown;\n  nope\?: unknown;/);
+  assert.deepEqual(schemaCode(source, path).problems, problems);
+});
+
+test("a $ref to a URL is not followed: ajv reports it, and its type is unknown", () => {
+  const { types, problems } = schemaTypes(JSON.stringify({ type: "object", properties: { a: { $ref: "https://example.com/other.json" } } }), PATH);
   assert.equal(problems.length, 1);
-  assert.match(problems[0]!.message, /resolve reference \.\/other\.schema\.jsonc/);
+  assert.match(problems[0]!.message, /resolve reference https:\/\/example\.com\/other\.json/);
+  assert.match(types, /a\?: unknown;/);
 });
 
 test("an invalid schema is a problem in both texts", () => {

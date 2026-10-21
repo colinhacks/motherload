@@ -16,8 +16,12 @@ export interface LoaderPlugin {
   extensions: readonly string[];
   /** Every path the plugin loads. Bun and esbuild take only a RegExp, and esbuild's is RE2, so no lookaround. */
   filter: RegExp;
-  /** JavaScript for runtimes and bundlers. Synchronous, because Node's `registerHooks` is. */
-  load(source: string, path: string): { code: string; problems: Problem[] };
+  /**
+   * JavaScript for runtimes and bundlers. Synchronous, because Node's `registerHooks` is.
+   * `watchFiles` are the other files the code was made from (a schema's `$ref`s), which a bundler
+   * watches so that a change to one rebuilds the module.
+   */
+  load(source: string, path: string): { code: string; problems: Problem[]; watchFiles?: string[] };
   /** TypeScript for the type checker. */
   types(source: string, path: string): Promise<{ types: string; problems: Problem[] }> | { types: string; problems: Problem[] };
 }
@@ -58,9 +62,12 @@ const REGISTERED: Set<LoaderPlugin> = ((globalThis as Record<symbol, unknown>)[S
 /** A `?raw` import of a file the plugin reads: its text, as Vite's `?raw` gives it, typed by client.d.ts. */
 const rawModule = (path: string) => `export default ${JSON.stringify(readFileSync(path, "utf8"))};\n`;
 
+/** What a load error says: the plugin, the file and every problem. */
+const loadError = (plugin: LoaderPlugin, path: string, problems: Problem[]) => `${plugin.name}: ${path}: ${problems.map((p) => p.message).join("; ")}`;
+
 function runtimeModule(plugin: LoaderPlugin, path: string): string {
   const result = plugin.load(readFileSync(path, "utf8"), path);
-  if (result.problems.length) throw new Error(`${plugin.name}: ${path}: ${result.problems.map((p) => p.message).join("; ")}`);
+  if (result.problems.length) throw new Error(loadError(plugin, path, result.problems));
   return result.code;
 }
 
@@ -115,7 +122,10 @@ export async function register(plugin: LoaderPlugin): Promise<void> {
 
 type EsbuildBuild = {
   initialOptions?: { plugins?: readonly unknown[] };
-  onLoad(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string; suffix?: string }) => { contents: string; loader: "js" | "text" } | undefined): void;
+  onLoad(
+    options: { filter: RegExp; namespace?: string },
+    callback: (args: { path: string; suffix?: string }) => { contents: string; loader: "js" | "text"; watchFiles?: string[] } | { errors: { text: string }[]; watchFiles?: string[] } | undefined,
+  ): void;
 };
 
 /** The Motherload plugin an esbuild plugin object was made from, so that plugins in one build can see each other. */
@@ -133,7 +143,12 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
       build.onLoad({ filter: plugin.filter, namespace: "file" }, (args) => {
         if (outranked(plugin, args.path, siblings)) return undefined;
         if (args.suffix === "?raw") return { contents: readFileSync(args.path, "utf8"), loader: "text" };
-        return args.suffix ? undefined : { contents: runtimeModule(plugin, args.path), loader: "js" };
+        if (args.suffix) return undefined;
+        // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
+        const result = plugin.load(readFileSync(args.path, "utf8"), args.path);
+        const watchFiles = result.watchFiles ?? [];
+        if (result.problems.length) return { errors: [{ text: loadError(plugin, args.path, result.problems) }], watchFiles };
+        return { contents: result.code, loader: "js", watchFiles };
       });
     },
   } as { name: string; setup(build: EsbuildBuild): void };

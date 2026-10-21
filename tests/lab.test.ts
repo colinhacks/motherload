@@ -24,6 +24,8 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.match(out, /broken\.yaml\(2,1\): error motherload1: Map keys must be unique/);
   assert.match(out, /broken\.schema\.jsonc\(1,1\): error motherload4: The schema is not valid/);
   assert.match(out, /broken\.schema\.json5\(3,44\): error motherload1: invalid character ','/);
+  // A $ref to a file that is not there is placed at the reference.
+  assert.match(out, /broken-ref\.schema\.jsonc\(4,35\): error motherload4: The \$ref "\.\/missing\.schema\.jsonc" names a file that does not exist\./);
   // The row after "Émile" starts on line 3; the repeated frontmatter key on line 3 of the file, not of the frontmatter.
   assert.match(out, /broken\.csv\(3,1\): error motherload1: This row has 3 fields; the header has 2\./);
   assert.match(out, /broken\.md\(3,1\): error motherload1: Map keys must be unique/);
@@ -38,6 +40,8 @@ const GREETING = '"greeting":"hello world"';
 const TABLES = '"zip":"02134","grace":"Hopper, Grace","score":"37","notes":"Notes from the lab.","title":"Hello, Motherload","body":"# Hello","postRaw":"---"';
 // lab/basic/point.schema.json5: an integer, and a label of at most 0x10 characters.
 const POINTS = '"points":[true,false,false]';
+// lab/basic/team.schema.jsonc: valid, then failing user.schema.jsonc's and shared/place.schema.jsonc's rules through its $refs.
+const TEAM = '"team":[true,false,false]';
 
 test("lab/basic runs under the preload", () => {
   const { status, out } = run(process.execPath, ["--import", "motherload/register", "main.ts"], `${ROOT}lab/basic`);
@@ -46,6 +50,7 @@ test("lab/basic runs under the preload", () => {
   assert.ok(out.includes(GREETING), out);
   assert.ok(out.includes(TABLES), out);
   assert.ok(out.includes(POINTS), out);
+  assert.ok(out.includes(TEAM), out);
   assert.ok(out.includes('"invalid":"name: must NOT have fewer than 1 characters; email: must match format \\"email\\"; role: must be equal to one of the allowed values"'), out);
 });
 
@@ -53,7 +58,8 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   rmSync(`${ROOT}lab/basic/dist`, { recursive: true, force: true });
   const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/basic`);
   assert.equal(built.status, 0, built.out);
-  assert.match(built.out, /errors=0 inputs=15 node_modules=0/);
+  // team.schema.jsonc is one input: the schemas it refers to are compiled into its validator.
+  assert.match(built.out, /errors=0 inputs=16 node_modules=0/);
   // The bundle reads .env when it runs; no value from the file is in it.
   assert.doesNotMatch(readFileSync(`${ROOT}lab/basic/dist/main.mjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
   const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/basic`);
@@ -62,6 +68,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   assert.ok(ran.out.includes(GREETING), ran.out);
   assert.ok(ran.out.includes(TABLES), ran.out);
   assert.ok(ran.out.includes(POINTS), ran.out);
+  assert.ok(ran.out.includes(TEAM), ran.out);
 });
 
 // lab/packages: three formats, each from its own package, with the JSONC package's hook and plugin

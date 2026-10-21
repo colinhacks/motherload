@@ -1,0 +1,13 @@
+// A schema that refers to two other schema files: the whole of user.schema.jsonc, and a definition
+// in shared/place.schema.jsonc, which refers back to user.schema.jsonc in turn.
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "lead": { "$ref": "./user.schema.jsonc" },
+    "members": { "type": "array", "items": { "$ref": "./user.schema.jsonc" } },
+    "office": { "$ref": "./shared/place.schema.jsonc#/definitions/place" },
+  },
+  "required": ["lead", "members"],
+  "additionalProperties": false,
+}

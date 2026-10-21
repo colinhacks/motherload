@@ -3,8 +3,11 @@
 // own, its key in PascalCase, so `{ "$ref": "#/$defs/person" }` is `Person` and a recursive schema
 // stays finite. Keywords that only narrow a value TypeScript cannot narrow (`minLength`, `format`,
 // `pattern`, `multipleOf`, ...) are left out; one the emitter does not cover (`not`,
-// `if`/`then`/`else`, a `$ref` it cannot resolve) widens that part of the type to `unknown`.
+// `if`/`then`/`else`, a `$ref` it cannot resolve) widens that part of the type to `unknown`. A
+// `$ref` to another schema file is a type imported from that file's own module (refs.ts).
+import { basename } from "node:path";
 import { literal, propertyName, type Value } from "@motherload/core";
+import { fileOf, pointer, pointTo, specifierOf } from "./refs.ts";
 
 type Obj = { readonly [key: string]: Value };
 
@@ -66,8 +69,8 @@ function typeName(key: string, taken: Set<string>): string {
   return unique;
 }
 
-/** The root `Type` and one named declaration per definition, as module text. */
-export function schemaDeclarations(root: Value): string {
+/** The names a schema's module declares: one per entry of its `$defs` and `definitions`, keyed `<keyword>\0<key>`, besides `Type`. */
+function definitionNames(root: Value): { names: Map<string, string>; definitions: [string, Value][]; taken: Set<string> } {
   const taken = new Set(["Type", "__MotherloadSchema"]);
   const names = new Map<string, string>();
   const definitions: [string, Value][] = [];
@@ -82,33 +85,89 @@ export function schemaDeclarations(root: Value): string {
       }
     }
   }
-  // JSON Pointers into the schema other than a definition are inlined; `inlining` stops a pointer
-  // that leads back into itself.
-  const inlining = new Set<string>();
+  return { names, definitions, taken };
+}
 
-  /** A `#/...` reference as its JSON Pointer segments, unescaped (RFC 6901, inside a URI fragment). */
-  function segments(ref: string): string[] | undefined {
-    try {
-      return ref.slice(2).split("/").map((raw) => decodeURIComponent(raw).replace(/~1/g, "/").replace(/~0/g, "~"));
-    } catch {
-      return undefined; // a malformed percent escape, which ajv reports
+/** The other schema files a schema's `$ref`s reach, so that a reference to one is typed by its module. */
+export interface SchemaFiles {
+  /** The path of the file the root schema was read from. */
+  path: string;
+  /** The schema in another file, or undefined when it cannot be read (a problem reported at the reference). */
+  read(path: string): Value | undefined;
+}
+
+/** A schema file whose pointers a reference can follow: the root's own, or another file's, whose names are imported. */
+type Document = { schema: Value; path: string | undefined; names: Map<string, string>; own: boolean };
+
+/**
+ * The root `Type` and one named declaration per definition, as module text. With `files`, a `$ref`
+ * to another schema file is typed by that file's module: its `Type`, or the type it declares for
+ * the definition the reference points to, imported under a name of this module's choosing; a
+ * pointer to anything else there is inlined from the file. Without `files`, such a `$ref` is `unknown`.
+ */
+export function schemaDeclarations(root: Value, files?: SchemaFiles): string {
+  const { names, definitions, taken } = definitionNames(root);
+  const main: Document = { schema: root, path: files?.path, names, own: true };
+  const documents = new Map<string, Document>();
+  // The types imported from other files: specifier, then exported name, then the name used here.
+  const imports = new Map<string, Map<string, string>>();
+  // JSON Pointers other than a definition are inlined, from the document the reference reached;
+  // `inlining` stops a pointer that leads back into itself.
+  const inlining = new Set<string>();
+  let current = main;
+
+  function documentAt(path: string): Document | undefined {
+    if (path === files!.path) return main;
+    let document = documents.get(path);
+    if (!document) {
+      const schema = files!.read(path);
+      if (schema === undefined) return undefined;
+      document = { schema, path, names: definitionNames(schema).names, own: false };
+      documents.set(path, document);
     }
+    return document;
+  }
+
+  /** `exported`, a name `document`'s module declares, as a name in this module: itself, or the name it is imported under. */
+  function nameIn(document: Document, exported: string): string {
+    if (document.own) return exported;
+    const specifier = specifierOf(files!.path, document.path!);
+    let byName = imports.get(specifier);
+    if (!byName) imports.set(specifier, (byName = new Map()));
+    let local = byName.get(exported);
+    if (local === undefined) {
+      // Another file's `Type` is named for the file: `./address.schema.jsonc` gives `Address`.
+      local = typeName(exported === "Type" ? basename(document.path!).replace(/\.schema\.json[c5]$/, "") : exported, taken);
+      byName.set(exported, local);
+    }
+    return local;
   }
 
   function refType(ref: string, indent: string): string {
-    if (ref === "#" || ref === "") return "Type";
-    // A reference to another file or a URL is ajv's problem to report; its type is unknown.
-    if (!ref.startsWith("#/") || inlining.has(ref)) return "unknown";
-    const path = segments(ref);
+    let document = current;
+    let fragment = ref === "" ? "" : ref.startsWith("#") ? ref.slice(1) : undefined;
+    if (fragment === undefined) {
+      // Another file, when the files are known; a URL, or a file that cannot be read, is unknown.
+      const target = files && current.path !== undefined ? fileOf(ref, current.path) : undefined;
+      const reached = target && documentAt(target.path);
+      if (!target || !reached) return "unknown";
+      [document, fragment] = [reached, target.fragment];
+    }
+    // An `$anchor` name or a malformed pointer is unknown, as ajv reports the latter.
+    const path = pointer(fragment);
     if (!path) return "unknown";
-    const named = path.length === 2 ? names.get(`${path[0]}\0${path[1]}`) : undefined;
-    if (named) return named;
-    let target: Value | undefined = root;
-    for (const segment of path) target = Array.isArray(target) ? target[Number(segment)] : isObj(target) && Object.hasOwn(target, segment) ? target[segment] : undefined;
+    if (path.length === 0) return nameIn(document, "Type");
+    const named = path.length === 2 ? document.names.get(`${path[0]}\0${path[1]}`) : undefined;
+    if (named) return nameIn(document, named);
+    const key = `${document.path}#${fragment}`;
+    const target = inlining.has(key) ? undefined : pointTo(document.schema, path);
     if (target === undefined) return "unknown";
-    inlining.add(ref);
+    inlining.add(key);
+    const outer = current;
+    current = document;
     const type = emit(target, indent);
-    inlining.delete(ref);
+    current = outer;
+    inlining.delete(key);
     return type;
   }
 
@@ -206,5 +265,7 @@ export function schemaDeclarations(root: Value): string {
     const type = emit(schema, "");
     return objectLiteral(type) ? `${doc(schema, "")}export interface ${name} ${type}` : `${doc(schema, "")}export type ${name} = ${type};`;
   };
-  return [declare("Type", root), ...definitions.map(([name, schema]) => declare(name, schema))].join("\n\n");
+  const declarations = [declare("Type", root), ...definitions.map(([name, schema]) => declare(name, schema))].join("\n\n");
+  const lines = [...imports].map(([specifier, byName]) => `import type { ${[...byName].map(([exported, local]) => (exported === local ? exported : `${exported} as ${local}`)).join(", ")} } from ${JSON.stringify(specifier)};`);
+  return lines.length ? `${lines.join("\n")}\n\n${declarations}` : declarations;
 }
