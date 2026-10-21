@@ -1,0 +1,114 @@
+---
+title: Every format
+---
+
+{/* An unlisted page for screenshots: one main.ts that imports every file type Motherload reads,
+    drawn as the docs page draws its hero, with a hover on each import. lib/remark-mapper.ts types
+    each import from the block titled with its file, below it, in the closed <Details>. */}
+
+```ts twoslash tab="main.ts"
+import plans from "./plans.toml";
+import team from "./team.yaml";
+import strings from "./strings.json5";
+import settings from "./settings.jsonc";
+import posts from "./posts.csv";
+import scores from "./scores.tsv";
+import notes from "./notes.txt";
+import post from "./post.md";
+import user from "./user.schema.jsonc";
+import point from "./point.schema.json5";
+import "./.env";
+```
+
+<Details summary="The files it imports" id="files">
+
+```toml title="plans.toml"
+[free]
+price = 0
+seats = 1
+
+[pro]
+price = 12
+seats = 10
+```
+
+```yaml title="team.yaml"
+- name: Ada
+  role: admin
+- name: Grace
+  role: member
+```
+
+```json5 title="strings.json5"
+{
+  // shown on the sign-in page
+  welcome: 'Welcome back',
+  signIn: 'Sign in',
+}
+```
+
+```jsonc title="settings.jsonc"
+{
+  // Comments and trailing commas are allowed.
+  "editor.fontSize": 14,
+  "files.exclude": ["dist", "node_modules",],
+}
+```
+
+```csv title="posts.csv"
+slug,title,published
+hello,Hello world,2026-10-01
+loaders,Loaders,2026-10-06
+```
+
+```tsv title="scores.tsv"
+player	score
+Ada	42
+Grace	37
+```
+
+```txt title="notes.txt"
+Notes from the lab.
+A second line.
+```
+
+```md title="post.md"
+---
+title: Hello, world
+draft: false
+tags: [data, types]
+---
+# Hello
+
+The body of the post.
+```
+
+```jsonc title="user.schema.jsonc"
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "role": { "enum": ["admin", "member"] }
+  },
+  "required": ["name", "role"]
+}
+```
+
+```json5 title="point.schema.json5"
+{
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    x: { type: 'integer' },
+    y: { type: 'integer' },
+    label: { type: 'string' },
+  },
+  required: ['x', 'y'],
+}
+```
+
+```sh title=".env"
+DATABASE_URL=postgres://localhost/app
+```
+
+</Details>
