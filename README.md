@@ -235,11 +235,16 @@ A JSON Schema becomes its type and a validator. The validator is compiled by ajv
 import user, { type Type as User } from "./user.schema.jsonc";
 // User: { name: string; role?: "admin" | "member" }
 
-const valid: User = user.parse(input); // or a TypeError listing each issue
-user.is(input);                        // input is User
-user["~standard"].validate(input);     // Standard Schema v1
+const result = user.validate(input);   // every issue; never throws
+if (result.issues) result.issues;      // [{ message, path, keyword, params, schemaPath }, ...]
+else result.value;                     // User: input itself
+
+user.is(input);                        // input is User; stops at the first failure
+user["~standard"].validate(input);     // Standard Schema v1: the same function as validate
 user["~standard"].jsonSchema;          // Standard JSON Schema v1
 ```
+
+An issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`.
 
 A `$ref` to another schema file, by a path relative to the file that holds it, is followed: `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.
 

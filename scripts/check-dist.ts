@@ -48,15 +48,18 @@ function project(lab: string, dependencies: string[], commands: [string, string[
 const BASIC = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';
 const TEAM = '"team":[true,false,false]';
 const EVENTS = '"events":[true,true,false,false,false],"described":"3,4","clickX":5';
+const VALIDATE = '"valid":"Ada","invalid":"name: must NOT have fewer than 1 characters; email: must match format \\"email\\"; role: must be equal to one of the allowed values","keywords":["minLength","format","enum"],"standard":[true,["role"]],"memberPath":["members",1,"name"]';
 const PACKAGES = '{"name":"packages","fontSize":14,"ada":{"name":"Ada","role":"admin"},"valid":true,"invalid":false}';
 project("basic", ["motherload"], [
   [process.execPath, ["--import", "motherload/register", "main.ts"], BASIC],
   [process.execPath, ["--import", "motherload/register", "main.ts"], TEAM],
   [process.execPath, ["--import", "motherload/register", "main.ts"], EVENTS],
+  [process.execPath, ["--import", "motherload/register", "main.ts"], VALIDATE],
   [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=15 node_modules=0"],
   [process.execPath, ["dist/main.mjs"], BASIC],
   [process.execPath, ["dist/main.mjs"], TEAM],
   [process.execPath, ["dist/main.mjs"], EVENTS],
+  [process.execPath, ["dist/main.mjs"], VALIDATE],
 ]);
 project("packages", ["@motherload/toml", "@motherload/jsonc", "@motherload/schema"], [
   [process.execPath, ["--import", "@motherload/schema/register", "--import", "@motherload/jsonc/register", "--import", "@motherload/toml/register", "main.ts"], PACKAGES],

@@ -6,7 +6,7 @@ import multi from "./multi.yaml";
 import settings from "./settings.jsonc";
 import data from "./data.json5";
 import "./.env";
-import type { StandardJSONSchemaV1 } from "motherload";
+import type { SchemaResult, StandardJSONSchemaV1 } from "motherload";
 import user, { type Type as User } from "./user.schema.jsonc";
 import point, { type Type as Point } from "./point.schema.json5";
 import team, { type Type as Team } from "./team.schema.jsonc";
@@ -48,7 +48,12 @@ expect<Equal<typeof frontmatter, typeof post.frontmatter>>();
 expect<Equal<keyof typeof postModule, "default" | "md" | "frontmatter">>();
 
 expect<Equal<User, { name: string; email?: string; role: "admin" | "member"; tags?: string[] }>>();
-expect<Equal<ReturnType<typeof user.parse>, User>>();
+expect<Equal<ReturnType<typeof user.validate>, SchemaResult<User>>>();
+// `is` is a type guard: the value it accepts is a User where it returns true.
+const someone: unknown = { name: "Ada", role: "admin" };
+if (user.is(someone)) expect<Equal<typeof someone, User>>();
+// @ts-expect-error a schema module has no parse: nothing on it throws
+user.parse;
 // A schema written in JSON5 is the same module.
 expect<Equal<Point, { x: number; y: number; label?: string }>>();
 expect<Equal<typeof point.schema.properties.label.maxLength, 16>>();
@@ -84,14 +89,14 @@ config.missing;
 // @ts-expect-error the CSV header has no such column
 users[0]?.phone;
 
-const valid = user.parse({ name: "Ada", role: "admin", email: "ada@example.com" });
-let invalid = "";
-try {
-  user.parse({ name: "", role: "owner", email: "not an email" });
-} catch (error) {
-  invalid = (error as Error).message;
-}
+// validate gives the value it was given, or every issue: each with its path, its keyword and ajv's message.
+const checked = user.validate({ name: "Ada", role: "admin", email: "ada@example.com" });
+const failed = user.validate({ name: "", role: "owner", email: "not an email" });
 const standard = user["~standard"].validate({ name: "Ada" });
+expect<Equal<typeof standard, SchemaResult<User>>>();
+// `is` narrows an unknown value to an Event; past `validate`'s issues, its value is one.
+const click: unknown = { at: "2026-10-20T09:00:00Z", kind: "click", x: 3, y: 4 };
+const fifth = event.validate({ at: "2026-10-20T09:00:00Z", kind: "click", x: 5, y: 6 });
 
 console.log(
   JSON.stringify({
@@ -111,9 +116,13 @@ console.log(
     notes: notes.split("\n")[0],
     title: frontmatter.title,
     body: post.md.split("\n")[0],
-    valid: valid.name,
-    invalid,
-    standardIssues: "issues" in standard ? standard.issues?.length : 0,
+    valid: checked.issues ? checked.issues.length : checked.value.name,
+    invalid: failed.issues?.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; "),
+    keywords: failed.issues?.map((issue) => issue.keyword),
+    // The Standard Schema validate is the module's own: a missing role, its key the end of the path.
+    standard: [user.validate === user["~standard"].validate, standard.issues?.[0]?.path],
+    // An array index is a number in the path, through team's $ref to user.schema.jsonc.
+    memberPath: team.validate({ lead: { name: "Ada", role: "admin" }, members: [{ name: "Grace", role: "member" }, { name: "", role: "member" }] }).issues?.[0]?.path,
     points: [point.is({ x: 1, y: 2, label: "origin" }), point.is({ x: 1.5, y: 2 }), point.is({ x: 1, y: 2, label: "seventeen letters" })],
     // Valid; a member with an empty name (user.schema.jsonc's minLength); an office with no city (shared/place.schema.jsonc's).
     team: [
@@ -134,7 +143,7 @@ console.log(
       event.is({ at: "2026-10-20T09:00:00Z", kind: "visit", url: "not a uri" }),
       event.is({ at: "2026-10-20T09:00:00Z", kind: "click", url: "https://example.com/a" }),
     ],
-    described: describe(event.parse({ at: "2026-10-20T09:00:00Z", kind: "click", x: 3, y: 4 })),
-    clickX: clickX(event.parse({ at: "2026-10-20T09:00:00Z", kind: "click", x: 5, y: 6 })),
+    described: event.is(click) ? describe(click) : "not an event",
+    clickX: fifth.issues ? fifth.issues.length : clickX(fifth.value),
   }),
 );

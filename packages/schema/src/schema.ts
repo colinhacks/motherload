@@ -2,13 +2,15 @@
 // describes, and a validator compiled from the schema when the module is built.
 //
 //   import user, { type Type as User } from "./user.schema.jsonc";
-//   user.parse(input);          // User, or a TypeError listing every issue
-//   user.is(input);             // input is User
+//   user.validate(input);       // { value } or { issues }, every issue; never throws
+//   user.is(input);             // input is User, stopping at the first failure
 //   user["~standard"];          // Standard Schema v1, for any library that accepts one
 //
 // The types come from Motherload's own emitter (schema-types.ts), the validator from ajv, a
 // dependency of Motherload's, resolved from this module. The generated module imports nothing:
-// ajv's standalone code is inlined with the few run-time helpers it requires. A `$ref` to another
+// ajv's standalone code is inlined with the few run-time helpers it requires. It holds two
+// validators compiled from the same schema, one with `allErrors` for `validate` and one without
+// for `is`, which share those helpers. A `$ref` to another
 // schema file is followed (refs.ts): the types import that file's module, and the validator is
 // compiled from every file the schema reaches.
 import { readFileSync } from "node:fs";
@@ -72,7 +74,7 @@ type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?:
  * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
  * package's dependencies resolve from the package only, not from the project's directory.
  */
-function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
+function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = true): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
   const require = createRequire(import.meta.url);
   const entry = ajvEntry(schema);
   if ("error" in entry) return entry;
@@ -83,9 +85,12 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
   } catch {
     return { error: `Validating ${basename(path)} needs ajv, a dependency of Motherload, which did not load: reinstall Motherload.` };
   }
-  // allErrors: a Standard Schema result lists every issue. strict: false and no logger: a schema
-  // written for another validator (unknown keywords, formats) still compiles, as the spec allows.
-  const ajv = new AjvClass({ allErrors: true, strict: false, logger: false, ...(standalone ? { code: { source: true } } : {}) });
+  // allErrors: `validate` lists every issue; `is` takes a validator without it, which returns at the
+  // first failure. ajv sets allErrors per instance, so each is its own. strict: false and no logger:
+  // a schema written for another validator (unknown keywords, formats) still compiles, as the spec
+  // allows. No option that changes the value (useDefaults, coerceTypes, removeAdditional): the value
+  // `validate` returns is the one it was given, as it was given.
+  const ajv = new AjvClass({ allErrors, strict: false, logger: false, ...(standalone ? { code: { source: true } } : {}) });
   // ajv's default class knows draft-07's meta-schema alone; draft-06's is added for a schema, or a
   // file it refers to, that declares it (ajv's documentation, "JSON Schema draft-06").
   if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
@@ -168,10 +173,12 @@ export function schemaTypes(source: string, path: string, typesFrom = "@motherlo
 const REQUIRE = /(?<!['"\w.$])require\(\s*(["'])([^"']+)\1\s*\)/g;
 
 /**
- * Inlines CommonJS modules: the standalone validator and every module it requires, transitively,
- * as functions in one ES module, so the generated module imports nothing at run time.
+ * Inlines CommonJS modules: each standalone validator and every module they require, transitively,
+ * as functions in one ES module, so the generated module imports nothing at run time. The
+ * validators share one table of modules, so a helper both require (ucs2length, fast-deep-equal,
+ * ajv-formats' formats) is there once; each validator is the constant of its name.
  */
-function inline(entrySource: string, entryFile: string): string {
+function inline(entries: ReadonlyArray<{ name: string; source: string }>, entryFile: string): string {
   const ids = new Map<string, number>();
   const bodies: string[] = [];
   const rewrite = (source: string, from: string) =>
@@ -194,7 +201,13 @@ function inline(entrySource: string, entryFile: string): string {
     bodies[id] = file.endsWith(".json") ? `module.exports = ${text};` : rewrite(text, file);
     return id;
   };
-  const entry = rewrite(entrySource, entryFile);
+  const validators = entries.map(({ name, source }) => [
+    `const ${name} = (() => {`,
+    "  const module = { exports: {} }, exports = module.exports;",
+    rewrite(source, entryFile),
+    "  return module.exports.default ?? module.exports;",
+    "})();",
+  ]);
   return [
     "const __modules = [",
     ...bodies.map((body) => `function (module, exports) {\n${body}\n},`),
@@ -204,17 +217,38 @@ function inline(entrySource: string, entryFile: string): string {
     "  if (!__cache[id]) { const module = { exports: {} }; __cache[id] = module; __modules[id](module, module.exports); }",
     "  return __cache[id].exports;",
     "}",
-    "const validate = (() => {",
-    "  const module = { exports: {} }, exports = module.exports;",
-    entry,
-    "  return module.exports.default ?? module.exports;",
-    "})();",
+    ...validators.flat(),
   ].join("\n");
 }
 
 const VALIDATOR = `
-const __path = (pointer) => pointer === "" ? [] : pointer.slice(1).split("/").map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
-const __issues = () => (validate.errors ?? []).map((e) => ({ message: e.message ?? "is not valid", path: __path(e.instancePath ?? "") }));
+// Standard Schema's path for an ajv error. ajv's instancePath is a JSON Pointer, which writes an
+// array index as it writes an object key, so each segment is read against the value it names: in
+// an array, a number. The key of a property that is missing, unexpected or misnamed, which ajv
+// gives in the error's params, ends the path.
+const __KEYS = { required: "missingProperty", dependentRequired: "missingProperty", dependencies: "missingProperty", additionalProperties: "additionalProperty", unevaluatedProperties: "unevaluatedProperty", propertyNames: "propertyName" };
+const __path = (value, error) => {
+  const path = [];
+  const segments = error.instancePath ? error.instancePath.slice(1).split("/").map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~")) : [];
+  let at = value;
+  for (const segment of segments) {
+    let index = false;
+    // Reading the value again runs its getters again; one that throws now leaves the rest as keys.
+    try {
+      index = Array.isArray(at);
+      at = typeof at === "object" && at !== null ? at[segment] : undefined;
+    } catch {
+      at = undefined;
+    }
+    path.push(index ? Number(segment) : segment);
+  }
+  const key = Object.hasOwn(__KEYS, error.keyword) ? error.params?.[__KEYS[error.keyword]] : undefined;
+  if (typeof key === "string") path.push(key);
+  return path;
+};
+const __issue = (value, error) => ({ message: error.message ?? "is not valid", path: __path(value, error), keyword: error.keyword, params: error.params ?? {}, schemaPath: error.schemaPath });
+// Every issue, from the validator compiled with allErrors; the value itself on success.
+const __validate = (value) => __validateAll(value) ? { value } : { issues: __validateAll.errors.map((error) => __issue(value, error)) };
 // Standard JSON Schema v1: the schema in the target's draft, self-contained, computed when the module
 // was built (json-schema.ts); a fresh copy each call, so a caller may change it.
 const __jsonSchema = (options) => {
@@ -225,16 +259,11 @@ const __jsonSchema = (options) => {
   return structuredClone(entry.schema);
 };
 const schema = {
+  validate: __validate,
+  // The validator compiled without allErrors, which returns at the first failure.
+  is: (value) => __validateFirst(value),
   schema: __schema,
-  "~standard": { version: 1, vendor: "motherload", validate: (value) => validate(value) ? { value } : { issues: __issues() }, jsonSchema: { input: __jsonSchema, output: __jsonSchema } },
-  is: (value) => validate(value),
-  parse(value) {
-    if (validate(value)) return value;
-    const issues = __issues();
-    const error = new TypeError(issues.map((i) => (i.path.length ? i.path.join(".") + ": " : "") + i.message).join("; "));
-    error.issues = issues;
-    throw error;
-  },
+  "~standard": { version: 1, vendor: "motherload", validate: __validate, jsonSchema: { input: __jsonSchema, output: __jsonSchema } },
 };
 export default schema;
 `;
@@ -250,22 +279,25 @@ export function schemaCode(source: string, path: string): { code: string; proble
   if (!parsed.ok) return failed(parsed.problems);
   const files = filesOf(source, path, parsed.value);
   if (files.problems.length) return failed(files.problems, files.watched);
-  const loaded = loadAjv(path, parsed.value, true);
-  if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
-  const compiled = compile(loaded.ajv, files, path);
-  if ("problem" in compiled) return failed([compiled.problem], files.watched);
-  let standalone: string;
-  try {
-    const standaloneModule = loaded.require("ajv/dist/standalone");
-    standalone = (standaloneModule.default ?? standaloneModule)(loaded.ajv, compiled.validate);
-  } catch (error) {
-    return failed([problem(`The schema is not valid: ${(error as Error).message}`)], files.watched);
+  // Two validators from the same files, formats and meta-schemas: every error for `validate`, the first for `is`.
+  const standalones: { name: string; source: string }[] = [];
+  for (const [name, allErrors] of [["__validateAll", true], ["__validateFirst", false]] as const) {
+    const loaded = loadAjv(path, parsed.value, true, allErrors);
+    if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
+    const compiled = compile(loaded.ajv, files, path);
+    if ("problem" in compiled) return failed([compiled.problem], files.watched);
+    try {
+      const standaloneModule = loaded.require("ajv/dist/standalone");
+      standalones.push({ name, source: (standaloneModule.default ?? standaloneModule)(loaded.ajv, compiled.validate) });
+    } catch (error) {
+      return failed([problem(`The schema is not valid: ${(error as Error).message}`)], files.watched);
+    }
   }
   // The standalone code requires ajv's run-time helpers and ajv-formats' format functions
   // (`date-time`, `uri`), both dependencies of this package, so they resolve from this module:
   // from ajv's own directory ajv-formats does not resolve, and was left a bare `require`.
   return {
-    code: [inline(standalone, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, VALIDATOR, ""].join("\n"),
+    code: [inline(standalones, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, VALIDATOR, ""].join("\n"),
     problems: [],
     watchFiles: files.watched,
   };

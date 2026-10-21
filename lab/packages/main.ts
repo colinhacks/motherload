@@ -15,5 +15,6 @@ expect<Equal<typeof config, { readonly name: "packages"; readonly port: 8080 }>>
 expect<Equal<typeof settings, { readonly "editor.fontSize": 14 }>>();
 expect<Equal<Pick<User, keyof User>, { name: string; role?: "admin" | "member" }>>();
 
-const ada: User = user.parse({ name: "Ada", role: "admin" });
+const checked = user.validate({ name: "Ada", role: "admin" });
+const ada: User | undefined = checked.issues ? undefined : checked.value;
 console.log(JSON.stringify({ name: config.name, fontSize: settings["editor.fontSize"], ada, valid: user.is({ name: "Grace" }), invalid: user.is({ name: "" }) }));

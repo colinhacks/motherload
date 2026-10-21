@@ -46,6 +46,8 @@ const TEAM = '"team":[true,false,false]';
 // lab/basic/team.schema.jsonc through Standard JSON Schema, in 2020-12 and draft-07: the other two files folded in, its $refs pointers.
 const JSON_SCHEMA = '"teamJsonSchema":[["https://json-schema.org/draft/2020-12/schema","#/$defs/user","user,place"],["http://json-schema.org/draft-07/schema#","#/definitions/user","user,place"]]';
 const EVENTS = '"events":[true,true,false,false,false],"described":"3,4","clickX":5';
+// lab/basic/user.schema.jsonc's validate: the value, then every issue with its path and keyword; `~standard.validate` the same function, a missing property's key ending the path; an array index a number, through team.schema.jsonc's $ref.
+const VALIDATE = '"valid":"Ada","invalid":"name: must NOT have fewer than 1 characters; email: must match format \\"email\\"; role: must be equal to one of the allowed values","keywords":["minLength","format","enum"],"standard":[true,["role"]],"memberPath":["members",1,"name"]';
 
 test("lab/basic runs under the preload", () => {
   const { status, out } = run(process.execPath, ["--import", "motherload/register", "main.ts"], `${ROOT}lab/basic`);
@@ -57,7 +59,7 @@ test("lab/basic runs under the preload", () => {
   assert.ok(out.includes(TEAM), out);
   assert.ok(out.includes(EVENTS), out);
   assert.ok(out.includes(JSON_SCHEMA), out);
-  assert.ok(out.includes('"invalid":"name: must NOT have fewer than 1 characters; email: must match format \\"email\\"; role: must be equal to one of the allowed values"'), out);
+  assert.ok(out.includes(VALIDATE), out);
 });
 
 test("lab/basic bundles with the esbuild plugin and runs with nothing installed", () => {
@@ -77,6 +79,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   assert.ok(ran.out.includes(TEAM), ran.out);
   assert.ok(ran.out.includes(EVENTS), ran.out);
   assert.ok(ran.out.includes(JSON_SCHEMA), ran.out);
+  assert.ok(ran.out.includes(VALIDATE), ran.out);
 });
 
 // lab/packages: three formats, each from its own package, with the JSONC package's hook and plugin

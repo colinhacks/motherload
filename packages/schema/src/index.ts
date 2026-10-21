@@ -74,23 +74,50 @@ export declare namespace StandardJSONSchemaV1 {
   export type InferOutput<Schema extends StandardTypedV1> = StandardTypedV1.InferOutput<Schema>;
 }
 
-/** A validation failure from `parse`: the message lists every issue, and `issues` holds them. */
-export interface SchemaError extends TypeError {
-  readonly issues: ReadonlyArray<{ readonly message: string; readonly path: ReadonlyArray<string> }>;
+/** `validate`'s result: Standard Schema's result, with Motherload's issues. */
+export type SchemaResult<T> =
+  | { readonly value: T; readonly issues?: undefined }
+  | { readonly value?: undefined; readonly issues: readonly [SchemaIssue, ...SchemaIssue[]] };
+
+/** One way a value fails: ajv's error, with its place in the value as Standard Schema's path. */
+export interface SchemaIssue extends StandardSchemaV1.Issue {
+  /** ajv's message: "must be string", "must have required property 'name'". */
+  readonly message: string;
+  /** Where in the value: object keys as strings, array indexes as numbers; a missing or unexpected property's key ends it. */
+  readonly path: ReadonlyArray<string | number>;
+  /** The keyword that failed: "type", "required", "minLength", "additionalProperties", "format". */
+  readonly keyword: string;
+  /** ajv's details for that keyword: `{ type: "string" }`, `{ missingProperty: "name" }`, `{ limit: 1 }`. */
+  readonly params: Readonly<Record<string, unknown>>;
+  /** Where in the schema, as a JSON Pointer: "#/properties/name/minLength". */
+  readonly schemaPath: string;
 }
 
-/** The default export of a `.schema.jsonc` or `.schema.json5` module: `T` is the type the schema describes, `S` the schema itself as a literal type. */
+/**
+ * The default export of a `.schema.jsonc` or `.schema.json5` module: `T` is the type the schema
+ * describes, `S` the schema itself as a literal type. Nothing on it throws, except a Standard JSON
+ * Schema target it cannot produce, as that spec requires.
+ */
 export interface Schema<T, S = unknown> extends StandardSchemaV1<T, T>, StandardJSONSchemaV1<T, T> {
   /**
-   * Standard Schema v1 and Standard JSON Schema v1. `jsonSchema.input` and `.output` give the schema,
-   * self-contained, in the "draft-07" or "draft-2020-12" target's draft, and throw for another target
-   * or for a keyword the target cannot express.
+   * Checks the whole value and reports every way it fails (ajv with `allErrors`). Never throws.
+   * On success, `value` is the value passed in, the same object, typed `T`: ajv changes nothing.
    */
-  readonly "~standard": StandardSchemaV1.Props<T, T> & StandardJSONSchemaV1.Props<T, T> & { readonly validate: (value: unknown) => StandardSchemaV1.Result<T> };
-  /** The JSON Schema the module was built from. */
-  readonly schema: S;
-  /** Whether `value` is valid. */
+  validate(value: unknown): SchemaResult<T>;
+  /** Whether `value` is valid, as a type guard. Stops at the first failure (a second validator, without `allErrors`). */
   is(value: unknown): value is T;
-  /** `value` when it is valid; otherwise throws a `SchemaError`. */
-  parse(value: unknown): T;
+  /** The JSON Schema as written in the file. A `$ref` to another file stays a reference here. */
+  readonly schema: S;
+  /**
+   * Standard Schema v1 and Standard JSON Schema v1, for libraries that accept either. `jsonSchema.input`
+   * and `.output` give the schema, self-contained, in the "draft-07" or "draft-2020-12" target's draft,
+   * and throw for another target or for a keyword the target cannot express. Motherload's `validate`
+   * comes first, so that a call through `~standard` takes its signature, `SchemaResult<T>`, and not
+   * Standard Schema's, which may be a promise.
+   */
+  readonly "~standard": {
+    /** The same function as `validate`. */
+    readonly validate: (value: unknown) => SchemaResult<T>;
+  } & StandardSchemaV1.Props<T, T> &
+    StandardJSONSchemaV1.Props<T, T>;
 }

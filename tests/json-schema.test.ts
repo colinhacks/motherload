@@ -1,7 +1,8 @@
 // A schema as a self-contained JSON Schema in draft-07 and in 2020-12 (packages/schema/src/json-schema.ts):
 // each conversion on a small schema, each refusal, and the proof: Motherload's own validator (the
-// module's `is`) and ajv compiling each produced schema for its target give the same verdict on
-// every value, for the fixtures in tests/fixtures/json-schema and lab/basic's schemas.
+// module's `is`, with its `validate` agreeing) and ajv compiling each produced schema for its target
+// give the same verdict on every value, for the fixtures in tests/fixtures/json-schema and lab/basic's
+// schemas.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -61,11 +62,16 @@ function compileFor(target: JsonSchemaTarget, schema: unknown, strictSchema = tr
   return ajv.compile(schema);
 }
 
-/** Motherload's own validator: the `is` of the module the schema becomes. */
+/** Motherload's own validator: the `is` of the module the schema becomes, which `validate`, the other of its two validators, agrees with on every value. */
 async function motherload(source: string, path: string): Promise<(value: unknown) => boolean> {
   const { code, problems } = schemaCode(source, path);
   assert.deepEqual(problems, []);
-  return (await evaluate(code)).default.is;
+  const { is, validate } = (await evaluate(code)).default;
+  return (value) => {
+    const verdict = is(value);
+    assert.equal(validate(value).issues === undefined, verdict, `is and validate on ${JSON.stringify(value)}`);
+    return verdict;
+  };
 }
 
 const ONE = ["additionalProperties", "unevaluatedProperties", "items", "additionalItems", "unevaluatedItems", "contains", "propertyNames", "not", "if", "then", "else", "contentSchema"];

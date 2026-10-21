@@ -27,19 +27,153 @@ test("the module validates with ajv's standalone code and imports nothing", asyn
   assert.equal(user.is({ name: "" }), false);
   // uniqueItems over objects needs ajv's `equal` helper, which is inlined.
   assert.equal(user.is({ name: "Ada", tags: [{ a: 1 }, { a: 1 }] }), false);
-  assert.deepEqual(user.parse({ name: "Ada" }), { name: "Ada" });
-  assert.throws(() => user.parse({ name: "", extra: 1 }), (e: any) => e instanceof TypeError && (e as any).issues.length === 2);
-  const result = user["~standard"].validate({ tags: [] });
-  assert.equal(result.issues.length, 1);
+  assert.equal(user.validate({ name: "", extra: 1 }).issues.length, 2);
+  assert.equal(user["~standard"].validate({ tags: [] }).issues.length, 1);
+  assert.equal(user["~standard"].version, 1);
   assert.equal(user["~standard"].vendor, "motherload");
   assert.equal(user.schema.title, "User");
+  assert.deepEqual(Object.keys(user), ["validate", "is", "schema", "~standard"]);
 });
 
-test("an issue's path is the instance path, unescaped", async () => {
-  const { code } = schemaCode(JSON.stringify({ type: "object", properties: { "a/b": { type: "array", items: { type: "number" } } } }), PATH);
+test("validate reports every issue, each with ajv's message, keyword, params and schema path, and never throws for an invalid value", async () => {
+  const { default: user } = await evaluate(schemaCode(SCHEMA, PATH).code);
+  // Three ways at once: an empty name, a duplicate tag, a property the schema closes out.
+  assert.deepEqual(user.validate({ name: "", tags: [{}, {}], extra: 1 }), {
+    issues: [
+      { message: "must NOT have additional properties", path: ["extra"], keyword: "additionalProperties", params: { additionalProperty: "extra" }, schemaPath: "#/additionalProperties" },
+      { message: "must NOT have fewer than 1 characters", path: ["name"], keyword: "minLength", params: { limit: 1 }, schemaPath: "#/properties/name/minLength" },
+      { message: "must NOT have duplicate items (items ## 0 and 1 are identical)", path: ["tags"], keyword: "uniqueItems", params: { i: 1, j: 0 }, schemaPath: "#/properties/tags/uniqueItems" },
+    ],
+  });
+  assert.deepEqual(user.validate(null).issues.map((i: any) => [i.path, i.keyword]), [[[], "type"]]);
+});
+
+test("validate gives back the value it was given, the same object, unchanged: ajv is set to change nothing", async () => {
+  const source = JSON.stringify({ type: "object", properties: { n: { type: "number", default: 1 }, s: { type: "string" } }, additionalProperties: false });
+  const { default: s } = await evaluate(schemaCode(source, PATH).code);
+  const value = { s: "1" };
+  const result = s.validate(value);
+  assert.equal(result.value, value);
+  assert.deepEqual(Object.keys(result), ["value"]);
+  // No default filled in, no "1" coerced, no extra property removed.
+  assert.deepEqual(value, { s: "1" });
+  const extra = { s: 1, x: 2 };
+  assert.equal(s.validate(extra).issues.length, 2);
+  assert.deepEqual(extra, { s: 1, x: 2 });
+  assert.equal(s["~standard"].validate(value).value, value);
+});
+
+test("an issue's path: object keys as strings, unescaped, and array indexes as numbers, read from the value", async () => {
+  const source = JSON.stringify({
+    type: "object",
+    properties: {
+      "a/b~c": { type: "array", items: { type: "number" } },
+      grid: { type: "array", items: { type: "array", items: { type: "string" } } },
+      map: { type: "object", properties: { "0": { type: "string" } } },
+    },
+  });
+  const { default: s } = await evaluate(schemaCode(source, PATH).code);
+  const result = s.validate({ "a/b~c": [1, "x"], grid: [[], ["a", 2]], map: { "0": 1 } });
+  // The pointer writes `/1` for the index and `/0` for the key alike; the value tells them apart.
+  assert.deepEqual(result.issues.map((i: any) => i.path), [["a/b~c", 1], ["grid", 1, 1], ["map", "0"]]);
+  // An array that is not where the schema expects one is still an array in the path.
+  const list = await evaluate(schemaCode(JSON.stringify({ items: { type: "object", properties: { "1": { type: "string" } } } }), PATH).code);
+  assert.deepEqual(list.default.validate([{}, { 1: 2 }]).issues[0].path, [1, "1"]);
+});
+
+test("the key of a missing, unexpected or misnamed property ends the path", async () => {
+  const D07 = "http://json-schema.org/draft-07/schema#";
+  const D2020 = "https://json-schema.org/draft/2020-12/schema";
+  const paths = async (schema: object, value: unknown) => (await evaluate(schemaCode(JSON.stringify(schema), PATH).code)).default.validate(value).issues.map((i: any) => [i.keyword, i.path]);
+  const inner = (schema: object) => ({ $schema: D2020, type: "object", properties: { inner: schema } });
+  assert.deepEqual(await paths(inner({ required: ["a", "b"] }), { inner: { b: 1 } }), [["required", ["inner", "a"]]]);
+  assert.deepEqual(await paths(inner({ properties: { a: true }, additionalProperties: false }), { inner: { a: 1, b: 1, c: 1 } }), [["additionalProperties", ["inner", "b"]], ["additionalProperties", ["inner", "c"]]]);
+  assert.deepEqual(await paths(inner({ properties: { a: true }, unevaluatedProperties: false }), { inner: { a: 1, b: 1 } }), [["unevaluatedProperties", ["inner", "b"]]]);
+  assert.deepEqual(await paths(inner({ dependentRequired: { a: ["b", "c"] } }), { inner: { a: 1 } }), [["dependentRequired", ["inner", "b"]], ["dependentRequired", ["inner", "c"]]]);
+  assert.deepEqual(await paths({ $schema: D07, properties: { inner: { dependencies: { a: ["b"] } } } }, { inner: { a: 1 } }), [["dependencies", ["inner", "b"]]]);
+  // propertyNames: ajv's error for the name's own rule names no key, and the error that follows does.
+  assert.deepEqual(await paths(inner({ propertyNames: { pattern: "^a" } }), { inner: { ab: 1, b: 1 } }), [["pattern", ["inner"]], ["propertyNames", ["inner", "b"]]]);
+  // A property named as an index, in an array of objects.
+  assert.deepEqual(await paths({ type: "array", items: { required: ["0"] } }, [{}]), [["required", [0, "0"]]]);
+});
+
+test("is stops at the first failure: it is a second validator, compiled without allErrors, beside validate's", async () => {
+  const source = JSON.stringify({ type: "object", properties: { a: { type: "string" }, b: { type: "string" } } });
+  const { code } = schemaCode(source, PATH);
+  // One table of run-time modules, two validators.
+  assert.equal(code.match(/^const __modules = /gm)?.length, 1);
+  assert.match(code, /^const __validateAll = /m);
+  assert.match(code, /^const __validateFirst = /m);
   const { default: s } = await evaluate(code);
-  const result = s["~standard"].validate({ "a/b": [1, "x"] });
-  assert.deepEqual(result.issues[0].path, ["a/b", "1"]);
+  const read: string[] = [];
+  const value = {
+    get a() {
+      read.push("a");
+      return 1;
+    },
+    get b() {
+      read.push("b");
+      return 2;
+    },
+  };
+  assert.equal(s.is(value), false);
+  // `a` fails, and `b` is never read.
+  assert.deepEqual([...new Set(read)], ["a"]);
+  read.length = 0;
+  assert.equal(s.validate(value).issues.length, 2);
+  assert.deepEqual([...new Set(read)], ["a", "b"]);
+  assert.equal(s.validate, s["~standard"].validate);
+});
+
+test("a helper both validators require is inlined once", async () => {
+  const source = JSON.stringify({ type: "object", properties: { at: { type: "string", format: "date-time" }, name: { type: "string", minLength: 1 }, tags: { type: "array", uniqueItems: true } } });
+  const { code } = schemaCode(source, PATH);
+  // ajv-formats' formats, ucs2length and fast-deep-equal, each once, though both validators use them:
+  // as many modules as distinct ids required, ucs2length and fast-deep-equal among them.
+  const modules = code.match(/^function \(module, exports\) \{$/gm)!.length;
+  assert.equal(modules, new Set(code.match(/__require\(\d+\)/g)).size);
+  assert.ok(modules >= 3, String(modules));
+  assert.equal(code.match(/function ucs2length/g)!.length, 1);
+  assert.equal(code.match(/module\.exports = function equal/g)!.length, 1);
+  const { default: s } = await evaluate(code);
+  assert.deepEqual([s.is({ at: "2026-10-20T22:14:00Z", name: "a", tags: [{}, { a: 1 }] }), s.is({ at: "yesterday" }), s.is({ name: "" }), s.is({ tags: [{}, {}] })], [true, false, false, false]);
+  assert.deepEqual(s.validate({ at: "yesterday", name: "", tags: [{}, {}] }).issues.map((i: any) => i.keyword), ["format", "minLength", "uniqueItems"]);
+});
+
+test("neither method throws for a value that is not JSON, and a path that cannot be read again is kept as keys", async () => {
+  const source = JSON.stringify({ type: "object", properties: { n: { type: "integer" }, list: { type: "array", items: { type: "string" } } }, required: ["n"] });
+  const { default: s } = await evaluate(schemaCode(source, PATH).code);
+  const hostile = [undefined, Symbol("x"), () => 1, 1n, NaN, new Date(), new Map([["n", 1]]), [, 1], Object.create(null), JSON.parse('{"__proto__": {"n": 1}}'), { n: 1n }, { n: NaN }, new Proxy({ n: "x" }, {}), { n: 1, list: Object.assign([1], { extra: true }) }];
+  for (const [index, value] of hostile.entries()) {
+    assert.equal(s.is(value), false, `value ${index}`);
+    assert.ok(s.validate(value).issues.length > 0, `value ${index}`);
+  }
+  assert.equal(s.is(Object.assign(Object.create(null), { n: 1 })), true);
+  // ajv reads `list` twice; a getter that throws from the third read on fails the path walk alone,
+  // whose segments past it stay keys.
+  let reads = 0;
+  const changing = {
+    n: 1,
+    get list() {
+      if (++reads > 2) throw new Error("read again");
+      return [1];
+    },
+  };
+  assert.deepEqual(s.validate(changing).issues.map((i: any) => i.path), [["list", "0"]]);
+});
+
+test("a value ajv's recursion cannot finish throws ajv's RangeError, from validate and is alike", async () => {
+  // Recorded in DESIGN.md: a cyclic value against a recursive schema, or nesting deeper than the stack.
+  const tree = JSON.stringify({ $defs: { node: { type: "object", properties: { kids: { type: "array", items: { $ref: "#/$defs/node" } } } } }, $ref: "#/$defs/node" });
+  const { default: s } = await evaluate(schemaCode(tree, PATH).code);
+  const cyclic: any = { kids: [] };
+  cyclic.kids.push(cyclic);
+  assert.throws(() => s.validate(cyclic), RangeError);
+  assert.throws(() => s.is(cyclic), RangeError);
+  // A cycle the schema does not descend into is validated as any other value.
+  const flat: any = { kids: [] };
+  flat.self = flat;
+  assert.equal(s.validate(flat).value, flat);
 });
 
 test("the types name the root Type whatever its title", () => {
