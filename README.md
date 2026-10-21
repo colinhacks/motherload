@@ -249,7 +249,7 @@ if (result.issues) {
 }
 ```
 
-`is` checks a value and narrows it:
+The `.is()` method checks a value and narrows it:
 
 ```ts
 if (user.is(input)) {
@@ -280,7 +280,7 @@ A `$ref` can point to another schema file, by a path relative to this one:
 }
 ```
 
-`$schema` picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
+The `$schema` keyword picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
 
 > [!NOTE]
 > A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.

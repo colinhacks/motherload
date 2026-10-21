@@ -205,7 +205,7 @@ if (result.issues) {
 }
 ```
 
-`is` checks a value and narrows it:
+The `.is()` method checks a value and narrows it:
 
 ```ts twoslash title="main.ts"
 declare const input: unknown;
@@ -242,7 +242,7 @@ A `$ref` can point to another schema file, by a path relative to this one:
 }
 ```
 
-`$schema` picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
+The `$schema` keyword picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
 
 <Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
 
@@ -282,7 +282,7 @@ To import type-safe SQL files, use Motherload's sister project, [Reylo](https://
 {/* Reylo's own opening example (reylo.dev). Its mapper needs a live database and the reylo
     package, which this page's build has neither of, so the hidden module below stands in for
     the one Reylo returns for get_author.sql on Postgres (reylo/site/lib/sql-modules.json): its
-    row type and `run`'s `Row | null` for a query that returns at most one row. Only `author`
+    row type and `.run()`'s `Row | null` for a query that returns at most one row. Only `author`
     shows a hover. */}
 
 ```ts twoslash tab="main.ts"

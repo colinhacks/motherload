@@ -211,14 +211,14 @@ await esbuild.build({
 });
 ```
 
-Use `build`: esbuild runs plugins in `build` only, and `buildSync` throws.
+Use `.build()`: esbuild runs plugins in `.build()` only, and `.buildSync()` throws.
 
 </Accordion>
 </Accordions>
 
 ### One format at a time
 
-`motherload` is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
+The `motherload` package is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
 
 | Package | Extensions |
 | --- | --- |
