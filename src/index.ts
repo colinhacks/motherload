@@ -41,7 +41,7 @@ export interface SchemaError extends TypeError {
   readonly issues: ReadonlyArray<{ readonly message: string; readonly path: ReadonlyArray<string> }>;
 }
 
-/** The default export of a `.schema.jsonc` module: `T` is the type the schema describes, `S` the schema itself as a literal type. */
+/** The default export of a `.schema.jsonc` or `.schema.json5` module: `T` is the type the schema describes, `S` the schema itself as a literal type. */
 export interface Schema<T, S = unknown> extends StandardSchemaV1<T, T> {
   readonly "~standard": StandardSchemaV1.Props<T, T> & { readonly validate: (value: unknown) => StandardSchemaV1.Result<T> };
   /** The JSON Schema the module was built from. */

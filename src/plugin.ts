@@ -5,7 +5,7 @@ import { dataModule } from "./data.ts";
 import { schemaCode, schemaTypes } from "./schema.ts";
 import type { LoaderPlugin } from "./universal.ts";
 
-const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md and .schema.jsonc";
+const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md, .schema.jsonc and .schema.json5";
 
 const unknownFormat = (path: string): Problem => ({ message: `Motherload reads ${READS} files; ${path} is none of them. Remove its extension from Motherload's contentMappers entry.`, start: 0, length: 1, code: CODES.unknownFormat });
 

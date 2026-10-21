@@ -8,6 +8,7 @@ import settings from "./settings.jsonc";
 import data from "./data.json5";
 import "./.env";
 import user, { type Type as User } from "./user.schema.jsonc";
+import point, { type Type as Point } from "./point.schema.json5";
 import plain from "./plain.json" with { type: "json" };
 import users from "./users.csv";
 import scores from "./scores.tsv";
@@ -50,6 +51,9 @@ expect<Equal<typeof postRaw, string>>();
 
 expect<Equal<User, { name: string; email?: string; role: "admin" | "member"; tags?: string[] }>>();
 expect<Equal<ReturnType<typeof user.parse>, User>>();
+// A schema written in JSON5 is the same module.
+expect<Equal<Point, { x: number; y: number; label?: string }>>();
+expect<Equal<typeof point.schema.properties.label.maxLength, 16>>();
 
 // @ts-expect-error port is a number
 const wrong: string = config.port;
@@ -92,5 +96,6 @@ console.log(
     valid: valid.name,
     invalid,
     standardIssues: "issues" in standard ? standard.issues?.length : 0,
+    points: [point.is({ x: 1, y: 2, label: "origin" }), point.is({ x: 1.5, y: 2 }), point.is({ x: 1, y: 2, label: "seventeen letters" })],
   }),
 );

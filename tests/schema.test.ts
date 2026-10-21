@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { CODES } from "../src/formats.ts";
 import { schemaCode, schemaTypes } from "../src/schema.ts";
 import { evaluate, ROOT } from "./helpers.ts";
 
@@ -58,6 +59,25 @@ test("a schema is JSONC: comments and trailing commas are read in both texts", a
   const { default: user } = await evaluate(code);
   assert.equal(user.is({ name: "Ada" }), true);
   assert.equal(user.is({ name: "Ada", extra: 1 }), false);
+});
+
+test("a .schema.json5 schema is JSON5 in both texts, and the suffix names the dialect", async () => {
+  const path = join(ROOT, "tests/fixtures/user.schema.json5");
+  const source = "// a user\n{\n  type: 'object',\n  properties: { name: { type: 'string', maxLength: 0x4 }, },\n  required: ['name'],\n  additionalProperties: false,\n}\n";
+  const typed = schemaTypes(source, path);
+  assert.deepEqual(typed.problems, []);
+  assert.match(typed.types, /export interface Type \{\n  name: string;\n\}/);
+  const { code, problems } = schemaCode(source, path);
+  assert.deepEqual(problems, []);
+  const { default: user } = await evaluate(code);
+  assert.equal(user.is({ name: "Ada" }), true);
+  assert.equal(user.is({ name: "Grace" }), false);
+  assert.equal(user.is({ name: "Ada", extra: 1 }), false);
+  // The same text in a .schema.jsonc file is JSON with comments, where an unquoted key is an error.
+  assert.equal(schemaTypes(source, PATH).problems[0]!.code, CODES.syntax);
+  const broken = schemaCode("{\n  type: 'object',,\n}", path).problems;
+  assert.equal(broken[0]!.code, CODES.syntax);
+  assert.equal(broken[0]!.start, 19);
 });
 
 test("a $ref to another file is a problem, not a read", () => {

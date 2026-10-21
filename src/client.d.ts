@@ -56,3 +56,8 @@ declare module "*.schema.jsonc?raw" {
   const text: string;
   export default text;
 }
+
+declare module "*.schema.json5?raw" {
+  const text: string;
+  export default text;
+}

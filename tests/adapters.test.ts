@@ -34,7 +34,7 @@ test("esbuild gives `?raw` the file's text and leaves another query to other plu
 });
 
 // Every extension Motherload reads (plugin.ts names them in its unknown-extension message).
-const EXTENSIONS = [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".schema.jsonc"];
+const EXTENSIONS = [".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", ".csv", ".tsv", ".txt", ".md", ".schema.jsonc", ".schema.json5"];
 
 test("`?raw` is typed by client.d.ts and served by the Node hook and esbuild for every extension", async () => {
   const client = readFileSync(new URL("../src/client.d.ts", import.meta.url), "utf8");

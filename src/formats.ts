@@ -22,10 +22,10 @@ export type Parsed = { ok: true; value: Value } | { ok: false; problems: Problem
 export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3, schema: 4 } as const;
 
 /** Every path a loader claims, in the order the longest suffix is tested first. `.env` files are matched by name: `.env`, `.env.local`, `prod.env`. */
-export const FILTER = /(\.schema\.jsonc|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
+export const FILTER = /(\.schema\.jsonc|\.schema\.json5|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/;
 
 export function formatOf(path: string): Format | undefined {
-  if (path.endsWith(".schema.jsonc")) return "schema";
+  if (path.endsWith(".schema.jsonc") || path.endsWith(".schema.json5")) return "schema";
   if (path.endsWith(".toml")) return "toml";
   if (path.endsWith(".yaml") || path.endsWith(".yml")) return "yaml";
   if (path.endsWith(".json5")) return "json5";
@@ -102,8 +102,9 @@ export function parseYamlFile(source: string): Parsed {
   return carry(values.length === 1 ? values[0] : values);
 }
 
-// ---- JSON5 ---------------------------------------------------------------------------------------
+// ---- JSON5 (the `.json5` loader and the schema loader) ------------------------------------------
 
+/** JSON5. A `.schema.json5` file is read the same way. */
 export function parseJson5File(source: string): Parsed {
   try {
     return carry(JSON5.parse(source));

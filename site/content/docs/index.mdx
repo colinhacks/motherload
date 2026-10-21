@@ -113,7 +113,8 @@ Add Motherload to `tsconfig.json`, with the extensions it should own. The `types
       "package": "motherload", // [!code ++]
       "extensions": [ // [!code ++]
         ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", // [!code ++]
-        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc" // [!code ++]
+        ".csv", ".tsv", ".txt", ".md", // [!code ++]
+        ".schema.jsonc", ".schema.json5" // [!code ++]
       ] // [!code ++]
     } // [!code ++]
   ] // [!code ++]
@@ -468,7 +469,33 @@ The schema's type is always exported as `Type`. The validator is compiled by [aj
 - **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
 - **Formats:** checked when `ajv-formats` is installed.
 - **References:** a `$ref` within the file is followed; a `$ref` to another file or a URL is an error.
-- **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
+- **The suffix:** `.schema.jsonc`, or `.schema.json5` for a schema written in JSON5, because TypeScript refuses a content mapper extension that ends in `.json`. A `.schema.jsonc` file is read as JSON with comments, so comments and trailing commas are allowed, and VS Code checks it against the draft its `$schema` names.
+
+### `.schema.json5`
+
+A `.schema.json5` file is a schema written in JSON5, read as a `.json5` file is. Its module is the same as a `.schema.jsonc` file's.
+
+```json5 title="point.schema.json5"
+{
+  // a point on a grid
+  type: 'object',
+  properties: {
+    x: { type: 'integer' },
+    y: { type: 'integer' },
+  },
+  required: ['x', 'y'],
+  additionalProperties: false,
+}
+```
+
+```ts twoslash title="main.ts"
+declare const input: unknown;
+// ---cut---
+import point, { type Type as Point } from "./point.schema.json5";
+
+const origin = point.parse(input);   // or a TypeError listing every issue
+//    ^?
+```
 
 ### `.json`
 

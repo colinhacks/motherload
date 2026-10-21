@@ -36,7 +36,8 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
       "package": "motherload",
       "extensions": [
         ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env",
-        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc"
+        ".csv", ".tsv", ".txt", ".md",
+        ".schema.jsonc", ".schema.json5"
       ]
     }
   ]
@@ -218,7 +219,7 @@ import { frontmatter } from "./post.md"; // one part; a bundle leaves out the bo
 
 ### `.schema.jsonc`
 
-A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time. The suffix is `.schema.jsonc`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; the file is read as JSON with comments, so comments and trailing commas are allowed.
+A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time. The suffix is `.schema.jsonc` or `.schema.json5`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; a `.schema.jsonc` file is read as JSON with comments, so comments and trailing commas are allowed.
 
 ```jsonc
 {
@@ -239,6 +240,27 @@ import user, { type Type as User } from "./user.schema.jsonc";
 const valid: User = user.parse(input); // or a TypeError listing each issue
 user.is(input);                        // input is User
 user["~standard"].validate(input);     // Standard Schema v1
+```
+
+### `.schema.json5`
+
+The same as `.schema.jsonc`, with the schema written in JSON5.
+
+```json5
+{
+  type: 'object',
+  properties: {
+    x: { type: 'integer' },
+    y: { type: 'integer' },
+  },
+  required: ['x', 'y'],
+  additionalProperties: false,
+}
+```
+
+```ts
+import point, { type Type as Point } from "./point.schema.json5";
+// Point: { x: number; y: number }
 ```
 
 ## Errors

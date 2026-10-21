@@ -26,7 +26,7 @@ function declarationName(file: string): string {
 const titleOf = (node: Code) => /title="([^"]+)"/.exec(node.meta ?? '')?.[1] ?? node.data?.tab;
 
 // The files Motherload reads, as in src/formats.ts.
-const DATA = /(\.schema\.jsonc|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|\/)\.env(?:\.[^/]+)?|\.env)$/;
+const DATA = /(\.schema\.jsonc|\.schema\.json5|\.toml|\.ya?ml|\.json5|\.jsonc|\.csv|\.tsv|\.txt|\.md|(?:^|\/)\.env(?:\.[^/]+)?|\.env)$/;
 
 // `import config from "./config.toml"` and a bare `import "./.env"`.
 const IMPORT = /\b(?:from|import)\s+["']\.\/([^"']+)["']/g;

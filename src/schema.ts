@@ -1,5 +1,5 @@
-// The module a `.schema.jsonc` file becomes: the TypeScript type the schema describes, and a
-// validator compiled from the schema when the module is built.
+// The module a `.schema.jsonc` or `.schema.json5` file becomes: the TypeScript type the schema
+// describes, and a validator compiled from the schema when the module is built.
 //
 //   import user, { type Type as User } from "./user.schema.jsonc";
 //   user.parse(input);          // User, or a TypeError listing every issue
@@ -12,7 +12,7 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
-import { parseJsoncFile, CODES, type Problem } from "./formats.ts";
+import { parseJson5File, parseJsoncFile, CODES, type Parsed, type Problem } from "./formats.ts";
 import { literal, toJs, type Value } from "./serialize.ts";
 import { schemaDeclarations } from "./schema-types.ts";
 import type { ModuleText } from "./data.ts";
@@ -20,6 +20,9 @@ import type { ModuleText } from "./data.ts";
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
 const problem = (message: string, code: number = CODES.schema): Problem => ({ message, start: 0, length: 1, code });
+
+/** A schema is read in the dialect its suffix names: JSON5 for `.schema.json5`, JSON with comments for `.schema.jsonc`. */
+const parseSchemaFile = (source: string, path: string): Parsed => (path.endsWith(".schema.json5") ? parseJson5File(source) : parseJsoncFile(source));
 
 /** The draft a schema declares, as the ajv entry point that validates it. */
 function ajvEntry(schema: Value): { entry: string } | { error: string } {
@@ -60,7 +63,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
 // ---- types --------------------------------------------------------------------------------------
 
 export function schemaTypes(source: string, path: string): { types: string; problems: Problem[] } {
-  const parsed = parseJsoncFile(source);
+  const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
   const problems: Problem[] = [];
@@ -154,7 +157,7 @@ export default schema;
 
 /** The module's JavaScript. Throws when the validator cannot be built: a bundler or the preload reports it as a load error. */
 export function schemaCode(source: string, path: string): { code: string; problems: Problem[] } {
-  const parsed = parseJsoncFile(source);
+  const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return { code: "export default undefined;\n", problems: parsed.problems };
   const loaded = loadAjv(path, parsed.value, true);
   if ("error" in loaded) return { code: "export default undefined;\n", problems: [problem(loaded.error)] };
