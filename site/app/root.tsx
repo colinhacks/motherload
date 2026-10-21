@@ -8,6 +8,7 @@ import mono400Latin from '../assets/fonts/ibm-plex-mono-400-latin.woff2?url';
 import mono500Latin from '../assets/fonts/ibm-plex-mono-500-latin.woff2?url';
 import mono600Latin from '../assets/fonts/ibm-plex-mono-600-latin.woff2?url';
 import sansLatin from '../assets/fonts/ibm-plex-sans-latin.woff2?url';
+import fontsCss from './fonts.css?url';
 import { NotFound } from '@/components/not-found';
 
 // The fonts (app/fonts.css): IBM Plex Sans and IBM Plex Mono, and Caveat for the "Leave a star!"
@@ -16,9 +17,15 @@ import { NotFound } from '@/components/not-found';
 // the text (a layout shift, measured on Reylo's page on 2026-10-20), Plex Sans's size-adjusted
 // fallback, and the system's monospace behind Plex Mono. Their Latin files are preloaded, so they
 // make the first paint on any ordinary connection; a first view whose fonts take longer keeps the
-// fallbacks, and the next view has them cached. The icons are the gold bars: public/favicon.ico,
-// public/icon.svg and public/apple-icon.png.
+// fallbacks, and the next view has them cached. The faces are a stylesheet of their own, linked
+// here rather than imported by global.css: under `vite dev`, React Router serves the imported CSS
+// as a stylesheet that it removes once the page hydrates, when Vite injects its own copy, and the
+// faces declared again then missed `optional`'s window, so the page went from Plex to Arial and
+// Menlo for the rest of the visit (the maintainer, 2026-10-21: "It actually starts showing me IBM
+// Plex Sans, and then it reverts to Arial"). A linked stylesheet stays put. The icons are the gold
+// bars: public/favicon.ico, public/icon.svg and public/apple-icon.png.
 export const links: Route.LinksFunction = () => [
+  { rel: 'stylesheet', href: fontsCss },
   ...[sansLatin, mono600Latin, mono400Latin, caveatLatin, mono500Latin].map((href) => ({ rel: 'preload', href, as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' as const })),
   { rel: 'author', href: 'https://github.com/colinhacks' },
   { rel: 'manifest', href: '/manifest.webmanifest' },
