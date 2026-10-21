@@ -36,39 +36,20 @@ A local date-time, date or time is its ISO text. An integer that a `number` cann
 
 ### `.yaml`
 
-Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/), so `yes` is a string. Merge keys (`<<`) are read, and a duplicate key is an error. A `.yml` file is read the same way.
+Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/). A `.yml` file is read the same way, and a file of several documents (`---`) is the list of them.
 
 ```ts twoslash tab="main.ts"
-import app from "./app.yaml";
-
-const production = app.production;
-//    ^?
-const enabled = app.enabled;
-//    ^?
-```
-
-```yaml tab="app.yaml"
-defaults: &defaults
-  retries: 3
-  timeout: 1.5
-production:
-  <<: *defaults
-  host: example.com
-enabled: yes
-```
-
-A file of several documents (`---`) is the list of them:
-
-```ts twoslash tab="main.ts"
-import deploy from "./deploy.yaml";
+import config from "./config.yaml";
 //     ^?
 ```
 
-```yaml tab="deploy.yaml"
-kind: Service
----
-kind: Deployment
-replicas: 2
+```yaml tab="config.yaml"
+name: api
+port: 8080
+debug: false
+hosts:
+  - example.com
+  - api.example.com
 ```
 
 ### `.json5`
