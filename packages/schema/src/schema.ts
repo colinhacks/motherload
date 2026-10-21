@@ -89,8 +89,14 @@ function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = t
   // first failure. ajv sets allErrors per instance, so each is its own. strict: false and no logger:
   // a schema written for another validator (unknown keywords, formats) still compiles, as the spec
   // allows. No option that changes the value (useDefaults, coerceTypes, removeAdditional): the value
-  // `validate` returns is the one it was given, as it was given.
-  const ajv = new AjvClass({ allErrors, strict: false, logger: false, ...(standalone ? { code: { source: true } } : {}) });
+  // `validate` returns is the one it was given, as it was given. Two of ajv's defaults check more
+  // than the schema says, and are changed so that the validator checks the schema as written:
+  // ownProperties, so that a property is the value's own and not Object.prototype's (by default
+  // `{}` failed `properties: { toString: { type: "string" } }` and passed `required: ["toString"]`);
+  // and multipleOfPrecision, so that `multipleOf` is read in decimals (by default ajv refused 19.99
+  // for 0.01 and 0.3 for 0.1, whose quotients a double misses by 1e-13): within 1e-7 of a step is
+  // a multiple, which keeps every quotient below 1e8 exact and still refuses 0.015 for 0.01.
+  const ajv = new AjvClass({ allErrors, strict: false, logger: false, ownProperties: true, multipleOfPrecision: 7, ...(standalone ? { code: { source: true } } : {}) });
   // ajv's default class knows draft-07's meta-schema alone; draft-06's is added for a schema, or a
   // file it refers to, that declares it (ajv's documentation, "JSON Schema draft-06").
   if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
@@ -230,7 +236,8 @@ const VALIDATOR = `
 // Standard Schema's path for an ajv error. ajv's instancePath is a JSON Pointer, which writes an
 // array index as it writes an object key, so each segment is read against the value it names: in
 // an array, a number. The key of a property that is missing, unexpected or misnamed, which ajv
-// gives in the error's params, ends the path.
+// gives in the error's params, ends the path; so does the key whose name an error inside
+// propertyNames is about, which ajv gives on the error itself.
 const __KEYS = { required: "missingProperty", dependentRequired: "missingProperty", dependencies: "missingProperty", additionalProperties: "additionalProperty", unevaluatedProperties: "unevaluatedProperty", propertyNames: "propertyName" };
 const __path = (value, error) => {
   const path = [];
@@ -249,11 +256,38 @@ const __path = (value, error) => {
   }
   const key = Object.hasOwn(__KEYS, error.keyword) ? error.params?.[__KEYS[error.keyword]] : undefined;
   if (typeof key === "string") path.push(key);
+  else if (typeof error.propertyName === "string") path.push(error.propertyName);
   return path;
 };
 const __issue = (value, error) => ({ message: error.message ?? "is not valid", path: __path(value, error), keyword: error.keyword, params: error.params ?? {}, schemaPath: error.schemaPath });
-// Every issue, from the validator compiled with allErrors; the value itself on success.
-const __validate = (value) => __validateAll(value) ? { value } : { issues: __validateAll.errors.map((error) => __issue(value, error)) };
+// What ajv threw, as text, for a value it could not check: a value nested deeper than the stack, one
+// that refers to itself where the schema recurses, a getter or proxy that throws.
+const __thrown = (error) => {
+  try {
+    return typeof error?.message === "string" ? error.message : String(error);
+  } catch {
+    return "a value that cannot be read";
+  }
+};
+// Every issue, from the validator compiled with allErrors; the value itself on success. Nothing
+// throws: what ajv throws is one issue at the root, the thrown value in its params.
+const __validate = (value) => {
+  try {
+    if (__validateAll(value)) return { value };
+  } catch (error) {
+    return { issues: [{ message: "could not be checked: " + __thrown(error), path: [], keyword: "error", params: { error }, schemaPath: "#" }] };
+  }
+  return { issues: __validateAll.errors.map((error) => __issue(value, error)) };
+};
+// The validator compiled without allErrors, which returns at the first failure; a value it
+// cannot check is not known to be valid.
+const __is = (value) => {
+  try {
+    return __validateFirst(value);
+  } catch {
+    return false;
+  }
+};
 // Standard JSON Schema v1: the schema in the target's draft, self-contained, computed when the module
 // was built (json-schema.ts); a fresh copy each call, so a caller may change it.
 const __jsonSchema = (options) => {
@@ -265,8 +299,7 @@ const __jsonSchema = (options) => {
 };
 const schema = {
   validate: __validate,
-  // The validator compiled without allErrors, which returns at the first failure.
-  is: (value) => __validateFirst(value),
+  is: __is,
   schema: __schema,
   "~standard": { version: 1, vendor: "motherload", validate: __validate, jsonSchema: { input: __jsonSchema, output: __jsonSchema } },
 };

@@ -91,8 +91,9 @@ test("the key of a missing, unexpected or misnamed property ends the path", asyn
   assert.deepEqual(await paths(inner({ properties: { a: true }, unevaluatedProperties: false }), { inner: { a: 1, b: 1 } }), [["unevaluatedProperties", ["inner", "b"]]]);
   assert.deepEqual(await paths(inner({ dependentRequired: { a: ["b", "c"] } }), { inner: { a: 1 } }), [["dependentRequired", ["inner", "b"]], ["dependentRequired", ["inner", "c"]]]);
   assert.deepEqual(await paths({ $schema: D07, properties: { inner: { dependencies: { a: ["b"] } } } }, { inner: { a: 1 } }), [["dependencies", ["inner", "b"]]]);
-  // propertyNames: ajv's error for the name's own rule names no key, and the error that follows does.
-  assert.deepEqual(await paths(inner({ propertyNames: { pattern: "^a" } }), { inner: { ab: 1, b: 1 } }), [["pattern", ["inner"]], ["propertyNames", ["inner", "b"]]]);
+  // propertyNames: the error for the name's own rule, and the propertyNames error after it, each end at the key.
+  assert.deepEqual(await paths(inner({ propertyNames: { pattern: "^a" } }), { inner: { ab: 1, b: 1 } }), [["pattern", ["inner", "b"]], ["propertyNames", ["inner", "b"]]]);
+  assert.deepEqual(await paths(inner({ propertyNames: { anyOf: [{ pattern: "^a" }, { maxLength: 2 }] } }), { inner: { abc: 1, bcd: 1 } }), [["pattern", ["inner", "bcd"]], ["maxLength", ["inner", "bcd"]], ["anyOf", ["inner", "bcd"]], ["propertyNames", ["inner", "bcd"]]]);
   // A property named as an index, in an array of objects.
   assert.deepEqual(await paths({ type: "array", items: { required: ["0"] } }, [{}]), [["required", [0, "0"]]]);
 });
@@ -162,18 +163,75 @@ test("neither method throws for a value that is not JSON, and a path that cannot
   assert.deepEqual(s.validate(changing).issues.map((i: any) => i.path), [["list", "0"]]);
 });
 
-test("a value ajv's recursion cannot finish throws ajv's RangeError, from validate and is alike", async () => {
-  // Recorded in DESIGN.md: a cyclic value against a recursive schema, or nesting deeper than the stack.
-  const tree = JSON.stringify({ $defs: { node: { type: "object", properties: { kids: { type: "array", items: { $ref: "#/$defs/node" } } } } }, $ref: "#/$defs/node" });
-  const { default: s } = await evaluate(schemaCode(tree, PATH).code);
+test("neither method throws where ajv does: is is false, and validate gives one issue at the root with what was thrown", async () => {
+  const check = async (schema: object, values: unknown[]) => {
+    const { default: s } = await evaluate(schemaCode(JSON.stringify(schema), PATH).code);
+    return values.map((value) => {
+      const { issues } = s.validate(value);
+      assert.equal(issues.length, 1);
+      const [issue] = issues;
+      assert.deepEqual([issue.path, issue.keyword, issue.schemaPath], [[], "error", "#"]);
+      assert.ok(issue.message.startsWith("could not be checked: "), issue.message);
+      assert.equal(s.is(value), false);
+      return [issue.message, issue.params.error?.constructor?.name];
+    });
+  };
+  // Any JSON value, recursively: JSON.parse of 3000 nested arrays, 6 KB of text, outruns ajv's stack.
+  const json = { $defs: { json: { anyOf: [{ type: ["null", "boolean", "number", "string"] }, { type: "array", items: { $ref: "#/$defs/json" } }, { type: "object", additionalProperties: { $ref: "#/$defs/json" } }] } }, $ref: "#/$defs/json" };
+  const deep = JSON.parse("[".repeat(3000) + "]".repeat(3000));
+  assert.deepEqual(await check(json, [deep]), [["could not be checked: Maximum call stack size exceeded", "RangeError"]]);
+  // A value that refers to itself where the schema recurses, and uniqueItems over two such values.
+  const tree = { $defs: { node: { type: "object", properties: { kids: { type: "array", items: { $ref: "#/$defs/node" } } } } }, $ref: "#/$defs/node" };
   const cyclic: any = { kids: [] };
   cyclic.kids.push(cyclic);
-  assert.throws(() => s.validate(cyclic), RangeError);
-  assert.throws(() => s.is(cyclic), RangeError);
+  const a: any = {};
+  a.me = a;
+  const b: any = {};
+  b.me = b;
+  assert.deepEqual((await check(tree, [cyclic])).map(([, name]) => name), ["RangeError"]);
+  assert.deepEqual((await check({ type: "array", uniqueItems: true }, [[a, b]])).map(([, name]) => name), ["RangeError"]);
+  // A getter that throws, a thrown value that is not an Error, and a revoked proxy.
+  const revocable = Proxy.revocable({}, {});
+  revocable.revoke();
+  const messages = await check({ type: "object", properties: { a: { type: "string" } } }, [
+    {
+      get a() {
+        throw new Error("no a");
+      },
+    },
+    {
+      get a() {
+        throw "a string";
+      },
+    },
+    revocable.proxy,
+  ]);
+  assert.deepEqual(messages.slice(0, 2), [["could not be checked: no a", "Error"], ["could not be checked: a string", "String"]]);
+  assert.deepEqual(messages.slice(2).map(([, name]) => name), ["TypeError"]);
   // A cycle the schema does not descend into is validated as any other value.
+  const { default: s } = await evaluate(schemaCode(JSON.stringify(tree), PATH).code);
   const flat: any = { kids: [] };
   flat.self = flat;
   assert.equal(s.validate(flat).value, flat);
+});
+
+test("ajv is set to check the schema as written: a property is the value's own, and multipleOf is decimal", async () => {
+  const verdicts = async (schema: object, values: unknown[]) => {
+    const { default: s } = await evaluate(schemaCode(JSON.stringify(schema), PATH).code);
+    return values.map((value) => {
+      const verdict = s.is(value);
+      assert.equal(s.validate(value).issues === undefined, verdict);
+      return verdict;
+    });
+  };
+  // ownProperties: Object.prototype's toString is not a property of `{}`.
+  assert.deepEqual(await verdicts({ type: "object", properties: { toString: { type: "string" } } }, [{}, { toString: "x" }, { toString: 1 }]), [true, true, false]);
+  assert.deepEqual(await verdicts({ type: "object", required: ["toString"] }, [{}, { toString: 1 }]), [false, true]);
+  assert.deepEqual(await verdicts({ type: "object", properties: { a: true }, additionalProperties: false }, [Object.create({ b: 1 }), { b: 1 }]), [true, false]);
+  // multipleOfPrecision: prices are multiples of a cent, and half a cent is not.
+  assert.deepEqual(await verdicts({ multipleOf: 0.01 }, [19.99, 0.07, 1.1, 0.1 + 0.2, 999999.99, 0.015, 0.005, 19.995]), [true, true, true, true, true, false, false, false]);
+  assert.deepEqual(await verdicts({ multipleOf: 0.1 }, [0.3, 0.7, 0.35]), [true, true, false]);
+  assert.deepEqual(await verdicts({ type: "integer", multipleOf: 3 }, [9, 10, 9007199254740990]), [true, false, true]);
 });
 
 test("the types name the root Type whatever its title", () => {

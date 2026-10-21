@@ -100,11 +100,12 @@ export interface SchemaIssue extends StandardSchemaV1.Issue {
  */
 export interface Schema<T, S = unknown> extends StandardSchemaV1<T, T>, StandardJSONSchemaV1<T, T> {
   /**
-   * Checks the whole value and reports every way it fails (ajv with `allErrors`). Never throws.
+   * Checks the whole value and reports every way it fails (ajv with `allErrors`). Never throws: a value
+   * the validator cannot check (nested deeper than the stack, a getter that throws) is one issue, `keyword: "error"`.
    * On success, `value` is the value passed in, the same object, typed `T`: ajv changes nothing.
    */
   validate(value: unknown): SchemaResult<T>;
-  /** Whether `value` is valid, as a type guard. Stops at the first failure (a second validator, without `allErrors`). */
+  /** Whether `value` is valid, as a type guard. Stops at the first failure (a second validator, without `allErrors`); `false` for a value it cannot check. Never throws. */
   is(value: unknown): value is T;
   /** The JSON Schema as written in the file. A `$ref` to another file stays a reference here. */
   readonly schema: S;

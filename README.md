@@ -258,6 +258,8 @@ user["~standard"].jsonSchema;
 ```
 
 - **Issues:** an issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`.
+- **The type:** the `Type` export, a type-only import (`import { type Type as User }`). A `default` in the schema is not applied: `validate` returns the value as it was given, so a property with a default stays optional in the type.
+- **`schema` and `jsonSchema`:** `user.schema` is the file as written, its `$ref`s to other files and the keywords Motherload ignores included. To hand the schema to another tool, use `user["~standard"].jsonSchema.input({ target: "draft-2020-12" })` (or `"draft-07"`), which is one self-contained schema.
 - **References:** a `$ref` to another schema file, by a path relative to the file that holds it, is followed. `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.
 - **The suffix:** `.schema.jsonc`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
 
