@@ -1,6 +1,6 @@
 {
   "name": "@motherload/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "What every Motherload package shares: the loader contract and its adapters for Node, Bun, esbuild and TypeScript's content mappers, and the serializer.",
   "license": "MIT",

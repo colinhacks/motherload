@@ -1,6 +1,6 @@
 {
   "name": "@motherload/md",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Import .md files as their body and their typed YAML frontmatter.",
   "license": "MIT",
@@ -29,7 +29,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.0.1",
-    "@motherload/yaml": "0.0.1"
+    "@motherload/core": "0.1.0",
+    "@motherload/yaml": "0.1.0"
   }
 }
