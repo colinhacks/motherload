@@ -11,15 +11,16 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { stripVTControlCharacters } from "node:util";
 
 const root = join(import.meta.dirname, "..");
 const dist = join(root, "dist");
 const work = mkdtempSync(join(tmpdir(), "motherload-check-dist-"));
 const tarballs = join(work, "tarballs");
-/** A command's output, stdout and then stderr; throws with both when it exits non-zero. */
+/** A command's output, stdout and then stderr, without colour codes, which Vitest wrote on CI's runners; throws with both when it exits non-zero. */
 function run(command: string, args: string[], cwd: string): string {
   const result = spawnSync(command, args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  const out = `${result.stdout}${result.stderr}`;
+  const out = stripVTControlCharacters(`${result.stdout}${result.stderr}`);
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} exited with ${result.status} in ${cwd}\n${out}`);
   return out;
 }

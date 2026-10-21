@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { stripVTControlCharacters } from "node:util";
 import { ROOT, run, TSC } from "./helpers.ts";
 
 test("lab/basic type-checks through the content mapper", () => {
@@ -138,7 +139,9 @@ for (const args of [[], ["--webpack"]]) {
   });
 }
 
-// lab/jest has its own dependencies, installed with `nub install` in lab/jest.
+// lab/jest has its own dependencies, installed with `nub install` in lab/jest. Vitest coloured its
+// summary on CI's runners, and Jest colours its own under FORCE_COLOR, so the summaries are matched
+// without colour codes.
 const JEST = `${ROOT}lab/jest/node_modules/.bin/jest`;
 const jestInstalled = existsSync(JEST) || "lab/jest is not installed: run `nub install` in lab/jest";
 const jestRun = (config: string, env: Record<string, string> = {}) =>
@@ -147,17 +150,17 @@ const jestRun = (config: string, env: Record<string, string> = {}) =>
 test("lab/jest: a CommonJS test requires lab/basic's files through the Jest transformer", { skip: jestInstalled !== true && jestInstalled }, () => {
   const result = jestRun("jest.cjs.config.cjs");
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Tests:\s+1 passed, 1 total/);
+  assert.match(stripVTControlCharacters(result.stderr), /Tests:\s+1 passed, 1 total/);
 });
 
 test("lab/jest: CommonJS and ES module tests load lab/basic's files under --experimental-vm-modules", { skip: jestInstalled !== true && jestInstalled }, () => {
   const result = jestRun("jest.esm.config.cjs", { NODE_OPTIONS: "--experimental-vm-modules" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stderr, /Tests:\s+2 passed, 2 total/);
+  assert.match(stripVTControlCharacters(result.stderr), /Tests:\s+2 passed, 2 total/);
 });
 
 test("lab/jest: Vitest imports lab/basic's files through the Vite plugin", { skip: jestInstalled !== true && jestInstalled }, () => {
   const result = spawnSync(`${ROOT}lab/jest/node_modules/.bin/vitest`, ["run"], { cwd: `${ROOT}lab/jest`, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "" } });
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /Tests\s+1 passed \(1\)/);
+  assert.match(stripVTControlCharacters(result.stdout), /Tests\s+1 passed \(1\)/);
 });
