@@ -562,6 +562,8 @@ The schema's type is always exported as `Type`. The validator is compiled by [aj
 - **References:** a `$ref` within the file is followed; a `$ref` to another file or a URL is an error.
 - **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
 
+<Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
+
 ### `.json`
 
 Plain `.json` stays TypeScript's own: a content mapper cannot claim it. Turn on `resolveJsonModule` to import it:

@@ -243,6 +243,9 @@ user.is(input);                        // input is User
 user["~standard"].validate(input);     // Standard Schema v1
 ```
 
+> [!NOTE]
+> A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.
+
 ## Errors
 
 Invalid data in a file is a type error, at the line and column of the problem:
