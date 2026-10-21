@@ -29,7 +29,6 @@ Its source is this repository: `~/Documents/docs-kit` on the maintainer's Mac, p
 | Shared popups | `src/mdx/recma-shared-popups.ts` | Each distinct Twoslash popup built once and referenced at each place it appears (Reylo's page went from 4.66 MB to 3.25 MB) |
 | Hanging indent | `src/mdx/hanging-indent.ts` | A Shiki transformer that writes each line's indent as `--indent` |
 | Vite plugins | `src/vite.ts` | `docsKit(mdxConfig)`: fumadocs-mdx over the site's `source.config.ts`, Tailwind 4, React Router, TypeScript and Twoslash kept out of the server bundle, and three for `vite dev` on a large page: the compiled page made small (Vite gave the server's copy of Reylo's page a 74 MB inline source map, and the server reached 4.4–5.0 GB), one compile per edit shared by the browser's and the server's copy, and each MDX file its own Fast Refresh boundary, so a section edit re-renders that section in under a second, with React Router's refresh handler registered at once so that no update is dropped |
-| Next.js (until Motherload's site moves) | `src/next.mjs`, `src/mdx-dev-loader.mjs`, `src/components/root.tsx` | `withDocsKit(config)`, the Turbopack dev loader and `DocsRoot`, for a site still on Next.js 16; they go once no site uses them |
 | Sync | `src/sync.mjs` | Copies this repository into a site, and checks a site's copy |
 
 ## The boundary
@@ -56,6 +55,7 @@ Everything about how a docs page looks and behaves is here. A rule the maintaine
 | `--dk-hover-rule` | `40%` | the dotted rule under a name with a Twoslash popup |
 | `--dk-star` | `var(--color-fd-primary)` | the "Leave a star!" note |
 | `--dk-popover-shadow` | a soft shadow, darker in `.dark` | Twoslash's popups |
+| `--dk-prose-share`, `--dk-prose`, `--dk-quiet` | `90%`, the text's colour 90% toward the background, `var(--color-fd-muted-foreground)` | body text a step below the headings, and the quieter text of a collapsible's body |
 | `--dk-column` | `40rem` | the one column of prose, headings, code, tab groups and tables |
 
 Class names a page writes itself: `<p className="dk-subheader">` (the subheader under the title, which can hold inline code), `<div className="dk-features">` around a feature list (square bullets), `<p className="dk-lede">` (an italic, muted note).

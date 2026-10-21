@@ -1,6 +1,5 @@
-// The scripts `DocsRoot` (./root.tsx) puts inline in the document's head, in a module of their own:
-// a string exported from a 'use client' module reaches a server component as a client reference,
-// not as the string.
+// The scripts `DocsDocument` (./document.tsx) puts inline in the document's head, in a module of
+// their own.
 
 /**
  * Puts each saved tab choice right before Fumadocs' tabs read it. Fumadocs' tabs take the value

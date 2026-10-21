@@ -45,6 +45,15 @@
   --dk-wash-toc-active: 14%;
   --dk-wash-summary: 7%;
   --dk-wash-selection: 35%;
+  /* Body text is the text's colour a step toward the background, so headings, bold lead phrases and
+     inline code, in the headings' colour, stand above it; quieter text (a collapsible's body, the
+     lede, the subheader) takes the muted grey, the third step. The maintainer, 2026-10-20, of the
+     page's "walls of text": "I like the dimmer body and the bright headings ... The three contrast
+     steps also look good." On Reylo's greys the body is 78% on 5.5% by night (11.4:1) and 24% on
+     white by day (10.7:1), and the muted grey 63% and 40% (7.4:1 and 5.7:1), all WCAG AA. */
+  --dk-prose-share: 90%;
+  --dk-prose: color-mix(in srgb, var(--color-fd-foreground) var(--dk-prose-share), var(--color-fd-background));
+  --dk-quiet: var(--color-fd-muted-foreground);
   /* The dotted rule under a name with a Twoslash popup, as a share of the code's colour. */
   --dk-hover-rule: 40%;
   /* The "Leave a star!" note under the GitHub link. */
@@ -66,9 +75,9 @@
 /* ── Prose, after zod.dev ────────────────────────────────────────────────── */
 
 .prose {
-  --tw-prose-body: var(--color-fd-foreground);
+  --tw-prose-body: var(--dk-prose);
   --tw-prose-headings: var(--color-fd-headings);
-  --tw-prose-links: var(--color-fd-foreground);
+  --tw-prose-links: var(--dk-prose);
   --tw-prose-code: var(--color-fd-headings);
   /* Bold text takes the headings' colour, so the lead phrase of each item in a feature list
      stands out from the item's text. */
@@ -120,7 +129,10 @@ html .prose {
     font-size: 1.75rem;
     font-weight: 650;
     line-height: 1.25;
-    @apply py-3 mt-16;
+    /* 5rem above, where it was 4rem: "There should definitely be some more space above H3s and
+       above H2s, for that matter" (the maintainer, 2026-10-20). */
+    @apply py-3;
+    margin-top: 5rem;
     letter-spacing: -0.02em;
   }
 
@@ -139,8 +151,15 @@ html .prose {
     font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.4;
-    @apply mt-10;
+    /* 3.25rem above, where it was 2.5rem (as the h2's, above). */
+    margin-top: 3.25rem;
     margin-bottom: calc(0.6em + 0.5rem);
+  }
+
+  /* An h3 straight under an h2 (a dialect page's Parameters and Placeholders) keeps close to it,
+     instead of taking an h3's whole space above. */
+  & > h2 + h3 {
+    margin-top: 1.75rem;
   }
 
   & > h3::after {
@@ -575,6 +594,19 @@ code {
   border: 1px solid var(--color-fd-border);
 }
 
+/* A followed group inside a code-tab panel (Reylo's remark plugin puts one there when an example's
+   `main.ts` tab follows the page's dialect) is no card of its own: it takes no margin, and its block
+   sits in the tab's panel as a lone block does, pulled over the group's border by 1px on each side
+   and at the foot. It was drawn as a second card, 16px down, its border doubling the group's at the
+   bottom. */
+#nd-page .dk-code-tabs .dk-variant-follow {
+  margin-block: 0;
+}
+
+#nd-page .dk-code-tabs .dk-variant-follow > .dk-variant-panel > figure.shiki {
+  margin: 0 -1px -1px;
+}
+
 /* A followed panel's blocks (a `.sql` file and the TypeScript that imports it) are separate cards,
    with the page's 1rem between code blocks; and the tab group above a followed block is its own
    card too. They were drawn as one card, the tabs and the code under them sharing a rule with no
@@ -706,6 +738,8 @@ code {
   padding-left: 1rem;
   border-left: 1px solid var(--color-fd-border);
   font-size: 0.9375rem;
+  /* The third contrast step: an aside is quieter than the text it hangs from (Prose, above). */
+  color: var(--dk-quiet);
 }
 
 #nd-page .dk-details-body > :first-child {
@@ -955,9 +989,27 @@ code {
   text-underline-offset: 3px;
 }
 
+/* The body is 16px in Geist at 380, with 1.75 leading, 0.004em of tracking and 22px between
+   paragraphs, where it was 16.5px at 400 with 1.7 and 20.6px: the maintainer, 2026-10-20, found the
+   "walls of text look very wally", and of eight treatments mocked for him liked the dimmer body,
+   "the lighter weight", "the size down with more air", "the three contrast steps" and "soft and
+   compact". The weight is the lighter options' 380 (370 to 380); the leading is 1.75, on which the
+   airy and the compact options agree; the size is 16px, the "size down" option's, since the compact
+   one's 15.5px would undo the "more air" he asked for; the paragraph gap sits between theirs (1.4em
+   and 1.3em); the tracking between theirs (0.003em and 0.005em). Code keeps its own spacing. */
 #nd-page .prose {
-  font-size: 1.03125rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.75;
+  font-weight: 380;
+  letter-spacing: 0.004em;
+}
+
+#nd-page .prose :is(pre, code, kbd) {
+  letter-spacing: normal;
+}
+
+#nd-page .prose > p {
+  margin-bottom: 1.375em;
 }
 
 #nd-page .prose :is(ul, ol) > li {

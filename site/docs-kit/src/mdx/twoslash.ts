@@ -91,7 +91,7 @@ function lockfile(site: string): string {
  * and shorter popups.
  *
  * Each block's result is kept on disk under a hash of its code, which holds its hidden setup, so
- * `next dev` checks again only the blocks an edit changed: without it every compile checked every
+ * the dev server checks again only the blocks an edit changed: without it every compile checked every
  * block, and the dev server's memory grew by gigabytes per edit until it stopped (Reylo's site,
  * 2026-10-11). The directory is named for everything else a result depends on (the mounted
  * packages' source, the compiler options, the site's dependencies), so none of it can go stale.

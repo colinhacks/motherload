@@ -6,13 +6,10 @@
   "type": "module",
   "exports": {
     "./style.css": "./src/style.css",
-    "./next": "./src/next.mjs",
     "./vite": "./src/vite.ts",
-    "./mdx-dev-loader": "./src/mdx-dev-loader.mjs",
     "./mdx": "./src/mdx/index.ts",
     "./remark-sections": "./src/mdx/remark-sections.ts",
     "./shell": "./src/components/shell.tsx",
-    "./root": "./src/components/root.tsx",
     "./document": "./src/components/document.tsx",
     "./components": "./src/components/index.ts",
     "./chrome": "./src/components/chrome.tsx"
@@ -29,7 +26,6 @@
     "fumadocs-mdx": "^15.3.1",
     "fumadocs-twoslash": "3.3.1",
     "fumadocs-ui": "^16.15.1",
-    "next": "^16.3.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router": "^8.5.0",
