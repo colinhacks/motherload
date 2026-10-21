@@ -504,7 +504,7 @@ A second line.
 
 ### `.md`
 
-Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is, and `md`, the Markdown body without the frontmatter:
+Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is (`{}` for a file without one), and `md`, the Markdown body without the frontmatter:
 
 ```ts twoslash tab="main.ts"
 import post from "./post.md";
@@ -522,7 +522,7 @@ tags: [data, types]
 The body of the post.
 ```
 
-Each part is also a named export, as in `import { frontmatter } from "./post.md"`, and a bundle that imports only the frontmatter leaves the body out. The frontmatter runs from a `---` first line to the next `---` line; a file without one has `{}`. Pass `md` to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
+Each part is also a named export. A page that lists posts can import only `frontmatter` from each, and the bundle leaves the bodies out.
 
 ### `.schema.jsonc`
 
