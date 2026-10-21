@@ -33,7 +33,8 @@ export function tabsRestoreScript(groups: Record<string, readonly string[]>): st
  * turns every saved choice in storage into CSS that shows the saved panel and marks its trigger, on
  * groups not yet marked `data-tabs-ready`, for any `groupId`, with no list of groups. Radix gives
  * each panel the id `…-content-<value>` and each trigger `…-trigger-<value>`; a group with no panel
- * for the saved value is left alone (`:has`), as Fumadocs then selects nothing.
+ * for the saved value is left alone (`:has`), as Fumadocs then selects nothing. A `<VariantSwitch>`
+ * (`data-dk-switch`), which has no panels, gets its saved choice drawn as the chosen trigger.
  */
 export const TABS_PREPAINT_SCRIPT = `(() => { try {
   const q = (s) => '"' + String(s).replace(/["\\\\]/g, '\\\\$&').replace(/\\n/g, ' ') + '"';
@@ -51,6 +52,13 @@ export const TABS_PREPAINT_SCRIPT = `(() => { try {
       g + ' > [role=tablist] > [role=tab] > div { background: transparent !important }',
       g + ' > ' + trigger + ' { color: var(--color-fd-primary) !important; border-color: var(--color-fd-primary) !important }',
       g + ' > ' + trigger + ' > div { background: var(--color-fd-primary) !important }',
+    );
+    // A <VariantSwitch> has no panels: its saved choice is the trigger drawn as chosen.
+    const chosen = '[role=tab][id$=' + q('-trigger-' + value) + ']';
+    const s = '[data-dk-switch]' + group + ':has(' + chosen + ')';
+    rules.push(
+      s + ' [role=tab] { color: var(--color-fd-muted-foreground) !important; background: transparent !important }',
+      s + ' ' + chosen + ' { color: var(--color-fd-primary) !important; background: var(--dk-switch-on) !important }',
     );
   };
   const keys = new Set([...Object.keys(sessionStorage), ...Object.keys(localStorage)]);

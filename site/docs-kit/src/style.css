@@ -635,6 +635,57 @@ code {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
+/* ── <VariantSwitch> (components/variant-tabs.tsx) ───────────────────────────
+   The page's choice as a small segmented control at the right end of a code-tab
+   strip: mono labels a step under the tabs', in a hairline frame, the chosen one
+   in the accent on a wash of it. When the strip runs out of room it wraps under
+   the tabs, still at the right. `--dk-switch-on` is the wash, which the head
+   script's first-paint rules read too. */
+:root {
+  --dk-switch-on: color-mix(in oklab, var(--color-fd-primary) 14%, transparent);
+}
+
+#nd-page .dk-variant-switch {
+  margin-inline-start: auto;
+  margin-block: 0.25rem;
+  padding-inline-end: 0.25rem;
+}
+
+#nd-page .dk-variant-switch [role='tablist'] {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 7px;
+}
+
+#nd-page .dk-variant-switch [role='tab'] {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: var(--color-fd-muted-foreground);
+  background: transparent;
+  white-space: nowrap;
+}
+
+#nd-page .dk-variant-switch [role='tab']:hover {
+  color: var(--color-fd-foreground);
+}
+
+#nd-page .dk-variant-switch [role='tab'][data-state='active'] {
+  color: var(--color-fd-primary);
+  background: var(--dk-switch-on);
+}
+
+#nd-page .dk-variant-switch [role='tab']:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 1px;
+}
+
 /* ── <VariantTabs> (components/variant-tabs.tsx) ─────────────────────────────
    With a strip it is Fumadocs' tabs card. With `follow` it is no box at all,
    only the chosen variant's content, which carries its own card. */
@@ -1041,6 +1092,18 @@ code {
    the inactive ones are hidden, as Radix leaves out an unmounted one. */
 [role='tabpanel'][data-state='inactive'] {
   display: none;
+}
+
+/* A `<VariantTabs follow>` or a `<VariantSwitch>` with no variant for the page's choice (Reylo's
+   example of a JSON Schema check, on Postgres and MySQL, while the reader has chosen SQLite) shows
+   and marks its first variant, rather than an empty panel and a switch with nothing chosen. */
+#nd-page .dk-variant-follow:not(:has(> [role='tabpanel'][data-state='active'])) > [role='tabpanel']:first-of-type {
+  display: block;
+}
+
+#nd-page .dk-variant-switch:not(:has([role='tab'][data-state='active'])) [role='tab']:first-child {
+  color: var(--color-fd-primary);
+  background: var(--dk-switch-on);
 }
 
 /* A closed accordion item's content is in the HTML too (components/accordion.tsx), hidden until

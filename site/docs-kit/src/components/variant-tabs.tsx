@@ -1,6 +1,7 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+import { Tabs as BareTabs, TabsList as BareTabsList, TabsTrigger as BareTabsTrigger } from 'fumadocs-ui/components/ui/tabs';
 import type { ReactNode } from 'react';
 import { prepaintMarks, usePrepaintReady } from './prepaint';
 
@@ -47,5 +48,31 @@ export function Variant({ value, children }: { value: string; children: ReactNod
     <TabsContent value={value} forceMount className="dk-variant-panel">
       {children}
     </TabsContent>
+  );
+}
+
+/**
+ * `<VariantSwitch group values aside>`: the choice alone, a small segmented control with no panels,
+ * for a code-tab group whose tabs are files and whose panels follow the page's choice. Inside a
+ * code-tab group, marked `aside`, it is drawn at the right end of the group's strip
+ * (./code-tabs.tsx): Reylo's examples show `main.ts | users_by_ids.sql` on the left and
+ * Postgres | MySQL | SQLite on the right, where they had a tab per file and dialect,
+ * `users_by_ids.sql (Postgres)` and so on, which wrapped onto two lines. It is built on Fumadocs'
+ * unstyled tabs, which keep the same listener set per `groupId` as every other tabs root, so it
+ * switches and follows them all; the head script shows its saved choice from the first paint
+ * (`data-dk-switch`, ./head-scripts.ts). `label` names it for a screen reader.
+ */
+export function VariantSwitch({ group, values, label }: { group: string; values: readonly string[]; label?: string; aside?: boolean }) {
+  const ref = usePrepaintReady<HTMLDivElement>();
+  return (
+    <BareTabs ref={ref} {...prepaintMarks(group, true)} data-dk-switch="" groupId={group} persist defaultValue={values[0]} className="dk-variant-switch">
+      <BareTabsList aria-label={label}>
+        {values.map((value) => (
+          <BareTabsTrigger key={value} value={value}>
+            {value}
+          </BareTabsTrigger>
+        ))}
+      </BareTabsList>
+    </BareTabs>
   );
 }
