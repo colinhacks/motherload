@@ -13,7 +13,7 @@ const mono = 'var(--font-code), ui-monospace, monospace';
 const sans = 'var(--font-text), ui-sans-serif, system-ui, sans-serif';
 
 const label =
-  'How Motherload turns a data file into a typed module. TypeScript 7.1, in tsc and the editor, hands plans.toml to Motherload, its content mapper, and gets back its types: { readonly free: { readonly price: 0; readonly seats: 1 }; readonly pro: { readonly price: 12; readonly seats: 10 } }. At run time, the preload under Node.js or Nub, or the esbuild plugin, hands Motherload the same file and gets back a module whose data is { free: { price: 0, seats: 1 }, pro: { price: 12, seats: 10 } }.';
+  'How Motherload turns a data file into a typed module. TypeScript 7.1, in tsc and the editor, hands plans.toml to Motherload, its content mapper, and gets back its types. At run time, the preload under Node.js or Nub, or the esbuild plugin, hands Motherload the same file and gets back a module.';
 
 const nodes = [
   { title: 'TypeScript 7.1', note: 'tsc and the editor' },
@@ -43,11 +43,6 @@ function Text({ x, y, children, size = 12, fill = color.muted, weight = 400, anc
 /** A box with the code blocks' thin border and rounded corners; Motherload's in the accent. */
 function Box({ x, y, w, h, accent = false }: { x: number; y: number; w: number; h: number; accent?: boolean }) {
   return <rect x={x} y={y} width={w} height={h} rx={12} style={{ fill: color.card, stroke: accent ? color.accent : color.border, strokeWidth: 1 }} />;
-}
-
-/** A rule across a box: solid under its title bar, dashed between the file and what it becomes. */
-function Rule({ x, y, w, dashed = false }: { x: number; y: number; w: number; dashed?: boolean }) {
-  return <line x1={x} x2={x + w} y1={y} y2={y} style={{ stroke: color.border, strokeDasharray: dashed ? '3 4' : undefined }} />;
 }
 
 /** A straight arrow from (x1, y1) to (x2, y2) with an open head, drawn thin and muted. */
@@ -107,7 +102,10 @@ function Figure({ w, h, children }: { w: number; h: number; children: ReactNode 
 const boxHeight = 64;
 const gap = 79;
 const stackHeight = 3 * boxHeight + 2 * gap;
-const cardHeight = stackHeight;
+// The stack's width, as it was drawn beside the file's card, which the maintainer struck on
+// 2026-10-20 ("I hate this. I think it sucks."): the hero's example above already shows a file
+// and the types it gets, as real code with hovers.
+const stackWidth = 296;
 
 /** The three nodes stacked in a column `w` wide, each leg's file on the left of its arrows and the answer on the right. */
 function Stack({ w }: { w: number }) {
@@ -141,78 +139,17 @@ function Stack({ w }: { w: number }) {
   );
 }
 
-/** The file, the types TypeScript gets for it and the data its module holds at run time, in a card 328px wide. */
-function Card({ x, y }: { x: number; y: number }) {
-  const w = 328;
-  const pad = 16;
-  const code = { size: 12.5, fill: color.headings, code: true };
-  const file = { ...code, fill: color.text };
-  return (
-    <g transform={`translate(${x + 0.5} ${y + 0.5})`}>
-      <Box x={0} y={0} w={w - 1} h={cardHeight - 1} />
-      <Text x={pad} y={22} code>plans.toml</Text>
-      <Rule x={0} y={34} w={w - 1} />
-      <Text x={pad} y={58} {...file}>[free]</Text>
-      <Text x={pad} y={76} {...file}>price = 0</Text>
-      <Text x={pad} y={94} {...file}>seats = 1</Text>
-      <Text x={pad} y={120} {...file}>[pro]</Text>
-      <Text x={pad} y={138} {...file}>price = 12</Text>
-      <Text x={pad} y={156} {...file}>seats = 10</Text>
-      <Rule x={0} y={174} w={w - 1} dashed />
-      <Text x={pad} y={198}>its types</Text>
-      <Text x={pad} y={218} {...code}>{'{ readonly free: { readonly price: 0;'}</Text>
-      <Text x={pad} y={236} {...code}>{'    readonly seats: 1 };'}</Text>
-      <Text x={pad} y={254} {...code}>{'  readonly pro: { readonly price: 12;'}</Text>
-      <Text x={pad} y={272} {...code}>{'    readonly seats: 10 } }'}</Text>
-      <Text x={pad} y={300}>its data, at run time</Text>
-      <Text x={pad} y={320} {...code}>{'{ free: { price: 0, seats: 1 },'}</Text>
-      <Text x={pad} y={338} {...code}>{'  pro: { price: 12, seats: 10 } }'}</Text>
-    </g>
-  );
-}
-
-/**
- * The figure at the text column's width (640px, the 40rem column, at a 1440px window), drawn at
- * that size so its text is the size it was drawn at: the nodes stacked on the left and the file
- * with its types and its data on the right, so the figure meets both edges of the column.
- */
-function Wide() {
-  const w = 640;
-  return (
-    <Figure w={w} h={stackHeight + 1}>
-      <Stack w={w - 328 - 16} />
-      <Card x={w - 328} y={(stackHeight - cardHeight) / 2} />
-    </Figure>
-  );
-}
-
-/** The same figure for a phone's column (328px on a 360px screen): the stack, and the card under it. */
-function Narrow() {
-  const w = 328;
-  const cardY = stackHeight + 24;
-  return (
-    <Figure w={w} h={cardY + cardHeight + 1}>
-      <Stack w={w} />
-      <Card x={0} y={cardY} />
-    </Figure>
-  );
-}
-
 /**
  * The diagram under How it works: a data file through TypeScript and Motherload, and through the
- * runtime or bundler and Motherload, with what each gets back. A container query picks the form, as
- * on Reylo's page: the wide one from a 560px column (drawn for the page's 640px), and the stacked one
- * below that, kept to 400px so that it does not grow larger than the page's text on a small tablet.
+ * runtime or bundler and Motherload, with what each gets back. One drawing for every width, at most
+ * the size it was drawn at so its text is the page's size, centred in the column.
  */
 export function HowItWorksDiagram() {
   return (
-    <figure className="@container my-8">
-      <div className="hidden @min-[560px]:block">
-        <Wide />
-      </div>
-      <div className="max-w-[400px] @min-[560px]:hidden">
-        <Narrow />
-      </div>
+    <figure className="mx-auto my-8" style={{ maxWidth: stackWidth }}>
+      <Figure w={stackWidth} h={stackHeight + 1}>
+        <Stack w={stackWidth} />
+      </Figure>
     </figure>
   );
 }
