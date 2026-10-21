@@ -17,7 +17,22 @@ const pro = plans.pro;
 
 ### `.toml`
 
-Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml). TOML has four kinds of date. Only an offset date-time names an instant, so only that one becomes a `Date`:
+Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml):
+
+```ts twoslash tab="main.ts"
+import server from "./server.toml";
+//     ^?
+```
+
+```toml tab="server.toml"
+host = "example.com"
+port = 8080
+
+[tls]
+enabled = true
+```
+
+An offset date-time becomes a `Date`. A local date, time or date-time names no instant, so it stays its ISO text:
 
 ```ts twoslash tab="main.ts"
 import release from "./release.toml";
@@ -25,18 +40,14 @@ import release from "./release.toml";
 ```
 
 ```toml tab="release.toml"
-published = 1979-05-27T07:32:00Z   # offset date-time
-day = 1979-05-27                   # local date
-at = 07:32:00                      # local time
-downloads = 9007199254740993       # past 2^53
-ratio = inf
+published = 1979-05-27T07:32:00Z
+day = 1979-05-27
+at = 07:32:00
 ```
-
-A local date-time, date or time is its ISO text. An integer that a `number` cannot hold exactly is a `bigint`.
 
 ### `.yaml`
 
-Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/). A `.yml` file is read the same way, and a file of several documents (`---`) is the list of them.
+Motherload reads `.yaml` and `.yml` files as YAML 1.2, with [yaml](https://eemeli.org/yaml/):
 
 ```ts twoslash tab="main.ts"
 import config from "./config.yaml";
@@ -52,9 +63,23 @@ hosts:
   - api.example.com
 ```
 
+A file of several documents, separated by `---`, is the list of them:
+
+```ts twoslash tab="main.ts"
+import deploy from "./deploy.yaml";
+//     ^?
+```
+
+```yaml tab="deploy.yaml"
+kind: Service
+---
+kind: Deployment
+replicas: 2
+```
+
 ### `.json5`
 
-Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser.
+Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser:
 
 ```ts twoslash tab="main.ts"
 import data from "./data.json5";
@@ -72,7 +97,7 @@ import data from "./data.json5";
 
 ### `.jsonc`
 
-Motherload reads JSON with comments with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser). Comments and trailing commas are allowed.
+Motherload reads JSONC, JSON with comments and trailing commas, with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser):
 
 ```ts twoslash tab="main.ts"
 import settings from "./settings.jsonc";
@@ -99,14 +124,12 @@ import users from "./users.csv";
 ```csv tab="users.csv"
 name,email,zip
 Ada Lovelace,ada@example.com,02134
-"Hopper, Grace",grace@example.com,10001
+Grace Hopper,grace@example.com,10001
 ```
-
-Values stay as written, so a zip code such as `02134` keeps its leading zero. A quoted field can hold commas, doubled quotes and line breaks. Blank lines are skipped. A row whose field count differs from the header's is an error, as is an empty or repeated column name.
 
 ### `.tsv`
 
-A `.tsv` file is read the same way, with a tab between fields. Quotes are ordinary characters, so a field is exactly the text between two tabs.
+A `.tsv` file is read the same way, with a tab between fields:
 
 ```ts twoslash tab="main.ts"
 import scores from "./scores.tsv";
@@ -121,7 +144,7 @@ Grace	37
 
 ### `.txt`
 
-Importing a `.txt` file gives its text as a string.
+Importing a `.txt` file gives its text as a string:
 
 ```ts twoslash tab="main.ts"
 import notes from "./notes.txt";
@@ -135,7 +158,7 @@ A second line.
 
 ### `.md`
 
-Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is (`{}` for a file without one), and `md`, the Markdown body without the frontmatter:
+Importing a `.md` file gives its frontmatter, typed as a `.yaml` file is, and its Markdown body:
 
 ```ts twoslash tab="main.ts"
 import post from "./post.md";
@@ -153,7 +176,12 @@ tags: [data, types]
 The body of the post.
 ```
 
-Each part is also a named export. A page that lists posts can import only `frontmatter` from each, and the bundle leaves the bodies out.
+Each part is also a named export. A page that lists posts can import the frontmatter alone, and the bundle leaves the bodies out:
+
+```ts twoslash title="main.ts"
+import { frontmatter } from "./post.md";
+//       ^?
+```
 
 ### `.schema.jsonc`
 
@@ -229,22 +257,36 @@ The `$schema` keyword picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 
 
 ### `.env`
 
-Importing a `.env` file loads it: its variables are set on `process.env` when the module runs, with no dotenv and no `--env-file`. The import also adds each of them to the type of `process.env`, across the whole project, so the editor completes their names and each one is a `string`:
+Importing a `.env` file sets its variables on `process.env` when the module runs, with no dotenv and no `--env-file`, and types each of them as a `string`:
 
 ```ts twoslash tab="main.ts"
-// @errors: 2345
 import "./.env";
 
-process.env.D;
-//           ^|
 const url = new URL(process.env.DATABASE_URL);
 //                              ^?
-const typo = new URL(process.env.DATABSE_URL);
 ```
 
 ```sh tab=".env"
 DATABASE_URL=postgres://localhost/app
 PORT=3000
+```
+
+The editor completes their names:
+
+```ts twoslash title="main.ts"
+import "./.env";
+
+process.env.D;
+//           ^|
+```
+
+A name the file does not set is still `string | undefined`, so a misspelled one is an error:
+
+```ts twoslash title="main.ts"
+// @errors: 2345
+import "./.env";
+
+const url = new URL(process.env.DATABSE_URL);
 ```
 
 <Details summary="How the .env file is loaded" id="env-loading">

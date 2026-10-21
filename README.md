@@ -81,7 +81,7 @@ import config from "./config.toml";
 
 ### `.yaml`
 
-A `.yml` file is read the same way. A file of several documents (`---`) is the list of them.
+Motherload reads `.yaml` and `.yml` files:
 
 ```yaml
 - name: Ada
@@ -95,6 +95,23 @@ import team from "./team.yaml";
 // team: readonly [
 //   { readonly name: "Ada"; readonly role: "admin" },
 //   { readonly name: "Grace"; readonly role: "member" },
+// ]
+```
+
+A file of several documents, separated by `---`, is the list of them:
+
+```yaml
+kind: Service
+---
+kind: Deployment
+replicas: 2
+```
+
+```ts
+import deploy from "./deploy.yaml";
+// deploy: readonly [
+//   { readonly kind: "Service" },
+//   { readonly kind: "Deployment"; readonly replicas: 2 },
 // ]
 ```
 
@@ -133,7 +150,7 @@ import settings from "./settings.jsonc";
 
 ### `.env`
 
-Importing a `.env` file sets its variables on `process.env` when the module runs. A variable the environment already sets keeps its value, and no value from the file is in a bundle.
+Importing a `.env` file sets its variables on `process.env` when the module runs, and types each of them as a `string`:
 
 ```sh
 DATABASE_URL=postgres://localhost/app
@@ -146,6 +163,8 @@ import "./.env";
 process.env.DATABASE_URL; // string
 process.env.PORT;         // string
 ```
+
+A variable the environment already sets keeps its value, and a bundle holds none of the file's values.
 
 ### `.csv`
 
@@ -196,7 +215,7 @@ import notes from "./notes.txt";
 
 ### `.md`
 
-A `.md` file is the object `{ md, frontmatter }`: the body, without the frontmatter, and the YAML frontmatter, typed from the file. Each part is also a named export.
+Importing a `.md` file gives its frontmatter, typed from the file, and its Markdown body:
 
 ```md
 ---
@@ -217,8 +236,11 @@ import post from "./post.md";
 //     readonly draft: false;
 //   };
 // }
+```
 
-// One part alone: a bundle leaves out the body.
+Each part is also a named export, so a bundle that imports the frontmatter alone leaves out the body:
+
+```ts
 import { frontmatter } from "./post.md";
 ```
 
