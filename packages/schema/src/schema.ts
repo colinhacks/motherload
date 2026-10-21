@@ -18,8 +18,8 @@ import { createRequire } from "node:module";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
-import { collect, dynamicRefProblems, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
-import { schemaDeclarations, type Draft } from "./schema-types.ts";
+import { collect, dynamicRefProblems, embeddedIdProblems, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
+import { LITERAL_NAME, schemaDeclarations, type Draft } from "./schema-types.ts";
 import { jsonSchemas } from "./json-schema.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
@@ -110,6 +110,8 @@ function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = t
 export function filesOf(source: string, path: string, schema: Value): Files {
   const clean = (value: Value) => withoutKeywords(value, IGNORED[draftOf(schema) ?? "draft-07"]);
   const files = collect(path, clean(schema), source, { of: declaredDraft, none: "ajv" }, clean);
+  // An `$id` below a file's root moves the base its `$ref`s resolve against, which the types do not follow (refs.ts).
+  files.problems.push(...embeddedIdProblems(files, path, source));
   // ajv resolves some of 2020-12's `$dynamicRef`s otherwise than the spec (refs.ts).
   if (draftOf(schema) === "2020-12") files.problems.push(...dynamicRefProblems(files, path, source));
   return files;
@@ -159,7 +161,10 @@ export function schemaTypes(source: string, path: string, typesFrom = "@motherlo
     types: [
       `import type { Schema as __MotherloadSchema } from ${JSON.stringify(typesFrom)};`,
       schemaDeclarations(files.schemas.get(path)!, { path, read: (other) => files.schemas.get(other) }, draft),
-      `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
+      // The schema as written, under a name of its own, so an error or a hover prints `Schema<Type, Json>`.
+      `/** The JSON Schema as written in ${basename(path).replace(/\*\//g, "*\\/")}. */`,
+      `type ${LITERAL_NAME} = ${literal(schema)};`,
+      `declare const schema: __MotherloadSchema<Type, ${LITERAL_NAME}>;`,
       "export default schema;",
       "",
     ].join("\n"),

@@ -308,8 +308,13 @@ test("2019-09's unevaluatedItems is refused for 2020-12 when the schema uses con
 });
 
 test("an $id inside a schema, a $dynamicRef across files, and a pointer to no schema are refused in both targets", () => {
-  const embedded = convert({ definitions: { a: { $id: "https://example.com/a", type: "string" } } });
-  for (const target of TARGETS) assert.match(errorOf(embedded[target]), /^"\$id" at \.\/virtual\.schema\.jsonc#\/definitions\/a\/\$id gives a schema inside the file a base URI of its own/);
+  // The module refuses such an `$id` itself (refs.ts), so both targets report its problem; the conversion's own refusal stays, behind it.
+  const embeddedSchema = { definitions: { a: { $id: "https://example.com/a", type: "string" } } };
+  const embedded = convert(embeddedSchema);
+  for (const target of TARGETS) assert.match(errorOf(embedded[target]), /^The \$id "https:\/\/example\.com\/a" gives a schema inside the file a base URI of its own/);
+  const files = filesOf(JSON.stringify(embeddedSchema), VIRTUAL, embeddedSchema);
+  const unchecked = jsonSchemas({ ...files, problems: [] }, VIRTUAL, "draft-07");
+  for (const target of TARGETS) assert.match(errorOf(unchecked[target]), /^"\$id" at \.\/virtual\.schema\.jsonc#\/definitions\/a\/\$id gives a schema inside the file a base URI of its own/);
   const dir = project({ "a.schema.jsonc": { $schema: D2020, $dynamicAnchor: "x", items: { $ref: "./b.schema.jsonc" } }, "b.schema.jsonc": { $dynamicAnchor: "x", items: { $dynamicRef: "#x" } } });
   const dynamic = fromFile(join(dir, "a.schema.jsonc"));
   assert.match(errorOf(dynamic["draft-2020-12"]), /"\$dynamicAnchor" at \.\/a\.schema\.jsonc#\/\$dynamicAnchor resolves through the schema files it was written across.*"\$dynamicRef" at \.\/b\.schema\.jsonc#\/items\/\$dynamicRef/);

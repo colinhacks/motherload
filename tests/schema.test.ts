@@ -180,7 +180,9 @@ test("the types name the root Type whatever its title", () => {
   const { types, problems } = schemaTypes(SCHEMA, PATH);
   assert.deepEqual(problems, []);
   assert.match(types, /export interface Type \{/);
-  assert.match(types, /declare const schema: __MotherloadSchema<Type, \{ readonly \$schema: "https:\/\/json-schema.org\/draft\/2020-12\/schema";/);
+  assert.match(types, /\ntype Json = \{ readonly \$schema: "https:\/\/json-schema.org\/draft\/2020-12\/schema";/);
+  // The schema as written is a type of its own, so an error or a hover prints `Schema<Type, Json>`.
+  assert.match(types, /\ndeclare const schema: __MotherloadSchema<Type, Json>;\n/);
 });
 
 test("a schema is JSONC: comments and trailing commas are read in both texts", async () => {
@@ -246,7 +248,7 @@ test("a $ref to another file is followed: its type is imported from that file's 
   // The definition keeps the name its own module gives it; the other files' roots are named for their files.
   assert.match(typed.types, /^import type \{ Tag, Type as Tag2 \} from "\.\/shared\/tag\.schema\.jsonc";\nimport type \{ Type as Point \} from "\.\/point\.schema\.json5";$/m);
   // A pointer that is not a definition is inlined from the other file, its own references imported.
-  assert.match(typed.types, /export interface Type \{\n  tag: Tag;\n  group\?: Tag2;\n  label\?: Tag;\n  at\?: Point;\n\}/);
+  assert.match(typed.types, /export interface Type \{\n  tag: Tag;\n  group\?: Tag2 \| undefined;\n  label\?: Tag \| undefined;\n  at\?: Point \| undefined;\n\}/);
   const tag = join(dir, "shared/tag.schema.jsonc");
   const tagTypes = schemaTypes(readFileSync(tag, "utf8"), tag);
   assert.match(tagTypes.types, /^import type \{ Type as User \} from "\.\.\/user\.schema\.jsonc";$/m);
@@ -369,7 +371,7 @@ test("a keyword no draft defines is ignored in every draft: a vendor's, an unkno
     const draft = $schema ?? "no $schema";
     const typed = schemaTypes(source, PATH);
     assert.deepEqual(typed.problems, [], draft);
-    assert.match(typed.types, /export interface Type \{\n  name: string;\n  tags\?: string\[\];\n\}/, draft);
+    assert.match(typed.types, /export interface Type \{\n  name: string;\n  tags\?: string\[\] \| undefined;\n\}/, draft);
     const { code, problems } = schemaCode(source, PATH);
     assert.deepEqual(problems, [], draft);
     const { default: s } = await evaluate(code);
@@ -427,7 +429,7 @@ test("a keyword ajv reads that the draft does not define is ignored in a file th
 test("a 2020-12 $dynamicRef ajv resolves to the root in place of its anchor is a problem at the reference", async () => {
   const S = "https://json-schema.org/draft/2020-12/schema";
   const message = (ref: string, fix: string) => `ajv resolves the $dynamicRef "${ref}" to the root of its schema, not where it points: ${fix}.`;
-  const anchored = (name: string) => `declare "$dynamicAnchor": "${name}" at the root of the schema or of a schema with an $id, or write it as a $ref`;
+  const anchored = (name: string) => `declare "$dynamicAnchor": "${name}" at the root of the schema, or write it as a $ref`;
   // The anchor in `$defs`: the validator checked the root's rules, and at the root recursed until the stack ran out.
   for (const [schema, ref, fix] of [
     [{ $schema: S, $defs: { content: { $dynamicAnchor: "content", type: "string" } }, type: "array", items: { $dynamicRef: "#content" } }, "#content", anchored("content")],
@@ -439,14 +441,15 @@ test("a 2020-12 $dynamicRef ajv resolves to the root in place of its anchor is a
       assert.deepEqual(problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]), [[message(ref, fix), ref]]);
     }
   }
-  // An anchor at the root of the file, or of a schema with an $id, is resolved as the spec says.
+  // An anchor at the root of the file is resolved as the spec says. ajv resolves one at the root of a
+  // schema with an $id too, but an $id below a file's root is refused (embeddedIdProblems), anchor or not.
   const tree = (extra: object) => ({ $dynamicAnchor: "node", type: "object", properties: { kids: { type: "array", items: { $dynamicRef: "#node" } } }, ...extra });
-  for (const schema of [{ $schema: S, ...tree({}) }, { $schema: S, $ref: "https://example.com/tree", $defs: { tree: tree({ $id: "https://example.com/tree" }) } }]) {
-    const { code, problems } = schemaCode(JSON.stringify(schema), PATH);
-    assert.deepEqual(problems, []);
-    const { default: s } = await evaluate(code);
-    assert.deepEqual([s.is({ kids: [{ kids: [] }] }), s.is({ kids: [1] })], [true, false]);
-  }
+  const { code, problems } = schemaCode(JSON.stringify({ $schema: S, ...tree({}) }), PATH);
+  assert.deepEqual(problems, []);
+  const { default: s } = await evaluate(code);
+  assert.deepEqual([s.is({ kids: [{ kids: [] }] }), s.is({ kids: [1] })], [true, false]);
+  const embedded = JSON.stringify({ $schema: S, $ref: "https://example.com/tree", $defs: { tree: tree({ $id: "https://example.com/tree" }) } });
+  assert.deepEqual(schemaCode(embedded, PATH).problems.map((p) => embedded.slice(p.start, p.start + p.length)), ["https://example.com/tree"]);
   // In another file, placed at the root's reference to it; in draft-07, which ignores $dynamicRef, no problem.
   const { path, source } = project({
     "user.schema.jsonc": { $schema: S, type: "object", properties: { list: { $ref: "./list.schema.jsonc" } } },
@@ -454,6 +457,44 @@ test("a 2020-12 $dynamicRef ajv resolves to the root in place of its anchor is a
   });
   assert.deepEqual(schemaTypes(source, path).problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]), [[`./list.schema.jsonc: ${message("#item", anchored("item"))}`, "./list.schema.jsonc"]]);
   assert.deepEqual(schemaCode(JSON.stringify({ type: "array", items: { $dynamicRef: "#item" } }), PATH).problems, []);
+});
+
+test("an $id below a file's root is a problem at that $id, in the type check and the build: ajv resolves the $refs inside it against the $id", async () => {
+  const S = "https://json-schema.org/draft/2020-12/schema";
+  const message = (id: string) => `The $id "${id}" gives a schema inside the file a base URI of its own, against which ajv resolves the $refs inside it and Motherload's types do not: move that schema to a .schema.jsonc file of its own and $ref the file, or remove the $id.`;
+  const inner = "https://example.com/inner";
+  for (const schema of [
+    // ajv validated 1 and refused "s" here, where the type was the root's `x`, a string.
+    { $schema: S, $defs: { x: { type: "string" }, inner: { $id: inner, $defs: { x: { type: "number" } }, allOf: [{ $ref: "#/$defs/x" }] } }, allOf: [{ $ref: "#/$defs/inner" }] },
+    { definitions: { x: { type: "string" }, inner: { $id: inner, definitions: { x: { type: "number" } }, allOf: [{ $ref: "#/definitions/x" }] } }, allOf: [{ $ref: "#/definitions/inner" }] },
+    // With the $ref beside the $id, ajv recursed until the stack ran out while compiling.
+    { $schema: S, $defs: { x: { type: "string" }, inner: { $id: inner, $defs: { x: { type: "number" } }, $ref: "#/$defs/x" } }, $ref: "#/$defs/inner" },
+    // Placed at the $id, not at a $ref that names the same URI first.
+    { $schema: S, $ref: inner, $defs: { inner: { $id: inner, type: "number" } } },
+  ]) {
+    const source = JSON.stringify(schema, null, 2);
+    for (const problems of [schemaTypes(source, PATH).problems, schemaCode(source, PATH).problems]) {
+      assert.deepEqual(problems.map((p) => [p.message, source.slice(p.start - 8, p.start + p.length + 1)]), [[message(inner), `"$id": "${inner}"`]]);
+    }
+  }
+  // The root's own $id, a plain-name $id (draft-07's anchor), and "$id" as data or as a property's name stay.
+  for (const schema of [
+    { $id: "https://example.com/root", type: "object", properties: { $id: { type: "string" } }, required: ["$id"] },
+    { definitions: { p: { $id: "#pos", type: "integer" } }, items: { $ref: "#pos" } },
+    { const: { nested: { $id: "https://example.com/data" } }, examples: [{ $id: "https://example.com/data" }] },
+  ]) {
+    const source = JSON.stringify(schema);
+    assert.deepEqual(schemaTypes(source, PATH).problems, [], source);
+    assert.deepEqual(schemaCode(source, PATH).problems, [], source);
+  }
+  // In another file, placed at the root's reference to it.
+  const { path, source } = project({
+    "user.schema.jsonc": { type: "object", properties: { tag: { $ref: "./tag.schema.jsonc" } } },
+    "tag.schema.jsonc": { definitions: { t: { $id: inner, type: "string" } }, $ref: "#/definitions/t" },
+  });
+  for (const problems of [schemaTypes(source, path).problems, schemaCode(source, path).problems]) {
+    assert.deepEqual(problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]), [[`./tag.schema.jsonc: ${message(inner)}`, "./tag.schema.jsonc"]]);
+  }
 });
 
 test("a format ajv-formats checks with a function, such as date-time or uri, is inlined: the module requires nothing", async () => {
@@ -472,7 +513,7 @@ test("a schema outside any project that installs ajv still validates: ajv is Mot
   writeFileSync(path, SCHEMA);
   const { types, problems } = schemaTypes(SCHEMA, path);
   assert.deepEqual(problems, []);
-  assert.match(types, /export interface Type \{\n  name: string;\n  tags\?: \{\n    \[key: string\]: unknown;\n  \}\[\];\n\}/);
+  assert.match(types, /export interface Type \{\n  name: string;\n  tags\?: \{\n    \[key: string\]: unknown;\n  \}\[\] \| undefined;\n\}/);
   const { code, problems: codeProblems } = schemaCode(SCHEMA, path);
   assert.deepEqual(codeProblems, []);
   assert.doesNotMatch(code, /^import /m);

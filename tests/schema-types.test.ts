@@ -14,15 +14,15 @@ const emit = (schema: unknown) => schemaDeclarations(schema as never);
 test("an object root is an interface: required keys, optional keys, and no index signature when closed", () => {
   assert.equal(
     emit({ title: "User", type: "object", properties: { name: { type: "string", minLength: 1 }, "e-mail": { type: "string", format: "email" } }, required: ["name", "id"], additionalProperties: false }),
-    'export interface Type {\n  name: string;\n  "e-mail"?: string;\n  id: unknown;\n}',
+    'export interface Type {\n  name: string;\n  "e-mail"?: string | undefined;\n  id: never;\n}',
   );
 });
 
 test("keys outside `properties` are an index signature that covers the named ones", () => {
-  assert.equal(emit({ type: "object", properties: { a: { type: "number" } } }), "export interface Type {\n  a?: number;\n  [key: string]: unknown;\n}");
-  assert.equal(emit({ type: "object", properties: { a: { type: "number" } }, additionalProperties: { type: "string" } }), "export interface Type {\n  a?: number;\n  [key: string]: string | number | undefined;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "number" } } }), "export interface Type {\n  a?: number | undefined;\n  [key: string]: unknown;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "number" } }, additionalProperties: { type: "string" } }), "export interface Type {\n  a?: number | undefined;\n  [key: string]: string | number | undefined;\n}");
   assert.equal(emit({ type: "object", patternProperties: { "^x-": { type: "number" } }, additionalProperties: false }), "export interface Type {\n  [key: string]: number;\n}");
-  assert.equal(emit({ type: "object", properties: { a: { type: "null" } }, unevaluatedProperties: false }), "export interface Type {\n  a?: null;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "null" } }, unevaluatedProperties: false }), "export interface Type {\n  a?: null | undefined;\n}");
   assert.equal(emit({ type: "object", additionalProperties: false }), "export interface Type {\n  [key: string]: never;\n}");
 });
 
@@ -39,17 +39,17 @@ test("const, enum, combinators, and the keywords that only narrow", () => {
   assert.equal(emit({ enum: ["a", 1, true, null] }), 'export type Type = "a" | 1 | true | null;');
   assert.equal(emit({ const: { a: [1] } }), "export interface Type { readonly a: readonly [1] }");
   assert.equal(emit({ anyOf: [{ type: "string" }, { oneOf: [{ type: "number" }, { type: "null" }] }] }), "export type Type = string | number | null;");
-  assert.equal(emit({ type: "object", required: ["a"], allOf: [{ properties: { a: { type: "string" } } }] }), "export type Type = {\n  a: unknown;\n  [key: string]: unknown;\n} & {\n  a?: string;\n  [key: string]: unknown;\n};");
+  assert.equal(emit({ type: "object", required: ["a"], allOf: [{ properties: { a: { type: "string" } } }] }), "export type Type = {\n  a: unknown;\n  [key: string]: unknown;\n} & {\n  a?: string | undefined;\n  [key: string]: unknown;\n};");
   assert.equal(emit({ type: "string", not: { const: "" }, if: { minLength: 2 }, then: { pattern: "^a" } }), "export type Type = string;");
   assert.equal(emit({ anyOf: [{ type: "string" }, true] }), "export type Type = unknown;");
   assert.equal(emit({ type: "string", allOf: [false] }), "export type Type = never;");
   assert.equal(emit({}), "export type Type = unknown;");
   // Without `type`, the object keywords constrain an object alone, and every other JSON value passes them.
-  assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export type Type = {\n  a?: string;\n} | unknown[] | string | number | boolean | null;");
+  assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export type Type = {\n  a?: string | undefined;\n} | unknown[] | string | number | boolean | null;");
   assert.equal(emit({ items: { type: "string" } }), "export type Type = string[] | {\n  [key: string]: unknown;\n} | string | number | boolean | null;");
   // A member of `allOf`, `anyOf` or `oneOf` is read within its schema's own types, and `$ref`, `const` and `enum` tell them too.
-  assert.equal(emit({ type: "object", allOf: [{ properties: { a: { type: "string" } } }] }), "export type Type = {\n  [key: string]: unknown;\n} & {\n  a?: string;\n  [key: string]: unknown;\n};");
-  assert.equal(emit({ $ref: "#/$defs/a", properties: { b: { type: "number" } }, $defs: { a: { type: "object" } } }).split("\n\n")[0], "export type Type = A & {\n  b?: number;\n  [key: string]: unknown;\n};");
+  assert.equal(emit({ type: "object", allOf: [{ properties: { a: { type: "string" } } }] }), "export type Type = {\n  [key: string]: unknown;\n} & {\n  a?: string | undefined;\n  [key: string]: unknown;\n};");
+  assert.equal(emit({ $ref: "#/$defs/a", properties: { b: { type: "number" } }, $defs: { a: { type: "object" } } }).split("\n\n")[0], "export type Type = A & {\n  b?: number | undefined;\n  [key: string]: unknown;\n};");
   assert.equal(emit({ anyOf: [{ type: "string" }, { const: 1 }], properties: { a: {} } }), "export type Type = string | 1;");
   assert.equal(emit({ type: "string", allOf: [{ properties: { a: {} } }] }), "export type Type = string;");
   // OpenAPI 3.0's `nullable` is no JSON Schema keyword: not read, and taken out of what ajv compiles.
@@ -62,8 +62,8 @@ test("with a draft, a keyword is read only in the drafts that have it, as ajv re
   assert.equal(schemaDeclarations(tuple as never, undefined, "2019-09"), "export type Type = [number?];");
   assert.equal(schemaDeclarations(tuple as never, undefined, "draft-07"), "export type Type = [number?];");
   const closed = { type: "object", properties: { a: { type: "string" } }, unevaluatedProperties: false };
-  assert.equal(schemaDeclarations(closed as never, undefined, "2019-09"), "export interface Type {\n  a?: string;\n}");
-  assert.equal(schemaDeclarations(closed as never, undefined, "draft-07"), "export interface Type {\n  a?: string;\n  [key: string]: unknown;\n}");
+  assert.equal(schemaDeclarations(closed as never, undefined, "2019-09"), "export interface Type {\n  a?: string | undefined;\n}");
+  assert.equal(schemaDeclarations(closed as never, undefined, "draft-07"), "export interface Type {\n  a?: string | undefined;\n  [key: string]: unknown;\n}");
   // Without `type`, only a keyword the draft reads makes an array.
   assert.equal(schemaDeclarations({ type: "array", prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]];");
   assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]] | {\n  [key: string]: unknown;\n} | string | number | boolean | null;");
@@ -88,7 +88,7 @@ test("each definition is a named type, and a reference to it is its name", () =>
     emit(schema),
     [
       "export type Type = Node;",
-      "export interface Node {\n  value?: number;\n  children?: Node[];\n  tag?: MyTag;\n  slash?: AB;\n}",
+      "export interface Node {\n  value?: number | undefined;\n  children?: Node[] | undefined;\n  tag?: MyTag | undefined;\n  slash?: AB | undefined;\n}",
       "export type AB = string;",
       "export type Type2 = boolean;",
       "export type _1st = null;",
@@ -98,12 +98,12 @@ test("each definition is a named type, and a reference to it is its name", () =>
 });
 
 test("`#` is the root; another pointer is inlined, unless it leads back into itself; another file is unknown", () => {
-  assert.equal(emit({ type: "object", properties: { next: { $ref: "#" } }, additionalProperties: false }), "export interface Type {\n  next?: Type;\n}");
-  assert.equal(emit({ type: "object", properties: { a: { type: "string" }, b: { $ref: "#/properties/a" }, c: { $ref: "#/properties/c" }, d: { $ref: "./other.schema.jsonc" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n  b?: string;\n  c?: unknown;\n  d?: unknown;\n}");
+  assert.equal(emit({ type: "object", properties: { next: { $ref: "#" } }, additionalProperties: false }), "export interface Type {\n  next?: Type | undefined;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "string" }, b: { $ref: "#/properties/a" }, c: { $ref: "#/properties/c" }, d: { $ref: "./other.schema.jsonc" } }, additionalProperties: false }), "export interface Type {\n  a?: string | undefined;\n  b?: string | undefined;\n  c?: unknown;\n  d?: unknown;\n}");
 });
 
 test("a description is a doc comment", () => {
-  assert.equal(emit({ type: "object", properties: { a: { type: "string", description: "One line." } }, additionalProperties: false }), "export interface Type {\n  /** One line. */\n  a?: string;\n}");
+  assert.equal(emit({ type: "object", properties: { a: { type: "string", description: "One line." } }, additionalProperties: false }), "export interface Type {\n  /** One line. */\n  a?: string | undefined;\n}");
   assert.equal(emit({ type: "string", description: "Ends */ early.\nTwo lines." }), "/**\n * Ends *\\/ early.\n * Two lines.\n */\nexport type Type = string;");
 });
 
@@ -125,23 +125,26 @@ test("every emitted declaration type-checks", () => {
 
 /**
  * Each sample the validator accepts is assigned to the schema's type, and `use`, TypeScript run
- * against `Type`, must type-check: the type admits every value the validator accepts. Returns how
- * many samples of each schema were accepted, so a test can tell its samples are not all refused.
+ * against `Type`, must type-check: the type admits every value the validator accepts. A sample is
+ * JSON, or JavaScript source text in `sources` for a value JSON cannot write (`undefined`).
+ * `compilerOptions` are added to tsc's. Returns how many samples of each schema were accepted, so a
+ * test can tell its samples are not all refused.
  */
-async function agrees(cases: { schema: Record<string, unknown>; samples: unknown[]; use?: string }[]): Promise<number[]> {
+async function agrees(cases: { schema: Record<string, unknown>; samples: unknown[]; sources?: string[]; use?: string }[], compilerOptions: Record<string, unknown> = {}): Promise<number[]> {
   const dir = mkdtempSync(join(tmpdir(), "motherload-agrees-"));
   const drafts: Record<string, Draft> = { "https://json-schema.org/draft/2020-12/schema": "2020-12", "https://json-schema.org/draft/2019-09/schema": "2019-09" };
   const counts: number[] = [];
-  for (const [i, { schema, samples, use = "" }] of cases.entries()) {
+  for (const [i, { schema, samples, sources, use = "" }] of cases.entries()) {
     const { code, problems } = schemaCode(JSON.stringify(schema), join(dir, `s${i}.schema.jsonc`));
     assert.deepEqual(problems, []);
     const { default: validator } = await evaluate(code);
-    const accepted = samples.filter((sample) => validator.is(sample));
+    const texts = [...samples.map((sample) => JSON.stringify(sample)), ...(sources ?? [])];
+    const accepted = texts.filter((text) => validator.is(new Function(`return (${text});`)()));
     counts.push(accepted.length);
     const types = schemaDeclarations(schema as never, undefined, drafts[schema["$schema"] as string] ?? "draft-07");
-    writeFileSync(join(dir, `s${i}.ts`), [types, ...accepted.map((sample, j) => `export const accepted${j}: Type = ${JSON.stringify(sample)};`), use, ""].join("\n"));
+    writeFileSync(join(dir, `s${i}.ts`), [types, ...accepted.map((text, j) => `export const accepted${j}: Type = ${text};`), use, ""].join("\n"));
   }
-  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, target: "esnext", module: "nodenext", types: [] }, include: ["*.ts"] }));
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, target: "esnext", module: "nodenext", types: [], ...compilerOptions }, include: ["*.ts"] }));
   const { status, out } = run(TSC, ["-p", join(dir, "tsconfig.json")]);
   assert.equal(out, "");
   assert.equal(status, 0);
@@ -245,4 +248,43 @@ test("the type admits every value the validator accepts, and narrows: conditiona
     { schema: { items: { type: "string" } }, samples: [["a"], [1], 5, {}] },
   ]);
   assert.deepEqual(counts, [4, 3, 2, 1, 5, 2, 2, 3, 3]);
+});
+
+test("a required key that `properties` does not list takes the type of the patterns that match it, or of additionalProperties", async () => {
+  // A key matching a pattern is not an additional property; one matching several takes each pattern's type.
+  assert.equal(
+    emit({ type: "object", required: ["total", "x-max", "xy"], patternProperties: { "^x-": { type: "integer" }, "^x": { type: "string" } }, additionalProperties: { type: "boolean" } }),
+    "export interface Type {\n  total: boolean;\n  \"x-max\": number | string;\n  xy: string;\n  [key: string]: number | string | boolean;\n}",
+  );
+  // Closed, the key is allowed only by a pattern; with none, nothing passes, and the key is never.
+  assert.equal(emit({ type: "object", required: ["a", "x1"], patternProperties: { "^x": { type: "number" } }, additionalProperties: false }), "export interface Type {\n  a: never;\n  x1: number;\n  [key: string]: number;\n}");
+  assert.equal(emit({ type: "object", required: ["a"], unevaluatedProperties: false }), "export interface Type {\n  a: never;\n}");
+  // Without additionalProperties, any value.
+  assert.equal(emit({ type: "object", required: ["a"] }), "export interface Type {\n  a: unknown;\n  [key: string]: unknown;\n}");
+  // A pattern this runtime cannot read may or may not match: both types.
+  assert.equal(emit({ type: "object", required: ["a"], patternProperties: { "(?<": { type: "number" } }, additionalProperties: { type: "string" } }), "export interface Type {\n  a: number | string;\n  [key: string]: number | string;\n}");
+  const counts = await agrees([
+    { schema: { type: "object", required: ["a"], additionalProperties: { type: "number" } }, samples: [{ a: 1 }, { a: 1, b: 2 }, { a: "x" }, {}] },
+    { schema: { type: "object", required: ["xa"], patternProperties: { "^x": { type: "number" } }, additionalProperties: false }, samples: [{ xa: 1 }, { xa: 1, xb: 2 }, { xa: "s" }, { xa: 1, b: 1 }] },
+    {
+      schema: { type: "object", properties: { name: { type: "string" } }, required: ["name", "total", "x-max"], patternProperties: { "^x-": { type: "integer" } }, additionalProperties: { type: "number" } },
+      samples: [{ name: "n", total: 1.5, "x-max": 2 }, { name: "n", total: 1, "x-max": 2.5 }, { name: "n", total: 1, "x-max": 2, other: 3 }],
+      use: ["declare const v: Type;", 'export const sum: number = v.total + v["x-max"];'].join("\n"),
+    },
+  ]);
+  assert.deepEqual(counts, [2, 2, 2]);
+});
+
+test("an optional property may hold undefined, which the validator passes as absent, under exactOptionalPropertyTypes too", async () => {
+  assert.equal(emit({ type: "object", properties: { a: { type: "string" }, b: {}, c: false }, additionalProperties: false }), "export interface Type {\n  a?: string | undefined;\n  b?: unknown;\n  c?: undefined;\n}");
+  const counts = await agrees(
+    [
+      { schema: { type: "object", properties: { a: { type: "string" } } }, samples: [{ a: "x" }, {}], sources: ["{ a: undefined }"] },
+      { schema: { type: "object", properties: { a: { type: "string" }, c: false }, additionalProperties: false }, samples: [], sources: ["{ a: undefined }", "{ c: undefined }"] },
+      { schema: { type: "object", properties: { a: { type: "string" } }, required: ["a"] }, samples: [{ a: "x" }], sources: ["{ a: undefined }"] },
+    ],
+    { exactOptionalPropertyTypes: true },
+  );
+  // A required property that holds undefined is missing, for ajv as for the type.
+  assert.deepEqual(counts, [3, 2, 1]);
 });

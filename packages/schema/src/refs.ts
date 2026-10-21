@@ -215,10 +215,48 @@ export function dynamicRefProblems(files: Files, rootPath: string, rootSource: s
       if (ref === "#" || !ref.startsWith("#")) continue;
       const name = ref.includes("/") ? undefined : ref.slice(1);
       if (name !== undefined && anchors.has(name)) continue;
-      const fix = name === undefined ? "write it as a $ref" : `declare "$dynamicAnchor": "${name}" at the root of the schema or of a schema with an $id, or write it as a $ref`;
+      // An anchor at the root of a schema with an `$id` is resolved too, but such an `$id` below the root is refused (embeddedIdProblems).
+      const fix = name === undefined ? "write it as a $ref" : `declare "$dynamicAnchor": "${name}" at the root of the schema, or write it as a $ref`;
       const where = path === rootPath ? "" : `${specifierOf(rootPath, path)}: `;
       const place = path === rootPath ? placeOf(rootSource, ref) : files.places.get(path)!;
       problems.push({ message: `${where}ajv resolves the $dynamicRef "${ref}" to the root of its schema, not where it points: ${fix}.`, ...place, code: CODES.schema });
+    }
+  }
+  return problems;
+}
+
+/** Where an `$id` of `value` sits in a file's text: the value inside its quotes, after its key, or wherever the value is first quoted. */
+function idPlaceOf(source: string, value: string): { start: number; length: number } {
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const quoted = new RegExp(`(["']?)\\$id\\1\\s*:\\s*(["'])${escape(value)}\\2`).exec(source);
+  if (quoted) return { start: quoted.index + quoted[0].length - value.length - 1, length: Math.max(value.length, 1) };
+  return placeOf(source, value);
+}
+
+/**
+ * Each `$id` below the root of a file that gives the schema holding it a base URI of its own, as a
+ * problem placed as `collect`'s are, in every draft. ajv resolves a `$ref` inside such a schema
+ * against that `$id`, while the types resolve every pointer against the file: measured on
+ * 2026-10-20, `{ "$id": "https://example.com/inner", "$defs": { "x": { "type": "number" } }, "allOf":
+ * [{ "$ref": "#/$defs/x" }] }` inside `$defs` validated `1` and was typed with the root's `x`, a
+ * string, and with the `$ref` beside the `$id` ajv recursed until the stack ran out while compiling.
+ * A plain-name `$id` (`"#name"`, draft-07's anchor) moves no base and stays, as Standard JSON
+ * Schema's conversion keeps it (json-schema.ts), which refuses the same `$id`s.
+ */
+export function embeddedIdProblems(files: Files, rootPath: string, rootSource: string): Problem[] {
+  const problems: Problem[] = [];
+  for (const [path, schema] of files.schemas) {
+    const ids: string[] = [];
+    let root = true;
+    eachSchema(schema, (s) => {
+      if (!root && typeof s["$id"] === "string" && !s["$id"].startsWith("#")) ids.push(s["$id"]);
+      root = false;
+    });
+    for (const id of new Set(ids)) {
+      const where = path === rootPath ? "" : `${specifierOf(rootPath, path)}: `;
+      const place = path === rootPath ? idPlaceOf(rootSource, id) : files.places.get(path)!;
+      const message = `${where}The $id "${id}" gives a schema inside the file a base URI of its own, against which ajv resolves the $refs inside it and Motherload's types do not: move that schema to a .schema.jsonc file of its own and $ref the file, or remove the $id.`;
+      problems.push({ message, ...place, code: CODES.schema });
     }
   }
   return problems;

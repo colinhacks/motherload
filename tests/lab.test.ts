@@ -2,7 +2,9 @@
 // esbuild plugin, on lab/basic.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { ROOT, run, TSC } from "./helpers.ts";
 
 test("lab/basic type-checks through the content mapper", () => {
@@ -26,6 +28,8 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.match(out, /broken\.schema\.json5\(3,44\): error motherload1: invalid character ','/);
   // A $ref to a file that is not there is placed at the reference.
   assert.match(out, /broken-ref\.schema\.jsonc\(4,35\): error motherload4: The \$ref "\.\/missing\.schema\.jsonc" names a file that does not exist\./);
+  // An $id below a schema file's root is placed at the $id's value.
+  assert.match(out, /embedded-id\.schema\.jsonc\(6,24\): error motherload4: The \$id "https:\/\/example\.com\/inner" gives a schema inside the file a base URI of its own/);
   // The row after "Émile" starts on line 3; the repeated frontmatter key on line 3 of the file, not of the frontmatter.
   assert.match(out, /broken\.csv\(3,1\): error motherload1: This row has 3 fields; the header has 2\./);
   assert.match(out, /broken\.md\(3,1\): error motherload1: Map keys must be unique/);
@@ -37,6 +41,17 @@ test("a data file in a package with no \"type\" is an ES module all the same", (
   const { status, out } = run(TSC, ["-p", "tests/fixtures/commonjs/tsconfig.json", "--noEmit", "--runExternalCode"]);
   assert.equal(out, "");
   assert.equal(status, 0);
+});
+
+test("a library that re-exports a schema module emits its declarations: the schema's literal type is inlined, though the module does not export its name", () => {
+  const out = mkdtempSync(join(tmpdir(), "motherload-declaration-"));
+  const result = run(TSC, ["-p", "tests/fixtures/declaration/tsconfig.json", "--runExternalCode", "--outDir", out]);
+  assert.equal(result.out, "");
+  assert.equal(result.status, 0);
+  const declarations = readFileSync(join(out, "tests/fixtures/declaration/main.d.ts"), "utf8");
+  assert.match(declarations, /user: import\("@motherload\/schema"\)\.Schema<import\("\.\/user\.schema\.jsonc"\)\.Type, \{\n\s+readonly type: "object";/);
+  assert.match(declarations, /export declare const check: \(value: unknown\) => value is import\("\.\/user\.schema\.jsonc"\)\.Type;/);
+  rmSync(out, { recursive: true, force: true });
 });
 
 const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';

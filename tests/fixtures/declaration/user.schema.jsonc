@@ -1,0 +1,7 @@
+// A schema whose module a library re-exports, for its declaration emit (tests/lab.test.ts).
+{
+  "type": "object",
+  "properties": { "name": { "type": "string" }, "role": { "enum": ["admin", "member"] } },
+  "required": ["name"],
+  "additionalProperties": false,
+}

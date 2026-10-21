@@ -240,7 +240,7 @@ A JSON Schema becomes its type and a validator. The validator is compiled by [aj
 
 ```ts
 import user, { type Type as User } from "./user.schema.jsonc";
-// User: { name: string; role?: "admin" | "member" }
+// User: { name: string; role?: "admin" | "member" | undefined }
 
 // Never throws: the value, or every issue.
 const result = user.validate(input);

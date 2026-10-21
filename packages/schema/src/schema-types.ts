@@ -22,6 +22,20 @@ function union(members: string[]): string {
   return unique.length ? unique.join(" | ") : "never";
 }
 
+/**
+ * Whether a `patternProperties` pattern matches a key, as ajv tests it (a Unicode regular
+ * expression, unanchored), or undefined when the pattern is not one this runtime reads.
+ */
+function patternTest(source: string): (key: string) => boolean | undefined {
+  let pattern: RegExp | undefined;
+  try {
+    pattern = new RegExp(source, "u");
+  } catch {
+    pattern = undefined;
+  }
+  return (key) => pattern?.test(key);
+}
+
 /** Whether `type` has a `|` or `&` outside brackets and strings, so it needs parentheses inside `T[]` or `A & B`. */
 function compound(type: string): boolean {
   let depth = 0;
@@ -70,9 +84,16 @@ function typeName(key: string, taken: Set<string>): string {
   return unique;
 }
 
-/** The names a schema's module declares: one per entry of its `$defs` and `definitions`, keyed `<keyword>\0<key>`, besides `Type`. */
+/**
+ * The name of the module's type for the schema as written, its literal type, which the module's
+ * `Schema<Type, Json>` takes as its second argument, so an error or a hover prints the name in place
+ * of the whole schema. The module does not export it; a definition or an imported type never takes it.
+ */
+export const LITERAL_NAME = "Json";
+
+/** The names a schema's module declares: one per entry of its `$defs` and `definitions`, keyed `<keyword>\0<key>`, besides `Type` and `Json`. */
 function definitionNames(root: Value): { names: Map<string, string>; definitions: [string, Value][]; taken: Set<string> } {
-  const taken = new Set(["Type", "__MotherloadSchema"]);
+  const taken = new Set(["Type", LITERAL_NAME, "__MotherloadSchema"]);
   const names = new Map<string, string>();
   const definitions: [string, Value][] = [];
   if (isObj(root)) {
@@ -277,22 +298,36 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
     const inner = `${indent}  `;
     const properties = isObj(schema["properties"]) ? schema["properties"] : {};
     const required = new Set(strings(schema["required"]));
+    // Keys outside `properties`: an index signature, unless `additionalProperties` (or, without it,
+    // `unevaluatedProperties`, when no keyword beside it can allow another key) is false. Its type
+    // covers the named properties too, as TypeScript requires.
+    const additional = schema["additionalProperties"];
+    const closed = additional === false || (additional === undefined && unevaluated && schema["unevaluatedProperties"] === false && !EVALUATING.some((k) => Object.hasOwn(schema, k)));
+    const additionalType = closed ? "never" : additional === undefined || additional === true ? "unknown" : emit(additional, inner);
+    const patterns = isObj(schema["patternProperties"]) ? Object.entries(schema["patternProperties"]).map(([source, pattern]) => ({ test: patternTest(source), type: emit(pattern, inner) })) : [];
     const lines: string[] = [];
     const valueTypes: string[] = [];
     for (const [key, property] of Object.entries(properties)) {
       const type = emit(property, inner);
       const optional = !required.has(key);
       valueTypes.push(type, ...(optional ? ["undefined"] : []));
-      lines.push(`${doc(property, inner)}${inner}${propertyName(key)}${optional ? "?" : ""}: ${type};`);
+      // An optional property may hold `undefined`, which the validator passes as absent, so the type
+      // says so for a project with `exactOptionalPropertyTypes`.
+      lines.push(`${doc(property, inner)}${inner}${propertyName(key)}${optional ? "?" : ""}: ${optional ? union([type, "undefined"]) : type};`);
     }
-    for (const key of required) if (!Object.hasOwn(properties, key)) lines.push(`${inner}${propertyName(key)}: unknown;`);
-    // Keys outside `properties`: an index signature, unless `additionalProperties` (or, without it,
-    // `unevaluatedProperties`, when no keyword beside it can allow another key) is false. Its type
-    // covers the named properties too, as TypeScript requires.
-    const additional = schema["additionalProperties"];
-    const closed = additional === false || (additional === undefined && unevaluated && schema["unevaluatedProperties"] === false && !EVALUATING.some((k) => Object.hasOwn(schema, k)));
-    const extra = isObj(schema["patternProperties"]) ? Object.values(schema["patternProperties"]).map((pattern) => emit(pattern, inner)) : [];
-    if (!closed) extra.push(additional === undefined || additional === true ? "unknown" : emit(additional, inner));
+    // A required key that `properties` does not list takes the type of the `patternProperties` whose
+    // pattern matches it (all of them apply, so their union admits it), or of `additionalProperties`
+    // when none does: it is one of the keys the index signature covers.
+    for (const key of required) {
+      if (Object.hasOwn(properties, key)) continue;
+      const matching = patterns.filter((pattern) => pattern.test(key) !== false);
+      const type = matching.length ? union(matching.map((pattern) => pattern.type)) : additionalType;
+      // A pattern that cannot be read here may not match: the key may be an additional one too.
+      const unsure = matching.some((pattern) => pattern.test(key) === undefined);
+      lines.push(`${inner}${propertyName(key)}: ${unsure ? union([type, additionalType]) : type};`);
+    }
+    const extra = patterns.map((pattern) => pattern.type);
+    if (!closed) extra.push(additionalType);
     if (extra.length) lines.push(`${inner}[key: string]: ${union([...extra, ...valueTypes])};`);
     else if (!lines.length) lines.push(`${inner}[key: string]: never;`);
     return `{\n${lines.join("\n")}\n${indent}}`;
