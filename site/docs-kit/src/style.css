@@ -21,12 +21,12 @@
 /* docs-kit: the stylesheet of a one-page Fumadocs docs site. A site imports it first in its own
    global.css and then sets its colours: Fumadocs' `--color-fd-*` variables for both themes (`:root`
    and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name,
-   inline code, the table of contents' code chips and the selection. The washes of
-   the accent are variables too, for a palette that wants them lighter or stronger. Everything
-   else here is the maintainer's rules for the docs sites, from the reviews of Reylo's site
-   (Reylo's docs/docs-site.md): the layout follows zod.dev (ruled h1 and h2, borderless inline code
-   tinted with the accent, mono tab labels), with a reading measure, quiet collapsibles, code that
-   never scrolls sideways and one cursor per kind of thing. */
+   the bar under an h3 and the selection. Inline code and the table of contents' code chips are a
+   wash of the text's own grey (`--dk-code-tint`), and the washes are variables too, for a palette
+   that wants them lighter or stronger. Everything else here is the maintainer's rules for the docs
+   sites, from the reviews of Reylo's site (Reylo's docs/docs-site.md): the layout follows zod.dev
+   (ruled h1 and h2, borderless inline code, mono tab labels), with a reading measure, quiet
+   collapsibles, code that never scrolls sideways and one cursor per kind of thing. */
 
 @source './';
 
@@ -34,11 +34,16 @@
   /* The brand colour, used for washes and rules; `--color-fd-primary` is the accent where it
      carries text, so a light theme can darken it for contrast on white. */
   --dk-accent: hsl(46, 97%, 52%);
-  --dk-wash-code: 13%;
-  --dk-wash-toc: 12%;
-  --dk-wash-toc-hover: 16%;
-  --dk-wash-toc-active: 22%;
-  --dk-wash-summary: 10%;
+  /* Inline code, the table of contents' code chips and code in a summary are a wash of this colour,
+     the text's own grey, not of the accent: on the accent's 13% wash, the maintainer found inline
+     code hard to read (2026-10-20: "the readability isn't very good right now"); a murky olive
+     chip on the dark page, and a size too small. The washes are shares of it. */
+  --dk-code-tint: var(--color-fd-foreground);
+  --dk-wash-code: 9%;
+  --dk-wash-toc: 8%;
+  --dk-wash-toc-hover: 11%;
+  --dk-wash-toc-active: 14%;
+  --dk-wash-summary: 7%;
   --dk-wash-selection: 35%;
   /* The dotted rule under a name with a Twoslash popup, as a share of the code's colour. */
   --dk-hover-rule: 40%;
@@ -118,13 +123,32 @@ html .prose {
     letter-spacing: -0.02em;
   }
 
-  /* No rule under an h3: the rule is what marks an h2 off from it, beside its size. */
+  /* An h3 is a step inside a section: smaller than an h2, and marked by a short bar of the accent
+     under its first letters where an h2 is ruled across the column (the maintainer, 2026-10-20: "I
+     kind of feel like h3s should have an underline. It may not need to go full width, but some
+     indication that they're an h3"; chosen from seven marks mocked for him: a bar of the accent or
+     of grey, a rule as wide as the heading, full-width rules solid, dotted or fading). The bar
+     hangs below the heading's box, which keeps its height, so the link icon and the copy button
+     stay centred on its text; the margin under the heading makes room for it. */
   & > h3 {
     color: var(--color-fd-headings);
     font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.4;
     @apply mt-10;
+    margin-bottom: calc(0.6em + 0.625rem);
+  }
+
+  & > h3::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -0.625rem;
+    width: 2rem;
+    height: 2px;
+    border-radius: 1px;
+    background-color: var(--dk-accent);
+    pointer-events: none;
   }
 
   /* A heading that names a code token (a member of an API, a key of a config file, an extension)
@@ -215,12 +239,10 @@ html .prose {
     color: var(--color-fd-primary);
   }
 
-  /* Inline code: no outline, a faint yellow wash. */
+  /* Inline code: no outline, a grey chip (the reading measure, below, sets its size). */
   :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
     border: none;
-    @apply px-1.5;
-    background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-code), transparent);
-    font-size: 0.86em;
+    background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-code), transparent);
   }
 
   button[role='tab'] {
@@ -240,15 +262,152 @@ html .prose {
   }
 }
 
-/* The setup accordions: a quiet list, one hairline between items. */
+/* ── Accordions (`<Accordions>`, `<Accordion title>`; components/mdx.tsx marks them) ─────────
+   A list of setups a reader picks one from (Reylo's plugins and editors): each item a rounded bar
+   in the muted grey, 6px apart, its name in the headings' colour and weight with a plus on the
+   right that turns to a minus when open; the open item's text and code sit under its bar at the
+   column's width and the page's size, outside any box, so its code blocks are the page's own
+   cards with the page's edges. It replaced Fumadocs' card (one grey box with a hairline between
+   rows, a link icon on every row and the open item's code a card inside the card, inset from the
+   column), which the maintainer found did not look very good (2026-10-20); chosen from seven
+   designs mocked for him (that card, a ruled list with or without each item's file, separate
+   tiles, filled bars, a ruled list hanging the open item from a rule, a picker of buttons): the
+   bars have the most structure, which the plugins' accordion was asked for over the quiet
+   `<Details>`, and keep every code block on the column's edges. The link to an item sits in the
+   left margin as a heading's does, always visible. */
 #nd-page .prose [data-accordion-item] h3,
 #nd-page .prose h3.not-prose {
   margin: 0;
 }
 
+#nd-page .dk-accordions {
+  display: grid;
+  gap: 0.375rem;
+  margin-block: 1.25rem 1.5rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+}
+
+#nd-page .dk-accordions > .dk-accordion {
+  border: none;
+}
+
+#nd-page .dk-accordion > h3 {
+  position: relative;
+  border-radius: 0.5rem;
+  background-color: var(--color-fd-muted);
+  color: var(--color-fd-headings);
+  font-size: 1.03125rem;
+  font-weight: 600;
+  transition: background-color 120ms;
+}
+
+#nd-page .dk-accordion > h3:hover,
+#nd-page .dk-accordion > h3:has(:focus-visible) {
+  background-color: var(--color-fd-accent);
+}
+
+#nd-page .dk-accordion > h3 > button:first-child {
+  gap: 0.75rem;
+  padding: 0.625rem 2.75rem 0.625rem 0.875rem;
+  line-height: 1.6;
+}
+
+/* Fumadocs' chevron on the left gives way to a plus at the bar's right end, a minus when open. It
+   is drawn on the header, over the trigger, and lets clicks through to it. */
+#nd-page .dk-accordion > h3 > button:first-child > svg {
+  display: none;
+}
+
+#nd-page .dk-accordion > h3::after {
+  content: '';
+  position: absolute;
+  right: 0.875rem;
+  top: 50%;
+  translate: 0 -50%;
+  width: 0.875rem;
+  height: 0.875rem;
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
+  color: var(--color-fd-muted-foreground);
+  pointer-events: none;
+}
+
+#nd-page .dk-accordion > h3[data-state='open']::after {
+  background: linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat;
+}
+
+/* The item's link button, Fumadocs' "Copy Link", in the left margin where a heading's link icon
+   is, the same grey; below md, where the margin is too narrow, it sits in the bar just left of the
+   plus, as a heading's icon joins its copy button at the right end of the line. */
+#nd-page .dk-accordion > h3 > button[aria-label] {
+  position: absolute;
+  left: -1.75rem;
+  top: 50%;
+  translate: 0 -50%;
+  margin: 0;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  background: none;
+  color: color-mix(in oklab, var(--color-fd-muted-foreground) 55%, transparent);
+}
+
+#nd-page .dk-accordion > h3 > button[aria-label]:hover {
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .dk-accordion > h3 > button[aria-label] svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (width < 48rem) {
+  #nd-page .dk-accordion > h3 > button[aria-label] {
+    left: auto;
+    right: 2.25rem;
+    padding: 0.3125rem;
+  }
+
+  #nd-page .dk-accordion > h3 > button:first-child {
+    padding-inline-end: 4.5rem;
+  }
+}
+
+/* The open item's text: the column's full width and the page's size (Fumadocs insets it 16px at
+   15px), clear of its bar above and of the next bar below. */
+#nd-page .dk-accordion > [role='region'] > div {
+  padding: 1rem 0 0.75rem;
+  font-size: inherit;
+}
+
+#nd-page .dk-accordion > [role='region'] > div > :first-child,
+#nd-page .dk-accordion > [role='region'] > div > :is(ol, ul):first-child > li:first-child,
+#nd-page .dk-accordion > [role='region'] > div > :is(ol, ul):first-child > li:first-child > :first-child {
+  margin-top: 0;
+}
+
+#nd-page .dk-accordion > [role='region'] > div > :last-child {
+  margin-bottom: 0;
+}
+
 /* The table of contents sits on the left, beside the text it indexes. */
 #nd-toc a[data-active='true'] {
   color: var(--color-fd-headings);
+}
+
+/* Its entries are half a point larger than Fumadocs' 14px, in the same 20px line, so the list keeps
+   its height: each entry is still 32px from the next (Fumadocs' `py-1.5`), and the half point comes
+   out of the leading around the text (the maintainer, 2026-10-20: "make the font size in the
+   sidebar half a point bigger and account for it in the spacing so that it takes up the same total
+   height"). A line height that grew with the text would add 0.71px per entry, which the padding
+   could take back only to within a fraction of a pixel, as Fumadocs pads the first entry only below
+   and the last only above. */
+#nd-toc > .overflow-auto a {
+  font-size: 0.90625rem;
+  line-height: 1.25rem;
 }
 
 /* The list scrolls under "On this page": an entry fades out fully before it reaches the title,
@@ -269,19 +428,23 @@ html .prose {
   border-radius: 0.3125rem;
   padding: 0.0625rem 0.3125rem;
   font-size: 0.9em;
+  /* Its own line box is no taller than its text, so a chip never makes its entry taller than the
+     others: in the 20px line of 14.5px text, the mono's line at the inherited height grew each code
+     entry to 33px. */
+  line-height: 1;
   color: inherit;
-  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc), transparent);
+  background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-toc), transparent);
   transition: background-color 120ms;
 }
 
 #nd-toc a:hover code,
 [data-toc-popover] a:hover code {
-  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc-hover), transparent);
+  background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-toc-hover), transparent);
 }
 
 #nd-toc a[data-active='true'] code,
 [data-toc-popover] a[data-active='true'] code {
-  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-toc-active), transparent);
+  background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-toc-active), transparent);
 }
 
 /* The note under the opening paragraph (`<p className="dk-lede">`): italic and muted, with its
@@ -516,41 +679,14 @@ code {
   border: 1px solid var(--color-fd-border);
 }
 
-/* An example reads as one card: a file's tabs and, directly under them, the code that imports
-   the file, which follows the tab chosen above. The two share the rule between them and
-   lose the rounded corners where they meet. */
-#nd-page .dk-code-tabs:has(+ .dk-variant-follow) {
-  margin-bottom: 0;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-#nd-page .dk-code-tabs:has(+ .dk-variant-follow) figure.shiki {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-#nd-page .dk-code-tabs + .dk-variant-follow {
-  margin-top: 0;
-}
-
-#nd-page .dk-code-tabs + .dk-variant-follow > .dk-variant-panel > figure.shiki:first-child {
-  margin-top: -1px;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-/* Consecutive blocks in a followed panel (a `.sql` file and the TypeScript that imports it) are one
-   card too, as an example's tabs and the code under them are. */
-#nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki:has(+ figure.shiki) {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
+/* A followed panel's blocks (a `.sql` file and the TypeScript that imports it) are separate cards,
+   with the page's 1rem between code blocks; and the tab group above a followed block is its own
+   card too. They were drawn as one card, the tabs and the code under them sharing a rule with no
+   corners where they met, until the maintainer, 2026-10-20: "You still have these horrible combo
+   code blocks. I hate these, dude. You can't, and never use these anywhere." The follow behaviour
+   stays: the block under the tabs still shows the tab chosen above. */
 #nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki + figure.shiki {
-  margin-top: -1px;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
+  margin-top: 1rem;
 }
 
 /* ── Phones ──────────────────────────────────────────────────────────────────
@@ -640,7 +776,7 @@ code {
 /* A code part of a summary keeps the summary's colour, on a fainter wash, so the line stays quiet. */
 #nd-page .dk-details > summary code {
   color: inherit;
-  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-summary), transparent);
+  background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-summary), transparent);
 }
 
 /* Several in a row, such as a list of bundlers, read as one list. */
@@ -956,11 +1092,17 @@ html:not(.dark) .shiki span[style*='--shiki-light:#D73A49' i] {
   color: #cf222e !important;
 }
 
-/* Inline code keeps its yellow wash, a little fainter; in a table cell it is plain mono in the
-   headings' colour, so a column of types reads as a list rather than a column of chips. */
+/* Inline code is a grey chip in the headings' colour, a size up from the 0.85em it was (15px
+   beside 16.5px prose), padded in ems so it scales with the text around it; chosen on 2026-10-20
+   from seven treatments mocked for the maintainer (the accent's wash, crisp or faint; grey, with a
+   hairline or without; plain mono; accent text; an outline): the grey chip reads best on both
+   themes and leaves the accent to links. In a table cell it is plain mono in the headings'
+   colour, so a column of types reads as a list rather than a column of chips. */
 html #nd-page .prose :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
-  background-color: color-mix(in oklab, var(--dk-accent) var(--dk-wash-code), transparent);
-  font-size: 0.85em;
+  background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-code), transparent);
+  font-size: 0.9em;
+  padding: 0.15em 0.35em;
+  border-radius: 0.3125rem;
 }
 
 html #nd-page .prose :is(td, th) {

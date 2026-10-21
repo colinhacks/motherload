@@ -8,9 +8,11 @@ import { CodeTabs } from './code-tabs';
 import { Details } from './details';
 import { Heading } from './heading';
 
+const cx = (...names: (string | undefined)[]) => names.filter(Boolean).join(' ');
+
 /**
  * The MDX components every page gets: Fumadocs' defaults; headings with the link icon in the left
- * margin and the copy-as-Markdown button (./heading.tsx); Fumadocs' accordions and tabs; the quiet
+ * margin and the copy-as-Markdown button (./heading.tsx); Fumadocs' accordions (drawn as filled bars) and tabs; the quiet
  * `<Details>`; code-tab groups that put a shared file name at the end of the strip
  * (./code-tabs.tsx); and Twoslash's popups, opening fast. A site spreads its own components over
  * these (its variant tabs, its agent card with its title, its figures).
@@ -21,8 +23,9 @@ export function docsMdxComponents(components?: MDXComponents) {
     h2: (props) => <Heading as="h2" {...props} />,
     h3: (props) => <Heading as="h3" {...props} />,
     h4: (props) => <Heading as="h4" {...props} />,
-    Accordion,
-    Accordions,
+    // Fumadocs' accordions, marked for the stylesheet's filled bars (style.css, "Accordions").
+    Accordion: (props: ComponentProps<typeof Accordion>) => <Accordion {...props} className={cx('dk-accordion', props.className)} />,
+    Accordions: (props: ComponentProps<typeof Accordions>) => <Accordions {...props} className={cx('dk-accordions', props.className)} />,
     Details,
     Tab,
     Tabs,
