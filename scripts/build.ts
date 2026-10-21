@@ -49,7 +49,7 @@ function readme(pkg: Record<string, any>): string {
   if (pkg.name === "@motherload/core") {
     return `# @motherload/core\n\n${pkg.description} Install [\`motherload\`](https://www.npmjs.com/package/motherload), or the package of each format a project reads, not this one: they depend on it.\n\nDocs: https://motherload.dev\n`;
   }
-  return `# ${pkg.name}\n\n${pkg.description}\n\nOne of [Motherload](https://motherload.dev)'s packages: a TypeScript 7.1 content mapper, a preload and an esbuild plugin for this format alone. [\`motherload\`](https://www.npmjs.com/package/motherload) reads every format.\n\nSetup: https://motherload.dev/#one-format-at-a-time\n`;
+  return `# ${pkg.name}\n\n${pkg.description}\n\nOne of [Motherload](https://motherload.dev)'s packages: a TypeScript 7.1 content mapper, a preload and an esbuild plugin for this format alone. [\`motherload\`](https://www.npmjs.com/package/motherload) reads every format.\n\nSetup: https://motherload.dev/#loaders-a-la-carte\n`;
 }
 
 function emit(dir: string, from: string, pkg: Record<string, any>, dependencies: Record<string, string>, readmeText: string) {
