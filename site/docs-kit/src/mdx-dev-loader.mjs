@@ -26,7 +26,36 @@
 // escapes, which mean the same characters in the string literals MDX writes. A copy went from 70 MB
 // to 21 MB (and to 9 MB once mdx/recma-shared-popups.ts built each popup once).
 
+//
+// And it hands the compile's memory back. This loader runs in one of the pool of Node workers
+// Turbopack keeps for loaders, and each worker that has compiled a large page keeps V8's
+// high-water mark: on 2026-10-20 a worker that had compiled Reylo's page held about 450 MB, of which
+// about 100 MB was live heap, and three or more workers stayed that size for the life of the
+// server. A few full collections after a compile let V8's memory reducer return the rest (one
+// process compiling the page went from 521 MB to 258 MB): over ten edits, the dev server's whole
+// process tree sat at 1.2–1.3 GB idle with these collections and 2.05 GB without.
+
+import v8 from 'node:v8';
+import vm from 'node:vm';
+
 const JSX_RUNTIME = /^import \{([^}]*)\} from "react\/jsx-runtime";$/m;
+
+let gc;
+let pending = [];
+
+/** Collects the garbage 1, 5, 15 and 30 seconds after the latest compile, in this worker. */
+function collectAfterCompile() {
+  try {
+    if (!gc) {
+      v8.setFlagsFromString('--expose-gc');
+      gc = vm.runInNewContext('gc');
+    }
+  } catch {
+    return;
+  }
+  for (const timer of pending) clearTimeout(timer);
+  pending = [1000, 5000, 15000, 30000].map((ms) => setTimeout(() => gc(), ms).unref());
+}
 
 export default function mdxDevLoader(source, map) {
   const code = source
@@ -43,4 +72,5 @@ export default function mdxDevLoader(source, map) {
     ? { ...input, ignoreList: input.sources.map((_, i) => i) }
     : { version: 3, sources: [this.resourcePath], names: [], mappings: '', ignoreList: [0] };
   this.callback(null, code, output);
+  collectAfterCompile();
 }

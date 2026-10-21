@@ -758,6 +758,67 @@ code {
   color: var(--color-fd-headings);
 }
 
+/* ── "Copy agent prompt" on the title's row (components/copy-agent-prompt.tsx) ──
+   The call to action at the very top of the page (the maintainer, 2026-10-20: "It can just be a
+   button"), chosen from seven options mocked on Reylo's page: at the right end of the title's
+   row, above its rule, it is the first thing a reader sees and moves nothing below the title. It
+   is the agent card's outlined button in the page's greys (no accent: the accent read as a
+   warning on the card), with a clipboard. The row carries the title's rule; the button is shorter
+   than the title's line, so the row is the title's height, and it wraps under the title only where
+   the two do not fit side by side (a window narrower than about 325px). */
+
+#nd-page .dk-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-fd-border);
+  @apply pb-3;
+}
+
+#nd-page .dk-title-row > h1 {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+#nd-page .dk-cta {
+  display: inline-grid;
+  flex: none;
+  padding: 0.5rem 0.875rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-fd-border);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--color-fd-background);
+  color: var(--color-fd-headings);
+}
+
+#nd-page .dk-cta:hover {
+  background: var(--color-fd-accent);
+}
+
+/* Its two labels share one grid cell, the one not shown hidden, so "Copied" keeps the width. */
+#nd-page .dk-cta > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+#nd-page .dk-cta > span:not([data-shown]) {
+  visibility: hidden;
+}
+
+#nd-page .dk-cta svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
 /* ── No layout shift ─────────────────────────────────────────────────────────
    "Hovers open fast, with no layout shift" (the maintainer, 2026-10-11). Measured on Reylo's page
    with Chrome's Layout Instability API on 2026-10-20; the head scripts of

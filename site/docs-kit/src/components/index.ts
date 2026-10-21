@@ -1,5 +1,6 @@
 export { AgentPrompt } from './agent-prompt';
 export { CodeTabs } from './code-tabs';
+export { CopyAgentPrompt } from './copy-agent-prompt';
 export { Details } from './details';
 export { Heading } from './heading';
 export { docsMdxComponents } from './mdx';

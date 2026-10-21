@@ -50,6 +50,7 @@ export function DocsShell({
   brand,
   github,
   before,
+  titleAside,
   children,
 }: {
   /** The page tree (`source.getPageTree()`). */
@@ -65,6 +66,8 @@ export function DocsShell({
   github: string;
   /** Rendered before the title, outside the page's prose: a script of structured data, say. */
   before?: ReactNode;
+  /** Rendered at the right end of the title's row, above its rule: `<CopyAgentPrompt />`, say. */
+  titleAside?: ReactNode;
   /** The page's MDX, rendered. */
   children: ReactNode;
 }) {
@@ -83,7 +86,14 @@ export function DocsShell({
         footer={{ enabled: false }}
       >
         {before}
-        <DocsTitle>{title}</DocsTitle>
+        {titleAside ? (
+          <div className="dk-title-row">
+            <DocsTitle>{title}</DocsTitle>
+            {titleAside}
+          </div>
+        ) : (
+          <DocsTitle>{title}</DocsTitle>
+        )}
         <DocsBody>{children}</DocsBody>
       </DocsPage>
     </DocsLayout>

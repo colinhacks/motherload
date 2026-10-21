@@ -2,6 +2,19 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 
+/** The selector of an agent card (its `data-agent-prompt`), by which `<CopyAgentPrompt>` finds the card it copies. */
+export const AGENT_PROMPT_SELECTOR = '[data-agent-prompt]';
+
+/**
+ * The prompt an agent card holds, as plain text: its code block's lines, as Shiki writes them (one
+ * `.line` element each). The card's Copy button and `<CopyAgentPrompt>` at the top of the page both
+ * copy this, so the prompt is written once, in the page's code block.
+ */
+export function agentPromptText(card: Element): string {
+  const lines = [...card.querySelectorAll('pre .line')].map((line) => line.textContent ?? '');
+  return lines.join('\n').trimEnd() + '\n';
+}
+
 /**
  * The instructions a coding agent follows to set the product up in a project, as the maintainer
  * asked on 2026-10-20 for Reylo's Setup: "some kind of complete, copyable instruction block for
@@ -23,15 +36,14 @@ export function AgentPrompt({
   const [copied, setCopied] = useState(false);
 
   async function copy() {
-    // The code block's lines, as Shiki writes them: one `.line` element each.
-    const lines = [...(body.current?.querySelectorAll('pre .line') ?? [])].map((line) => line.textContent ?? '');
-    await navigator.clipboard.writeText(lines.join('\n').trimEnd() + '\n');
+    if (!body.current) return;
+    await navigator.clipboard.writeText(agentPromptText(body.current));
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   }
 
   return (
-    <section className="dk-agent not-prose" aria-label="Setup instructions for a coding agent">
+    <section className="dk-agent not-prose" aria-label="Setup instructions for a coding agent" data-agent-prompt="">
       <div className="dk-agent-head">
         <div>
           <p className="dk-agent-title">{title}</p>

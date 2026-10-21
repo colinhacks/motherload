@@ -13,7 +13,10 @@ import { createMDX } from 'fumadocs-mdx/next';
  * - TypeScript and Twoslash, which Twoslash loads at build time, never bundled.
  * - In `next dev`, ./mdx-dev-loader.mjs after fumadocs-mdx's loader, which keeps the dev server's
  *   memory flat across edits: without it a large page ran `next dev` out of an 8 GB heap on the
- *   first render after an edit.
+ *   first render after an edit; and a small young generation for Turbopack's loader workers
+ *   (`--max-semi-space-size=4` in the `NODE_OPTIONS` they inherit from the server, which sets it
+ *   here, before it starts them): one process compiling Reylo's page peaked at 320 MB with it and
+ *   520 MB without.
  *
  * @param {import('next').NextConfig} [config]
  * @param {Parameters<typeof createMDX>[0]} [mdx] fumadocs-mdx's options
@@ -32,6 +35,8 @@ export function withDocsKit(config = {}, mdx) {
   // Loaders run last to first, so this one runs after fumadocs-mdx's. Turbopack resolves a loader
   // from the project root, which holds this file (the site's copy of docs-kit, or its install).
   if (process.env.NODE_ENV === 'development') {
+    const options = process.env.NODE_OPTIONS ?? '';
+    if (!options.includes('--max-semi-space-size')) process.env.NODE_OPTIONS = `${options} --max-semi-space-size=4`.trim();
     const loader = path.relative(root, fileURLToPath(new URL('./mdx-dev-loader.mjs', import.meta.url)));
     merged.turbopack.rules['*.{md,mdx}'].loaders.unshift({ loader: loader.startsWith('.') ? loader : `./${loader}` });
   }
