@@ -44,7 +44,14 @@ test("const, enum, combinators, and the keywords that only narrow", () => {
   assert.equal(emit({ anyOf: [{ type: "string" }, true] }), "export type Type = unknown;");
   assert.equal(emit({ type: "string", allOf: [false] }), "export type Type = never;");
   assert.equal(emit({}), "export type Type = unknown;");
-  assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n}");
+  // Without `type`, the object keywords constrain an object alone, and every other JSON value passes them.
+  assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export type Type = {\n  a?: string;\n} | unknown[] | string | number | boolean | null;");
+  assert.equal(emit({ items: { type: "string" } }), "export type Type = string[] | {\n  [key: string]: unknown;\n} | string | number | boolean | null;");
+  // A member of `allOf`, `anyOf` or `oneOf` is read within its schema's own types, and `$ref`, `const` and `enum` tell them too.
+  assert.equal(emit({ type: "object", allOf: [{ properties: { a: { type: "string" } } }] }), "export type Type = {\n  [key: string]: unknown;\n} & {\n  a?: string;\n  [key: string]: unknown;\n};");
+  assert.equal(emit({ $ref: "#/$defs/a", properties: { b: { type: "number" } }, $defs: { a: { type: "object" } } }).split("\n\n")[0], "export type Type = A & {\n  b?: number;\n  [key: string]: unknown;\n};");
+  assert.equal(emit({ anyOf: [{ type: "string" }, { const: 1 }], properties: { a: {} } }), "export type Type = string | 1;");
+  assert.equal(emit({ type: "string", allOf: [{ properties: { a: {} } }] }), "export type Type = string;");
   // OpenAPI 3.0's `nullable` is no JSON Schema keyword: not read, and taken out of what ajv compiles.
   assert.equal(emit({ type: "string", nullable: true }), "export type Type = string;");
 });
@@ -58,7 +65,8 @@ test("with a draft, a keyword is read only in the drafts that have it, as ajv re
   assert.equal(schemaDeclarations(closed as never, undefined, "2019-09"), "export interface Type {\n  a?: string;\n}");
   assert.equal(schemaDeclarations(closed as never, undefined, "draft-07"), "export interface Type {\n  a?: string;\n  [key: string]: unknown;\n}");
   // Without `type`, only a keyword the draft reads makes an array.
-  assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]];");
+  assert.equal(schemaDeclarations({ type: "array", prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]];");
+  assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]] | {\n  [key: string]: unknown;\n} | string | number | boolean | null;");
   assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2019-09"), "export type Type = unknown;");
   assert.equal(schemaDeclarations({ additionalItems: { type: "string" } }, undefined, "2020-12"), "export type Type = unknown;");
 });
@@ -185,7 +193,7 @@ test("a conditional of another shape is not read: the type is as wide as without
   assert.equal(emit({ ...listed, if: { required: ["y"] }, then }), emit(listed));
 });
 
-test("the type admits every value the validator accepts, and narrows, for conditionals and unevaluatedProperties", async () => {
+test("the type admits every value the validator accepts, and narrows: conditionals, unevaluatedProperties, and schemas without type", async () => {
   const counts = await agrees([
     {
       schema: { type: "object", properties: { kind: { enum: ["click", "visit"] }, at: { type: "string" } }, required: ["kind", "at"], if: { properties: { kind: { const: "click" } } }, then: { properties: { x: { type: "number" } }, required: ["x"] }, else: { properties: { url: { type: "string" } }, required: ["url"] } },
@@ -225,6 +233,16 @@ test("the type admits every value the validator accepts, and narrows, for condit
     // `unevaluatedProperties: false` refuses no key that `allOf` allows, so the type has no `[key: string]: never`.
     { schema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", allOf: [{ properties: { a: { type: "string" } } }], unevaluatedProperties: false }, samples: [{ a: "x" }, {}, { b: 1 }] },
     { schema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", $ref: "#/$defs/a", unevaluatedProperties: false, $defs: { a: { properties: { a: { type: "string" } } } } }, samples: [{ a: "x" }, { b: 1 }] },
+    // Without `type`, every value of another type than the keywords constrain passes them.
+    { schema: { properties: { a: { type: "string" } }, required: ["a"] }, samples: [5, "x", null, [], { a: "s" }, {}, { a: 1 }] },
+    { schema: { type: "object", properties: { address: { properties: { city: { type: "string" } } } } }, samples: [{ address: 5 }, { address: { city: "c" } }, { address: { city: 1 } }] },
+    { schema: { type: ["object", "string"], allOf: [{ properties: { a: { type: "number" } } }] }, samples: ["s", { a: 1 }, { a: "x" }, 5] },
+    {
+      schema: { properties: { kind: { enum: ["a", "b"] } }, required: ["kind"], if: { properties: { kind: { const: "a" } } }, then: { properties: { x: { type: "number" } }, required: ["x"] } },
+      samples: [5, { kind: "a", x: 1 }, { kind: "b" }, { kind: "a" }],
+      use: ["declare const v: Type;", "if (typeof v === \"object\" && v !== null && !Array.isArray(v) && v.kind === \"a\") v.x.toFixed();"].join("\n"),
+    },
+    { schema: { items: { type: "string" } }, samples: [["a"], [1], 5, {}] },
   ]);
-  assert.deepEqual(counts, [4, 3, 2, 1]);
+  assert.deepEqual(counts, [4, 3, 2, 1, 5, 2, 2, 3, 3]);
 });

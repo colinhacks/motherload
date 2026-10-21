@@ -108,6 +108,18 @@ const EVALUATING = ["allOf", "anyOf", "oneOf", "if", "then", "else", "dependentS
 
 const ANNOTATIONS = ["$comment", "title", "description"];
 
+/** The JSON types, in the order a union of them is written. */
+const JSON_TYPES = ["object", "array", "string", "number", "boolean", "null"] as const;
+type JsonType = (typeof JSON_TYPES)[number];
+
+/** The JSON type a `type` name stands for (`integer` is a number), or undefined for a name JSON Schema does not have. */
+const jsonType = (name: string): JsonType | undefined => (name === "integer" ? "number" : (JSON_TYPES as readonly string[]).includes(name) ? (name as JsonType) : undefined);
+
+/** The JSON type of a value in a schema (`const`, `enum`). */
+const typeOfValue = (value: Value): JsonType => (value === null ? "null" : Array.isArray(value) ? "array" : typeof value === "object" ? "object" : typeof value === "string" ? "string" : typeof value === "boolean" ? "boolean" : "number");
+
+const OBJECT: ReadonlySet<JsonType> = new Set(["object"]);
+
 type Primitive = string | number | boolean | null;
 const isPrimitive = (value: Value): value is Primitive => value === null || ["string", "number", "boolean"].includes(typeof value);
 
@@ -192,19 +204,60 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
     return local;
   }
 
-  function refType(ref: string, indent: string): string {
+  /** Where a `$ref` points: the document and the pointer into it; undefined for a URL, a file that cannot be read, an `$anchor` name or a malformed pointer. */
+  function locate(ref: string): { document: Document; fragment: string; path: string[] } | undefined {
     let document = current;
     let fragment = ref === "" ? "" : ref.startsWith("#") ? ref.slice(1) : undefined;
     if (fragment === undefined) {
-      // Another file, when the files are known; a URL, or a file that cannot be read, is unknown.
+      // Another file, when the files are known.
       const target = files && current.path !== undefined ? fileOf(ref, current.path) : undefined;
       const reached = target && documentAt(target.path);
-      if (!target || !reached) return "unknown";
+      if (!target || !reached) return undefined;
       [document, fragment] = [reached, target.fragment];
     }
-    // An `$anchor` name or a malformed pointer is unknown, as ajv reports the latter.
     const path = pointer(fragment);
-    if (!path) return "unknown";
+    return path ? { document, fragment, path } : undefined;
+  }
+
+  /**
+   * The JSON types a value the schema accepts can have, as far as `type`, `const`, `enum`, `allOf`,
+   * `anyOf`, `oneOf` and `$ref` tell; every type when they tell nothing. A keyword that applies to
+   * one type (`properties`, `items`, `minLength`) restricts nothing: a value of another type passes it.
+   */
+  function possibleTypes(schema: Value, seen = new Set<Value>()): Set<JsonType> {
+    if (schema === false) return new Set();
+    if (!isObj(schema) || seen.has(schema)) return new Set(JSON_TYPES);
+    seen.add(schema);
+    let types = new Set<JsonType>(JSON_TYPES);
+    const keep = (allowed: Iterable<JsonType | undefined>) => {
+      const set = new Set(allowed);
+      types = new Set([...types].filter((type) => set.has(type)));
+    };
+    if (schema["type"] !== undefined) keep((typeof schema["type"] === "string" ? [schema["type"]] : strings(schema["type"])).map(jsonType));
+    if (Object.hasOwn(schema, "const")) keep([typeOfValue(schema["const"]!)]);
+    if (Array.isArray(schema["enum"])) keep(schema["enum"].map(typeOfValue));
+    for (const member of Array.isArray(schema["allOf"]) ? schema["allOf"] : []) keep(possibleTypes(member, seen));
+    for (const keyword of ["anyOf", "oneOf"]) {
+      const members = schema[keyword];
+      if (Array.isArray(members)) keep(members.flatMap((member) => [...possibleTypes(member, seen)]));
+    }
+    const at = typeof schema["$ref"] === "string" ? locate(schema["$ref"]) : undefined;
+    const target = at && pointTo(at.document.schema, at.path);
+    if (at && target !== undefined) {
+      const outer = current;
+      current = at.document;
+      keep(possibleTypes(target, seen));
+      current = outer;
+    }
+    seen.delete(schema);
+    return types;
+  }
+
+  function refType(ref: string, indent: string): string {
+    // A URL, a file that cannot be read, an `$anchor` name or a malformed pointer is unknown, as ajv reports the last.
+    const at = locate(ref);
+    if (!at) return "unknown";
+    const { document, fragment, path } = at;
     if (path.length === 0) return nameIn(document, "Type");
     const named = path.length === 2 ? document.names.get(`${path[0]}\0${path[1]}`) : undefined;
     if (named) return nameIn(document, named);
@@ -302,7 +355,7 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
       const members = [`{ ${name}: ${literal(value)} }`];
       for (const test of tests) {
         const branch = test.values.includes(value) ? test.then : test.else;
-        if (branch !== undefined) members.push(emit(branch, indent));
+        if (branch !== undefined) members.push(emit(branch, indent, OBJECT));
       }
       return members.includes("never") ? "never" : members.filter((member) => member !== "unknown").map(paren).join(" & ");
     });
@@ -320,8 +373,12 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
         return "boolean";
       case "null":
         return "null";
-      case "object":
-        return objectType(schema, indent);
+      case "object": {
+        // An object's `if`/`then`/`else`, when they test a property's listed values.
+        const object = objectType(schema, indent);
+        const cases = conditionalCases(schema, indent);
+        return cases === undefined ? object : cases === "never" ? "never" : `${object} & ${paren(cases)}`;
+      }
       case "array":
         return arrayType(schema, indent);
       default:
@@ -329,32 +386,39 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
     }
   }
 
-  function emit(schema: Value, indent: string): string {
+  /**
+   * The type of the values `schema` accepts. `within` holds the JSON types the value is known to
+   * have already, when the schema is a member of another's `allOf`, `anyOf` or `oneOf` (the other's
+   * own), or a `then` or `else` read as an object; the type leaves out every other JSON type.
+   */
+  function emit(schema: Value, indent: string, within?: ReadonlySet<JsonType>): string {
     if (schema === true) return "unknown";
     if (schema === false) return "never";
     if (!isObj(schema)) return "unknown";
+    const possible = new Set([...possibleTypes(schema)].filter((type) => !within || within.has(type)));
+    if (!possible.size) return "never";
     const parts: string[] = [];
     if (typeof schema["$ref"] === "string") parts.push(refType(schema["$ref"], indent));
     if (Object.hasOwn(schema, "const")) parts.push(literal(schema["const"]!));
     else if (Array.isArray(schema["enum"])) parts.push(union(schema["enum"].map((value) => literal(value))));
     else {
-      // Without `type`, the keywords that apply to one type stand for it, as they do in most schemas.
+      // Without `type`, a keyword that applies to one type constrains a value of that type alone,
+      // and a value of every other type the schema allows passes it, as the spec has it.
       const declared = typeof schema["type"] === "string" ? [schema["type"]] : strings(schema["type"]);
-      const types = declared.length
-        ? declared
-        : ["properties", "required", "additionalProperties", "patternProperties"].some((k) => Object.hasOwn(schema, k))
-          ? ["object"]
-          : ["items", ...(prefixItems ? ["prefixItems"] : []), ...(itemLists ? ["additionalItems"] : [])].some((k) => Object.hasOwn(schema, k))
-            ? ["array"]
-            : [];
+      const objects = ["properties", "required", "additionalProperties", "patternProperties"].some((k) => Object.hasOwn(schema, k));
+      const arrays = ["items", ...(prefixItems ? ["prefixItems"] : []), ...(itemLists ? ["additionalItems"] : [])].some((k) => Object.hasOwn(schema, k));
+      // The types the keywords constrain first, then the rest.
+      const order = [...(objects ? ["object"] : []), ...(arrays ? ["array"] : []), ...JSON_TYPES.filter((type) => !(objects && type === "object") && !(arrays && type === "array"))] as JsonType[];
+      // When neither is possible here, the rest are already the types of `allOf`, `anyOf`, `oneOf`,
+      // `$ref` or the enclosing schema, which say them as parts of their own.
+      const constrained = (objects && possible.has("object")) || (arrays && possible.has("array"));
+      const types = declared.length ? declared.filter((name) => jsonType(name) === undefined || possible.has(jsonType(name)!)) : constrained ? order.filter((type) => possible.has(type)) : [];
       if (types.length) parts.push(union(types.map((name) => typeOf(name, schema, indent))));
-      const cases = types.length === 1 && types[0] === "object" ? conditionalCases(schema, indent) : undefined;
-      if (cases !== undefined) parts.push(cases);
     }
-    for (const member of Array.isArray(schema["allOf"]) ? schema["allOf"] : []) parts.push(emit(member, indent));
+    for (const member of Array.isArray(schema["allOf"]) ? schema["allOf"] : []) parts.push(emit(member, indent, possible));
     for (const keyword of ["anyOf", "oneOf"]) {
       const members = schema[keyword];
-      if (Array.isArray(members)) parts.push(union(members.map((member) => emit(member, indent))));
+      if (Array.isArray(members)) parts.push(union(members.map((member) => emit(member, indent, possible))));
     }
     const meaningful = parts.filter((part) => part !== "unknown");
     if (parts.includes("never")) return "never";
