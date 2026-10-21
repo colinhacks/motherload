@@ -96,3 +96,25 @@ export function remarkSections() {
     });
   };
 }
+
+/** A source file's frontmatter and its body. */
+const FRONTMATTER = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+
+/**
+ * A page as Markdown, from its source files in the order the page shows them (the first holds the
+ * frontmatter): its title as the h1, its description as a quote, then every file read as each
+ * heading's copy button reads its section, with each link made absolute, a link to a section
+ * (`#…`) to the page's address and a link to another page (`/…`) to the site's. A site serves it
+ * as the page's own Markdown, to an agent that asks for Markdown (README, "Markdown for agents"),
+ * and joins its pages' for `/llms.txt`.
+ */
+export function pageMarkdown(sources: readonly string[], { site, page = '/' }: { site: string; page?: string }): string {
+  const [first = '', ...rest] = sources;
+  const [, frontmatter = '', intro = first] = first.match(FRONTMATTER) ?? [];
+  const field = (name: string) => frontmatter.match(new RegExp(`^${name}: (.*)$`, 'm'))?.[1] ?? '';
+  const body = [intro, ...rest.map((text) => text.match(FRONTMATTER)?.[2] ?? text)].join('\n');
+  const address = `${site}${page}`;
+  const text = toAgentMarkdown(body).replaceAll('](#', `](${address}#`).replaceAll('](/', `](${site}/`);
+  const description = field('description');
+  return `# ${field('title')}\n\n${description ? `> ${description}\n\n` : ''}${text.trim()}\n`;
+}

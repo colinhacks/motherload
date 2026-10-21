@@ -1036,9 +1036,16 @@ code {
   }
 }
 
-/* A tab group whose choice is saved server-renders every panel (components/prepaint.tsx); the
-   inactive ones are hidden, as Radix leaves out an unmounted one. */
+/* Every tab group server-renders every panel, so that the HTML holds every tab's content
+   (components/mdx.tsx, components/code-tabs.tsx, and components/prepaint.tsx for a saved choice);
+   the inactive ones are hidden, as Radix leaves out an unmounted one. */
 [role='tabpanel'][data-state='inactive'] {
+  display: none;
+}
+
+/* A closed accordion item's content is in the HTML too (components/accordion.tsx), hidden until
+   the page hydrates and then by `hidden="until-found"`, which find-in-page searches. */
+[data-dk-accordion-panel][data-state='closed']:not([data-dk-ready]) {
   display: none;
 }
 

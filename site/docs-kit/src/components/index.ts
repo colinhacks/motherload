@@ -1,3 +1,4 @@
+export { Accordion, Accordions } from './accordion';
 export { AgentPrompt } from './agent-prompt';
 export { Callout } from './callout';
 export { CodeTabs } from './code-tabs';

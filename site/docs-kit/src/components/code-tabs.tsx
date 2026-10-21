@@ -16,12 +16,12 @@ const elements = (children: ReactNode): Element[] =>
  * right, instead of the strip above a second bar with the name. Each block keeps its copy button,
  * which Fumadocs floats over the code of a block without a title. A group whose tabs carry
  * different titles, or none (a hero of `main.ts` beside the file it imports), is left as Fumadocs
- * draws it. A group whose choice is saved (`tab-group`) server-renders every panel, so that the
- * saved one shows from the first paint (./prepaint.tsx).
+ * draws it. Every group server-renders every panel, so that a reader of the HTML (a coding agent, a
+ * search engine) gets every tab's code, and a group whose choice is saved (`tab-group`) shows the
+ * saved one from the first paint (./prepaint.tsx); an inactive panel is hidden by style.css.
  */
 export function CodeTabs({ children, className, ...props }: ComponentProps<typeof CodeBlockTabs>) {
-  const saved = Boolean(props.groupId);
-  const parts = elements(children).map((part) => (saved && part.props.value !== undefined ? cloneElement(part, { forceMount: true } as object) : part));
+  const parts = elements(children).map((part) => (part.props.value !== undefined ? cloneElement(part, { forceMount: true } as object) : part));
   const tabs = parts.filter((part) => part.props.value !== undefined);
   const blocks = tabs.map((tab) => elements(tab.props.children));
   const titles = new Set(blocks.map((inner) => (inner.length === 1 ? inner[0].props.title : undefined)));

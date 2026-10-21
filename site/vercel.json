@@ -3,6 +3,23 @@
   "framework": null,
   "buildCommand": "pnpm run build",
   "outputDirectory": "build/client",
+  "routes": [
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "^(?!.*text/html.*text/(?:x-)?markdown).*text/(?:x-)?markdown.*$"
+        }
+      ],
+      "dest": "/llms.txt",
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Vary": "Accept"
+      }
+    }
+  ],
   "redirects": [
     {
       "source": "/opengraph-image",
@@ -11,6 +28,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Vary",
+          "value": "Accept"
+        }
+      ]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [
