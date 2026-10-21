@@ -1,0 +1,18 @@
+// A 2019-09 schema, for tests/json-schema.test.ts: tuples as lists of `items`, `$anchor`,
+// `dependentRequired`, and the unevaluated keywords, which draft-07 has no equivalent of.
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "type": "object",
+  "properties": {
+    "kind": { "enum": ["circle", "polygon"] },
+    "center": { "$ref": "#point" },
+    "vertices": { "type": "array", "items": [{ "$ref": "#point" }, { "$ref": "#point" }], "additionalItems": { "$ref": "#point" }, "minItems": 3 },
+    "labels": { "type": "array", "items": [{ "type": "string" }], "unevaluatedItems": false },
+  },
+  "dependentRequired": { "center": ["radius"] },
+  "allOf": [{ "properties": { "radius": { "type": "number", "exclusiveMinimum": 0 } } }],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "point": { "$anchor": "point", "type": "array", "items": [{ "type": "number" }, { "type": "number" }], "additionalItems": false, "minItems": 2 },
+  },
+}

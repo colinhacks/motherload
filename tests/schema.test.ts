@@ -346,3 +346,30 @@ test("a schema outside any project that installs ajv still validates: ajv is Mot
   assert.equal(user.is({ name: "Ada" }), true);
   assert.equal(user.is({ name: "" }), false);
 });
+
+test("the module is a Standard JSON Schema: each target's draft from `~standard.jsonSchema`, a fresh copy, and a throw for another target", async () => {
+  const { code, problems } = schemaCode(SCHEMA, PATH);
+  assert.deepEqual(problems, []);
+  const { default: user } = await evaluate(code);
+  const { jsonSchema } = user["~standard"];
+  const latest = jsonSchema.input({ target: "draft-2020-12" });
+  assert.equal(latest.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.deepEqual(latest.properties, JSON.parse(SCHEMA).properties);
+  assert.deepEqual(jsonSchema.output({ target: "draft-2020-12" }), latest);
+  assert.equal(jsonSchema.input({ target: "draft-07" }).$schema, "http://json-schema.org/draft-07/schema#");
+  // Each call gives a copy, so a caller that changes one changes neither the module nor the next.
+  latest.properties.name.minLength = 99;
+  assert.equal(jsonSchema.input({ target: "draft-2020-12" }).properties.name.minLength, 1);
+  assert.equal(user.schema.properties.name.minLength, 1);
+  assert.throws(() => jsonSchema.input({ target: "openapi-3.0" }), /converts a schema to the "draft-07" and "draft-2020-12" targets, not "openapi-3.0"/);
+  assert.throws(() => jsonSchema.input({ target: "toString" }), /not "toString"/);
+});
+
+test("a keyword the target cannot express makes that target throw, naming it, while the other still converts", async () => {
+  const source = JSON.stringify({ $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", properties: { a: { type: "string" } }, unevaluatedProperties: false });
+  const { code, problems } = schemaCode(source, PATH);
+  assert.deepEqual(problems, []);
+  const { default: closed } = await evaluate(code);
+  assert.equal(closed["~standard"].jsonSchema.input({ target: "draft-2020-12" }).unevaluatedProperties, false);
+  assert.throws(() => closed["~standard"].jsonSchema.input({ target: "draft-07" }), /"unevaluatedProperties" at .*has no equivalent in draft-07/);
+});

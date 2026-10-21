@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
 import { collect, dynamicRefProblems, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
 import { schemaDeclarations, type Draft } from "./schema-types.ts";
+import { jsonSchemas } from "./json-schema.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
@@ -44,7 +45,7 @@ function ajvEntry(schema: Value): { entry: string } | { error: string } {
 /** The draft ajv compiles a schema in, by the entry point it is compiled with; draft-06 reads as draft-07. */
 const DRAFTS: Record<string, Draft> = { ajv: "draft-07", "ajv/dist/2019": "2019-09", "ajv/dist/2020": "2020-12" };
 
-const draftOf = (schema: Value): Draft | undefined => {
+export const draftOf = (schema: Value): Draft | undefined => {
   const entry = ajvEntry(schema);
   return "error" in entry ? undefined : DRAFTS[entry.entry];
 };
@@ -101,7 +102,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
  * The schema and every file it reaches, each without the keywords its draft ignores, with the
  * problems of their references; ajv's default, draft-07, is the draft of a root that declares none.
  */
-function filesOf(source: string, path: string, schema: Value): Files {
+export function filesOf(source: string, path: string, schema: Value): Files {
   const clean = (value: Value) => withoutKeywords(value, IGNORED[draftOf(schema) ?? "draft-07"]);
   const files = collect(path, clean(schema), source, { of: declaredDraft, none: "ajv" }, clean);
   // ajv resolves some of 2020-12's `$dynamicRef`s otherwise than the spec (refs.ts).
@@ -214,9 +215,18 @@ function inline(entrySource: string, entryFile: string): string {
 const VALIDATOR = `
 const __path = (pointer) => pointer === "" ? [] : pointer.slice(1).split("/").map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~"));
 const __issues = () => (validate.errors ?? []).map((e) => ({ message: e.message ?? "is not valid", path: __path(e.instancePath ?? "") }));
+// Standard JSON Schema v1: the schema in the target's draft, self-contained, computed when the module
+// was built (json-schema.ts); a fresh copy each call, so a caller may change it.
+const __jsonSchema = (options) => {
+  const target = options?.target;
+  const entry = Object.hasOwn(__jsonSchemas, target) ? __jsonSchemas[target] : undefined;
+  if (!entry) throw new TypeError(\`Motherload converts a schema to the "draft-07" and "draft-2020-12" targets, not \${JSON.stringify(target)}.\`);
+  if (entry.error) throw new TypeError(entry.error);
+  return structuredClone(entry.schema);
+};
 const schema = {
   schema: __schema,
-  "~standard": { version: 1, vendor: "motherload", validate: (value) => validate(value) ? { value } : { issues: __issues() } },
+  "~standard": { version: 1, vendor: "motherload", validate: (value) => validate(value) ? { value } : { issues: __issues() }, jsonSchema: { input: __jsonSchema, output: __jsonSchema } },
   is: (value) => validate(value),
   parse(value) {
     if (validate(value)) return value;
@@ -255,7 +265,7 @@ export function schemaCode(source: string, path: string): { code: string; proble
   // (`date-time`, `uri`), both dependencies of this package, so they resolve from this module:
   // from ajv's own directory ajv-formats does not resolve, and was left a bare `require`.
   return {
-    code: [inline(standalone, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, VALIDATOR, ""].join("\n"),
+    code: [inline(standalone, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, VALIDATOR, ""].join("\n"),
     problems: [],
     watchFiles: files.watched,
   };

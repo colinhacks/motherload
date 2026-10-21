@@ -547,6 +547,7 @@ const ada = user.parse(input);       // or a TypeError listing every issue
 
 user.is(input);                      // input is User
 user["~standard"].validate(input);   // Standard Schema v1
+user["~standard"].jsonSchema;        // Standard JSON Schema v1
 user.schema;                         // the schema, as a literal type
 ```
 
@@ -564,9 +565,10 @@ user.schema;                         // the schema, as a literal type
 }
 ```
 
-The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
+The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev), or that wants the schema as JSON Schema: `~standard.jsonSchema` gives it in draft-07 or 2020-12, with every file it refers to folded in. Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
 
 - **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`. A schema with no `$schema` is draft-07. A keyword the draft does not define is ignored, by the validator and the type alike: another draft's, such as `prefixItems` in draft-07, a vendor's, such as `x-label`, and ajv's own, `$async` and `nullable`.
+- **Types:** a schema's type admits exactly what the schema allows. Without `"type": "object"`, `properties` applies to objects alone and every other value passes, so `{ "properties": { "a": { "type": "string" } } }` is `{ a?: string } | unknown[] | string | number | boolean | null`; declare the type where you mean one.
 - **Formats:** checked, with [ajv-formats](https://ajv.js.org/packages/ajv-formats.html).
 - **References:** a `$ref` within the file is followed, and so is one to another schema file, by a path relative to this one: `./address.schema.jsonc` is that file's `Type`, and `./shared.schema.jsonc#/$defs/tag` the type it declares for `tag`, each imported from that file's module, and the validator checks the other file's rules too. A `$ref` to a URL is an error.
 - **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.

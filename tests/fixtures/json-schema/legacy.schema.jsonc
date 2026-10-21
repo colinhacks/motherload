@@ -1,0 +1,25 @@
+// A draft-07 schema across two files, for tests/json-schema.test.ts: tuples as lists of `items`
+// with `additionalItems`, both forms of `dependencies`, a plain-name `$id` and a recursive
+// reference to it, and a reference to the other file by its absolute `$id`, beside a keyword.
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/legacy.json",
+  "type": "object",
+  "properties": {
+    "pair": { "type": "array", "items": [{ "type": "string" }, { "type": "integer" }], "additionalItems": false },
+    "head": { "type": "array", "items": [{ "type": "string" }], "additionalItems": { "type": "boolean" } },
+    "list": { "type": "array", "items": { "type": "number" }, "additionalItems": { "type": "string" } },
+    "tree": { "$ref": "#tree" },
+    "owner": { "$ref": "https://example.com/person.json#/definitions/name", "maxLength": 10 },
+    "contact": { "$ref": "./person.schema.jsonc" },
+  },
+  "dependencies": { "a": ["b"], "c": { "required": ["d"] } },
+  "definitions": {
+    "tree": {
+      "$id": "#tree",
+      "type": "object",
+      "properties": { "value": { "type": "number" }, "children": { "type": "array", "items": { "$ref": "#tree" } } },
+      "required": ["value"],
+    },
+  },
+}

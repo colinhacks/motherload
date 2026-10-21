@@ -7,6 +7,7 @@ import multi from "./multi.yaml";
 import settings from "./settings.jsonc";
 import data from "./data.json5";
 import "./.env";
+import type { StandardJSONSchemaV1 } from "motherload";
 import user, { type Type as User } from "./user.schema.jsonc";
 import point, { type Type as Point } from "./point.schema.json5";
 import team, { type Type as Team } from "./team.schema.jsonc";
@@ -59,6 +60,8 @@ expect<Equal<typeof point.schema.properties.label.maxLength, 16>>();
 // A $ref to another schema file is that file's type: its root, or the definition it points to.
 // Nothing here imports shared/place.schema.jsonc; TypeScript reaches it through team's module.
 expect<Equal<Team, { lead: User; members: User[]; office?: { city: string; manager?: User } }>>();
+// A schema module is a Standard JSON Schema too.
+const teamAsJsonSchema: StandardJSONSchemaV1<Team> = team;
 // @ts-expect-error a member is a User, whose role is required
 const noRole: Team = { lead: { name: "Ada", role: "admin" }, members: [{ name: "Grace" }] };
 // A oneOf whose variants a `const` tells apart narrows: each case sees its own variant, and with no
@@ -125,6 +128,11 @@ console.log(
       team.is({ lead: { name: "Ada", role: "admin" }, members: [{ name: "", role: "member" }] }),
       team.is({ lead: { name: "Ada", role: "admin" }, members: [], office: { city: "" } }),
     ],
+    // team.schema.jsonc as one JSON Schema in each target: user.schema.jsonc and shared/place.schema.jsonc folded in, its $refs pointers.
+    teamJsonSchema: (["draft-2020-12", "draft-07"] as const).map((target) => {
+      const json = teamAsJsonSchema["~standard"].jsonSchema.input({ target }) as { $schema: string; properties: { lead: { $ref: string } }; $defs?: object; definitions?: object };
+      return [json.$schema, json.properties.lead.$ref, Object.keys(json.$defs ?? json.definitions ?? {}).join()];
+    }),
     // A click and a visit; then a date-time, a uri and a variant that fail (ajv-formats' function formats, inlined).
     events: [
       event.is({ at: "2026-10-20T09:00:00Z", kind: "click", x: 1, y: 2 }),

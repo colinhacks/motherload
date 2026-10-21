@@ -241,6 +241,7 @@ import user, { type Type as User } from "./user.schema.jsonc";
 const valid: User = user.parse(input); // or a TypeError listing each issue
 user.is(input);                        // input is User
 user["~standard"].validate(input);     // Standard Schema v1
+user["~standard"].jsonSchema;          // Standard JSON Schema v1
 ```
 
 A `$ref` to another schema file, by a path relative to the file that holds it, is followed: `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.
