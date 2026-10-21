@@ -9,8 +9,8 @@ title: Every format
 ```ts twoslash tab="main.ts"
 import plans from "./plans.toml";
 import team from "./team.yaml";
-import strings from "./strings.json5";
 import settings from "./settings.jsonc";
+import strings from "./strings.json5";
 import posts from "./posts.csv";
 import scores from "./scores.tsv";
 import notes from "./notes.txt";
@@ -37,19 +37,19 @@ seats = 10
   role: member
 ```
 
-```json5 title="strings.json5"
-{
-  // shown on the sign-in page
-  welcome: 'Welcome back',
-  signIn: 'Sign in',
-}
-```
-
 ```jsonc title="settings.jsonc"
 {
   // Comments and trailing commas are allowed.
   "editor.fontSize": 14,
   "files.exclude": ["dist", "node_modules",],
+}
+```
+
+```json5 title="strings.json5"
+{
+  // shown on the sign-in page
+  welcome: 'Welcome back',
+  signIn: 'Sign in',
 }
 ```
 

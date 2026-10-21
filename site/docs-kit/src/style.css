@@ -424,12 +424,25 @@ html .prose {
 }
 
 /* A method's signature or a long type is one line: wrap it inside the popup or the query's card
-   instead of scrolling. */
+   instead of scrolling, between tokens (`break-word` breaks inside a word only when the word alone
+   is wider than the card), and a wrapped line hangs two characters in from its own indent, as a
+   code block's does (Code never scrolls sideways, below; mdx/hanging-indent.ts marks the popup's
+   lines). `anywhere` cut `string` and `number` in half in a narrow card on a phone. */
 .fd-twoslash-popover figure.shiki pre,
 .twoslash-query-line figure.shiki pre {
   width: auto;
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+/* The hover popup is portaled out of the page, so the page's hanging indent does not reach it. */
+.fd-twoslash-popover figure.shiki pre .line {
+  padding-inline-start: calc(var(--indent, 0ch) + 2ch);
+  text-indent: calc(-1 * (var(--indent, 0ch) + 2ch));
+}
+
+.fd-twoslash-popover figure.shiki pre .line * {
+  text-indent: 0;
 }
 
 /* A pinned `^?` popup keeps clear of the lines around it: the maintainer found the next line
@@ -678,8 +691,44 @@ code {
     padding: 0.5rem;
   }
 
+  /* The button is 28px wide, 8px from the block's edge, so the line stops 2.75rem short: at 2rem,
+     the end of a first line that filled the width ran 2px under the button. */
   #nd-page figure.shiki:not(:has(figcaption)) pre .line:first-child {
-    padding-inline-end: 2rem;
+    padding-inline-end: 2.75rem;
+  }
+
+  /* Inside a tab panel too, where the copy button floats over the first line of a block whose file
+     name is in the strip (the figure has no caption of its own): the first line stops short of the
+     button. A pinned `^?` card's figure is not one of these: it has no copy button. */
+  #nd-page [role='tabpanel'] figure.shiki pre .line:first-child {
+    padding-inline-end: 2.75rem;
+  }
+
+  #nd-page .twoslash-query-line figure.shiki pre .line:first-child {
+    padding-inline-end: 0;
+  }
+
+  /* A pinned `^?` card takes the code block's width on a phone, less 8px on each side so its border
+     stays clear of the block's. It sat under the queried name and kept only what was left of the
+     line (on Reylo's page a type 168px wide in a 358px block, wrapping every property). The spaces before it, which line it
+     up under the name, go, and so does its arrow, which would point at the wrong column. */
+  #nd-page .twoslash-query-line > span:first-child:not(.twoslash-popup-container) {
+    display: none;
+  }
+
+  #nd-page .twoslash-query-line .twoslash-popup-container {
+    width: calc(100% - 1rem);
+    max-width: none;
+    margin-inline: 0.5rem;
+  }
+
+  #nd-page .twoslash-query-line .twoslash-popup-arrow {
+    display: none;
+  }
+
+  /* A hover popup is as wide as the window allows, less the page's margins. */
+  .fd-twoslash-popover {
+    max-width: calc(100vw - 2rem);
   }
 }
 
@@ -837,44 +886,21 @@ code {
   color: var(--color-fd-muted-foreground);
 }
 
-#nd-page .dk-agent-copy {
-  flex: none;
-  padding: 0.5rem 0.875rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-fd-border);
-  font-size: 0.875rem;
-  font-weight: 500;
-  background: var(--color-fd-background);
-  color: var(--color-fd-headings);
-}
-
-#nd-page .dk-agent-copy:hover {
-  background: var(--color-fd-accent);
-}
-
-/* Its two labels share one grid cell, the one not shown hidden, so the button keeps the width of
-   the longer and "Copied" moves nothing (components/agent-prompt.tsx). */
-#nd-page .dk-agent-copy {
-  display: inline-grid;
-}
-
-#nd-page .dk-agent-copy > span {
-  grid-area: 1 / 1;
-}
-
-#nd-page .dk-agent-copy > span:not([data-shown]) {
-  visibility: hidden;
-}
-
-/* The instructions are an ordinary code block under the head, which scrolls where it is taller than
-   Fumadocs lets a code block be; no fold, no fade and no control to open it (the maintainer,
-   2026-10-20: "it should just be a regular scrollable code block"). */
+/* The instructions are an ordinary code block under the head, copied with its own copy icon; no
+   fold, no fade and no control to open it (the maintainer, 2026-10-20: "it should just be a regular
+   scrollable code block"). It shows six lines and scrolls (the maintainer, 2026-10-21: "set a max
+   height of 6 lines on that big agent prompt"): Fumadocs' scroll box, the code block's one
+   `overflow-auto` child, sets each line at 1.7em of its 13px and pads 14px above and below. */
 #nd-page .dk-agent-body {
   padding: 0 1.25rem 1.25rem;
 }
 
 #nd-page .dk-agent-body figure {
   margin: 0;
+}
+
+#nd-page .dk-agent-body figure > .overflow-auto {
+  max-height: calc(6 * 1.7em + 1.75rem);
 }
 
 /* ── "Copy agent prompt" on the title's row (components/copy-agent-prompt.tsx) ──

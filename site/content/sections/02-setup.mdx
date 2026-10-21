@@ -4,11 +4,21 @@ title: "Setup"
 
 ## Setup
 
+Install Motherload and TypeScript 7.1:
+
+```sh
+npm install -D motherload typescript@beta
+```
+
+<Callout>Motherload is powered by [content mappers](https://github.com/microsoft/typescript-go/pull/4712), a new feature of TypeScript 7.1. TypeScript 7.1 is currently in beta.</Callout>
+
+Motherload needs Node 24 or later. An app that runs under the preload, not as a bundle, loads Motherload at run time, so it lists `motherload` in `dependencies`.
+
 <AgentPrompt>
 
 ```text
 Set up Motherload in this project. Motherload lets TypeScript
-import data files as typed modules (.toml, .yaml, .json5, .jsonc,
+import data files as typed modules (.toml, .yaml, .jsonc, .json5,
 .env, .csv, .tsv, .txt and .md). Its docs are one page,
 https://motherload.dev: follow the section linked at each step.
 A working project that imports every format, with its
@@ -16,11 +26,9 @@ tsconfig.json and main.ts:
 https://github.com/colinhacks/motherload/tree/main/lab/basic
 It runs from the repository's own build: install from npm.
 
-1. Check the requirements and install motherload and TypeScript
-   7.1 (typescript@next): https://motherload.dev/#install
-   A project that reads only some formats can install each
-   format's package instead:
-   https://motherload.dev/#loaders-a-la-carte
+1. Check the requirements and install motherload and the
+   TypeScript 7.1 beta (typescript@beta):
+   https://motherload.dev/#setup
 2. Add Motherload to tsconfig.json as a content mapper, listing
    the extensions the project imports, and add a typecheck script
    that runs tsc --noEmit --runExternalCode:
@@ -38,18 +46,6 @@ It runs from the repository's own build: install from npm.
 
 </AgentPrompt>
 
-Install Motherload, add it to `tsconfig.json`, then add it to each tool that loads your code.
-
-### Install
-
-```sh
-npm install -D motherload
-# content mappers are in the TypeScript 7.1 dev builds
-npm install -D typescript@next
-```
-
-The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`. Each format is also a package of its own, for a project that reads only some of them: see [Loaders à la carte](#loaders-a-la-carte).
-
 ### TypeScript
 
 Add Motherload to `tsconfig.json`, with the extensions it should own.
@@ -60,7 +56,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own.
     { // [!code ++]
       "package": "motherload", // [!code ++]
       "extensions": [ // [!code ++]
-        ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", // [!code ++]
+        ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env", // [!code ++]
         ".csv", ".tsv", ".txt", ".md" // [!code ++]
       ] // [!code ++]
     } // [!code ++]
@@ -217,20 +213,20 @@ Use `.build()`: esbuild runs plugins in `.build()` only, and `.buildSync()` thro
 
 ### Loaders à la carte [#loaders-a-la-carte]
 
-The `motherload` package is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
+The `motherload` package provides one unified content mapper for all data formats. You can also consume them à la carte.
 
 | Package | Extensions |
 | --- | --- |
 | `@motherload/toml` | `.toml` |
 | `@motherload/yaml` | `.yaml`, `.yml` |
-| `@motherload/json5` | `.json5` |
 | `@motherload/jsonc` | `.jsonc` |
+| `@motherload/json5` | `.json5` |
 | `@motherload/env` | `.env` |
 | `@motherload/csv` | `.csv`, `.tsv` |
 | `@motherload/txt` | `.txt` |
 | `@motherload/md` | `.md` |
 
-A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers` and its preload or its esbuild plugin. A project that reads YAML and TOML:
+Each one is set up as `motherload` is, under its own name. A project that reads YAML and TOML:
 
 ```sh
 npm install -D @motherload/yaml @motherload/toml

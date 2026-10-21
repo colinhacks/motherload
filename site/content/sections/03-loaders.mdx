@@ -77,6 +77,23 @@ kind: Deployment
 replicas: 2
 ```
 
+### `.jsonc`
+
+Motherload reads JSONC, JSON with comments and trailing commas, with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser):
+
+```ts twoslash tab="main.ts"
+import settings from "./settings.jsonc";
+//     ^?
+```
+
+```jsonc tab="settings.jsonc"
+{
+  // the editor's font size
+  "editor.fontSize": 14,
+  "files.exclude": ["dist", "node_modules",],
+}
+```
+
 ### `.json5`
 
 Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser:
@@ -95,22 +112,7 @@ import data from "./data.json5";
 }
 ```
 
-### `.jsonc`
-
-Motherload reads JSONC, JSON with comments and trailing commas, with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser):
-
-```ts twoslash tab="main.ts"
-import settings from "./settings.jsonc";
-//     ^?
-```
-
-```jsonc tab="settings.jsonc"
-{
-  // the editor's font size
-  "editor.fontSize": 14,
-  "files.exclude": ["dist", "node_modules",],
-}
-```
+<Callout>To import a JSON Schema file, `.schema.jsonc` or `.schema.json5`, as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).</Callout>
 
 ### `.csv`
 
@@ -222,10 +224,6 @@ const url = new URL(process.env.DATABSE_URL);
 A variable the environment already sets keeps its value. A bundle holds none of the file's values: it reads the file from the working directory when it runs, and loads nothing if the file is absent.
 
 </Details>
-
-### `.schema.jsonc`
-
-To import a JSON Schema file as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).
 
 ### `.sql`
 

@@ -1,12 +1,12 @@
 # Motherload: the plan
 
-Import a data file and get a typed module: `.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.csv`, `.tsv`, `.txt`, `.md` and `.env` become modules of data with no run time. One npm package of TypeScript 7.1 content mappers, with a preload and bundler plugins so the same import runs. The brand study behind the name is `docs/brands.md` in the porg repository (`~/Documents/projects/lando`), also copied to dotsql (`~/Documents/projects/dotsql/docs/brands.md`); [DESIGN.md](./DESIGN.md) records every decision taken while building the first version.
+Import a data file and get a typed module: `.toml`, `.yaml`/`.yml`, `.jsonc`, `.json5`, `.csv`, `.tsv`, `.txt`, `.md` and `.env` become modules of data with no run time. One npm package of TypeScript 7.1 content mappers, with a preload and bundler plugins so the same import runs. The brand study behind the name is `docs/brands.md` in the porg repository (`~/Documents/projects/lando`), also copied to dotsql (`~/Documents/projects/dotsql/docs/brands.md`); [DESIGN.md](./DESIGN.md) records every decision taken while building the first version.
 
 ## Decisions
 
 The maintainer's, Colin McDonnell, on 2026-10-03:
 
-- **One npm package, Motherload,** of TypeScript 7.1 content mappers (plus bundler plugins and a preload) that type the data files a project imports: `.toml`, `.yaml`/`.yml`, `.json5`, `.jsonc`, `.env` and `.schema.json` (`.schema.jsonc` and `.schema.json5` from 2026-10-20 until JSON Schema left for dotschema on 2026-10-21, below), with `.csv`, `.tsv`, `.txt` and `.md` (with its frontmatter) added on 2026-10-06. The name's pun on "load" is deliberate.
+- **One npm package, Motherload,** of TypeScript 7.1 content mappers (plus bundler plugins and a preload) that type the data files a project imports: `.toml`, `.yaml`/`.yml`, `.jsonc`, `.json5`, `.env` and `.schema.json` (`.schema.jsonc` and `.schema.json5` from 2026-10-20 until JSON Schema left for dotschema on 2026-10-21, below), with `.csv`, `.tsv`, `.txt` and `.md` (with its frontmatter) added on 2026-10-06. The name's pun on "load" is deliberate.
 - **A data file becomes a module of data with no run time,** so Motherload is a development dependency of an application that bundles.
 - **The SQL loader is not part of Motherload.** It is its own product, dotsql (`~/Documents/projects/dotsql`), with each SQL dialect's engine in an add-on under `@dotsql`. A project that imports both lists both in its tsconfig, each with its own extensions.
 - **Porg** (`~/Documents/projects/lando`, the porg repository) is the reactive Postgres driver, `pg_porg` and live queries.

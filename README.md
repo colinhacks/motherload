@@ -14,15 +14,18 @@
 
 <br/>
 
-Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file and get a typed module.
+Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSONC, JSON5, CSV, TSV, Markdown, text or `.env` file and get a typed module.
 
 It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.
 
 ## Setup
 
 ```sh
-npm install -D motherload typescript@next
+npm install -D motherload typescript@beta
 ```
+
+> [!NOTE]
+> Motherload is powered by [content mappers](https://github.com/microsoft/typescript-go/pull/4712), a new feature of TypeScript 7.1. TypeScript 7.1 is currently in beta.
 
 Add Motherload to `tsconfig.json`, with the extensions it should own:
 
@@ -32,7 +35,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
     {
       "package": "motherload",
       "extensions": [
-        ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env",
+        ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env",
         ".csv", ".tsv", ".txt", ".md"
       ]
     }
@@ -54,7 +57,7 @@ Each tool has its setup in [the docs](https://motherload.dev):
 - [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
 - [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
 
-Each format is also a package of its own, `@motherload/toml`, `@motherload/yaml` and so on, for a project that reads only some of them: see [Loaders à la carte](https://motherload.dev/#loaders-a-la-carte).
+The `motherload` package provides one unified content mapper for all data formats. You can also consume them [à la carte](https://motherload.dev/#loaders-a-la-carte).
 
 ## Loaders
 
@@ -115,21 +118,6 @@ import deploy from "./deploy.yaml";
 // ]
 ```
 
-### `.json5`
-
-```json5
-{
-  // shown on the sign-in page
-  welcome: 'Welcome back',
-  retries: 3,
-}
-```
-
-```ts
-import strings from "./strings.json5";
-// strings: { readonly welcome: "Welcome back"; readonly retries: 3 }
-```
-
 ### `.jsonc`
 
 ```jsonc
@@ -147,6 +135,24 @@ import settings from "./settings.jsonc";
 //   readonly exclude: readonly ["dist"];
 // }
 ```
+
+### `.json5`
+
+```json5
+{
+  // shown on the sign-in page
+  welcome: 'Welcome back',
+  retries: 3,
+}
+```
+
+```ts
+import strings from "./strings.json5";
+// strings: { readonly welcome: "Welcome back"; readonly retries: 3 }
+```
+
+> [!NOTE]
+> To import a JSON Schema file, `.schema.jsonc` or `.schema.json5`, as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).
 
 ### `.env`
 
@@ -243,10 +249,6 @@ Each part is also a named export, so a bundle that imports the frontmatter alone
 ```ts
 import { frontmatter } from "./post.md";
 ```
-
-### `.schema.jsonc`
-
-To import a JSON Schema file as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).
 
 ## Errors
 
