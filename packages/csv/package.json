@@ -17,7 +17,8 @@
   "exports": {
     "./loader": "./src/loader.ts",
     "./register": "./src/register.ts",
-    "./esbuild": "./src/esbuild.ts"
+    "./esbuild": "./src/esbuild.ts",
+    "./webpack-loader": "./src/webpack-loader.ts"
   },
   "typescript": {
     "contentMapper": {

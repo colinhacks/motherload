@@ -1,8 +1,9 @@
 // The end-to-end checks: the type check through TypeScript's content mapper, the preload, and the
-// esbuild plugin, on lab/basic.
+// esbuild plugin, on lab/basic; the webpack loader under webpack and Rspack, on lab/bundlers, and
+// under Next.js with Turbopack and with webpack, on lab/nextjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { ROOT, run, TSC } from "./helpers.ts";
 
 test("lab/basic type-checks through the content mapper", () => {
@@ -86,3 +87,51 @@ test("lab/packages bundles with the two packages' esbuild plugins and runs with 
   assert.equal(ran.status, 0, ran.out);
   assert.equal(ran.out.trim(), PACKAGES);
 });
+
+// lab/bundlers: lab/basic's files through motherload/webpack-loader.
+for (const bundler of ["webpack", "rspack"]) {
+  test(`lab/bundlers bundles with ${bundler} through the webpack loader and runs with nothing installed`, () => {
+    rmSync(`${ROOT}lab/bundlers/dist/${bundler}`, { recursive: true, force: true });
+    const built = run(process.execPath, ["build.mjs", bundler], `${ROOT}lab/bundlers`);
+    assert.equal(built.status, 0, built.out);
+    assert.match(built.out, /errors=0 warnings=0 node_modules=0/);
+    assert.doesNotMatch(readFileSync(`${ROOT}lab/bundlers/dist/${bundler}/main.cjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
+    const ran = run(process.execPath, [`dist/${bundler}/main.cjs`], `${ROOT}lab/bundlers`);
+    assert.equal(ran.status, 0, ran.out);
+    assert.ok(ran.out.includes(EXPECTED), ran.out);
+    assert.ok(ran.out.includes(GREETING), ran.out);
+    assert.ok(ran.out.includes(TABLES), ran.out);
+  });
+}
+
+// lab/nextjs has its own dependencies, installed with `nub install` in lab/nextjs.
+const NEXT = `${ROOT}lab/nextjs/node_modules/.bin/next`;
+const nextInstalled = existsSync(NEXT) || "lab/nextjs is not installed: run `nub install` in lab/nextjs";
+/** The page's two blocks of JSON as the build prerendered them: what the server component and the client component printed. */
+function prerendered(): { server: string; client: string } {
+  const html = readFileSync(`${ROOT}lab/nextjs/.next/server/app/index.html`, "utf8").replaceAll("&quot;", '"');
+  return { server: html.match(/id="server">([^<]*)/)![1]!, client: html.match(/id="client">([^<]*)/)![1]! };
+}
+
+test("lab/nextjs type-checks through the content mapper after next typegen", { skip: nextInstalled !== true && nextInstalled }, () => {
+  const typegen = run(NEXT, ["typegen"], `${ROOT}lab/nextjs`);
+  assert.equal(typegen.status, 0, typegen.out);
+  const { status, out } = run(TSC, ["-p", "lab/nextjs/tsconfig.json", "--noEmit", "--runExternalCode"]);
+  assert.equal(out, "");
+  assert.equal(status, 0);
+});
+
+for (const args of [[], ["--webpack"]]) {
+  test(`lab/nextjs builds with ${args.length ? "webpack" : "Turbopack"}, the data in the server's and the browser's modules`, { skip: nextInstalled !== true && nextInstalled }, () => {
+    rmSync(`${ROOT}lab/nextjs/.next`, { recursive: true, force: true });
+    const built = run(NEXT, ["build", ...args], `${ROOT}lab/nextjs`);
+    assert.equal(built.status, 0, built.out);
+    const { server, client } = prerendered();
+    assert.ok(server.includes(EXPECTED), server);
+    assert.ok(server.includes(TABLES), server);
+    assert.equal(client, '["Ada Lovelace","Hopper, Grace"]');
+    // The client component's module is in a browser chunk.
+    const chunks = readdirSync(`${ROOT}lab/nextjs/.next/static/chunks`, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".js"));
+    assert.ok(chunks.some((f) => readFileSync(`${ROOT}lab/nextjs/.next/static/chunks/${f}`, "utf8").includes("Hopper, Grace")));
+  });
+}

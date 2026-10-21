@@ -18,7 +18,10 @@ export function parseEnvFile(source: string): Parsed {
  * a variable the environment already sets), so no value is in the module, and the types declare
  * each variable on `NodeJS.ProcessEnv`. Under the preload the module's own URL is the file; in a
  * bundle the file is the same path from the working directory as at build time, and a missing
- * file loads nothing, as a deploy that sets its variables another way has none.
+ * file loads nothing, as a deploy that sets its variables another way has none. webpack and Rspack
+ * write `import.meta.url` as the source file's URL at build time, so their bundle tries that path
+ * first and the one from the working directory after it. The module is an ES module with no
+ * exports, so that a bundler imports it for its effect alone.
  */
 export function envModule(source: string, path: string): ModuleText {
   const parsed = parseEnvFile(source);
@@ -27,8 +30,11 @@ export function envModule(source: string, path: string): ModuleText {
   const fromCwd = relative(process.cwd(), path) || name;
   return {
     code: [
-      `const file = typeof import.meta.url === "string" && import.meta.url.endsWith(${JSON.stringify(`/${name}`)}) ? new URL(import.meta.url) : ${JSON.stringify(fromCwd)};`,
-      `try { process.loadEnvFile(file); } catch (error) { if (error?.code !== "ENOENT") throw error; }`,
+      `const files = [typeof import.meta.url === "string" && import.meta.url.endsWith(${JSON.stringify(`/${name}`)}) && new URL(import.meta.url), ${JSON.stringify(fromCwd)}];`,
+      `for (const file of files.filter(Boolean)) {`,
+      `  try { process.loadEnvFile(file); break; } catch (error) { if (error?.code !== "ENOENT") throw error; }`,
+      `}`,
+      `export {};`,
       "",
     ].join("\n"),
     types: ["declare global {", "  namespace NodeJS {", "    interface ProcessEnv {", ...keys.map((key) => `      ${propertyName(key)}: string;`), "    }", "  }", "}", "export {};", ""].join("\n"),

@@ -15,7 +15,8 @@
   },
   "exports": {
     "./register": "./src/register.ts",
-    "./esbuild": "./src/esbuild.ts"
+    "./esbuild": "./src/esbuild.ts",
+    "./webpack-loader": "./src/webpack-loader.ts"
   },
   "typescript": {
     "contentMapper": {
@@ -50,12 +51,14 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@rspack/core": "^2.2.9",
     "@types/node": "^26.6.1",
     "esbuild": "^0.28.2",
     "motherload": "link:.",
     "typescript": "7.1.0-dev.20261002.1",
     "universal-toml": "link:lab/universal/plugin",
     "universal-toml-2": "link:lab/universal/plugin",
-    "unplugin": "^3.4.0"
+    "unplugin": "^3.4.0",
+    "webpack": "^5.112.0"
   }
 }

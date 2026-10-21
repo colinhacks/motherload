@@ -150,6 +150,36 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
   } as { name: string; setup(build: EsbuildBuild): void };
 }
 
+// ---- webpack, Rspack and Turbopack: a webpack loader -----------------------------------------
+
+type WebpackLoaderContext = {
+  resourcePath: string;
+  resourceQuery?: string;
+  /** Every loader that runs on the resource, each module's function as `normal` once it has loaded. */
+  loaders?: readonly { normal?: unknown }[];
+  addDependency(file: string): void;
+};
+
+/**
+ * A loader for a rule that sends the plugin's files to it. Every rule that matches a file runs its
+ * loaders on it, one after another, so a file another Motherload loader on the resource claims more
+ * strongly, or one with a query, passes through as it came: whichever order the two run in, the
+ * other one makes the module. Its siblings are the functions of the resource's other loaders, each
+ * marked with its plugin under `Symbol.for("motherload.plugin")`, as an esbuild plugin object is.
+ */
+export function toWebpackLoader(plugin: LoaderPlugin): (this: WebpackLoaderContext, source: string) => string {
+  function loader(this: WebpackLoaderContext, source: string): string {
+    const siblings = (this.loaders ?? []).flatMap((l) => ((l.normal as Record<symbol, unknown> | undefined)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
+    if (outranked(plugin, this.resourcePath, siblings) || this.resourceQuery) return source;
+    const result = plugin.load(source, this.resourcePath);
+    // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
+    for (const file of result.watchFiles ?? []) this.addDependency(file);
+    if (result.problems.length) throw new Error(loadError(plugin, this.resourcePath, result.problems));
+    return result.code;
+  }
+  return Object.assign(loader, { [PLUGIN]: plugin });
+}
+
 // ---- TypeScript 7.1 content mapper ------------------------------------------------------------
 
 /** A UTF-16 range of `source` as UTF-8 bytes. */

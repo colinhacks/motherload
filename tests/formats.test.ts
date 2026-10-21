@@ -1,5 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseTomlFile } from "../packages/toml/src/loader.ts";
 import { parseYamlFile } from "../packages/yaml/src/loader.ts";
 import { parseJson5File } from "../packages/json5/src/loader.ts";
@@ -9,6 +14,7 @@ import { parseCsvFile, parseTsvFile } from "../packages/csv/src/loader.ts";
 import { parseMarkdownFile } from "../packages/md/src/loader.ts";
 import { ownerOf } from "../packages/core/src/universal.ts";
 import { loaders } from "../src/plugin.ts";
+import { ROOT } from "./helpers.ts";
 
 /** The format of a path: the short name of the package whose loader claims it, as Motherload routes it. */
 const formatOf = (path: string) => ownerOf(loaders, path)?.name.replace("@motherload/", "");
@@ -91,6 +97,27 @@ test("JSONC: comments and trailing commas; a __proto__ key is kept as a property
 
 test(".env: strings, quotes, export, no expansion", () => {
   assert.deepEqual(value(parseEnvFile('A=1\nB="two words"\nexport C=3\nD=${A}\n# comment\n')), { A: "1", B: "two words", C: "3", D: "${A}" });
+});
+
+test(".env: a bundle that holds the source file's URL reads that file, and the one from the working directory once it is gone", () => {
+  // webpack and Rspack write `import.meta.url` as the source file's URL; the module is built from
+  // build/, so the path from the working directory is `.env`, which a deploy in deploy/ holds. The
+  // directory is its real path, as a bundler names a module and the working directory reports
+  // itself (macOS links /var to /private/var).
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "motherload-env-")));
+  for (const sub of ["build", "deploy"]) {
+    mkdirSync(join(dir, sub));
+    writeFileSync(join(dir, sub, ".env"), `WHERE=${sub}\n`);
+  }
+  const source = join(dir, "build", ".env");
+  const make = `import { envModule } from ${JSON.stringify(`${ROOT}packages/env/src/loader.ts`)}; process.stdout.write(envModule("WHERE=build\\n", ${JSON.stringify(source)}).code);`;
+  const made = spawnSync(process.execPath, ["--input-type=module", "-e", make], { cwd: join(dir, "build"), encoding: "utf8" });
+  assert.equal(made.status, 0, made.stderr);
+  writeFileSync(join(dir, "bundle.mjs"), `${made.stdout.replaceAll("import.meta.url", JSON.stringify(pathToFileURL(source).href))}console.log(process.env.WHERE);\n`);
+  const where = () => spawnSync(process.execPath, [join(dir, "bundle.mjs")], { cwd: join(dir, "deploy"), encoding: "utf8", env: { PATH: process.env.PATH } }).stdout.trim();
+  assert.equal(where(), "build");
+  rmSync(source);
+  assert.equal(where(), "deploy");
 });
 
 const table = (parsed: ReturnType<typeof parseCsvFile>) => {

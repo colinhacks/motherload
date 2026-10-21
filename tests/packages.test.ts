@@ -5,6 +5,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
+import { rspack } from "@rspack/core";
+import webpack from "webpack";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -131,3 +133,30 @@ test("esbuild: the JSONC and JSON5 plugins leave a longer suffix to the plugin t
     assert.match(text, /\{ "a": 1 \}|a: 1/);
   }
 });
+
+// The stand-in as a webpack loader: a module whose function carries its loader under the key.
+writeFileSync(
+  join(dir, "stand-in-loader.cjs"),
+  'module.exports = Object.assign(() => \'export default "stand-in";\\n\', { [Symbol.for("motherload.plugin")]: { name: "stand-in", extensions: [".schema.jsonc", ".schema.json5"], filter: /\\.schema\\.json[c5]$/ } });\n',
+);
+
+for (const [name, bundler] of [["webpack", webpack], ["Rspack", rspack]] as const) {
+  test(`${name}: the JSONC and JSON5 loaders pass a longer suffix through to the loader whose rule claims it, before or after theirs`, async () => {
+    writeFileSync(join(dir, "main.js"), 'import a from "./user.schema.jsonc"; import b from "./user.schema.json5"; import c from "./app.jsonc"; import d from "./app.json5"; console.log(a, b, c.a, d.a);');
+    const ours = [
+      { test: /\.jsonc$/, use: `${ROOT}packages/jsonc/src/webpack-loader.ts` },
+      { test: /\.json5$/, use: `${ROOT}packages/json5/src/webpack-loader.ts` },
+    ];
+    const standIn = { test: /\.schema\.json[c5]$/, use: join(dir, "stand-in-loader.cjs") };
+    for (const [i, rules] of [[...ours, standIn], [standIn, ...ours]].entries()) {
+      const output = join(dir, `${name}-${i}`);
+      const config = { mode: "none", context: dir, entry: "./main.js", target: "node", output: { path: output, filename: "main.js" }, module: { rules } };
+      const stats: any = await new Promise((resolve, reject) => (bundler as any)(config, (error: Error | null, stats: unknown) => (error ? reject(error) : resolve(stats))));
+      assert.equal(stats.hasErrors(), false, stats.toString());
+      const text = readFileSync(join(output, "main.js"), "utf8");
+      assert.equal(text.match(/"stand-in"/g)?.length, 2, text);
+      assert.doesNotMatch(text, /"type": "string"|type: 'string'/);
+      assert.equal(text.match(/\{"a": 1\}/g)?.length, 2, text);
+    }
+  });
+}

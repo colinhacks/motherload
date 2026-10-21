@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { plugin } from "../src/plugin.ts";
-import { toEsbuildPlugin, toNodeHooks, utf8Range, type LoaderPlugin } from "../packages/core/src/universal.ts";
+import { toEsbuildPlugin, toNodeHooks, toWebpackLoader, utf8Range, type LoaderPlugin } from "../packages/core/src/universal.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "motherload-adapters-"));
 writeFileSync(join(dir, "app.toml"), 'name = "x"\n');
@@ -59,6 +59,34 @@ test("esbuild watches the other files a loader names, and still does when the mo
   let data: ((args: { path: string; suffix?: string }) => any) | undefined;
   toEsbuildPlugin(plugin).setup({ onLoad: (_options, callback) => void (data = callback) });
   assert.deepEqual(data!({ path: join(dir, "app.toml") }).watchFiles, []);
+});
+
+/** A webpack loader's context for one file: its path, its query, and the files it was told to watch. */
+const loaderContext = (path: string, resourceQuery = "") => ({ resourcePath: path, resourceQuery, watched: [] as string[], addDependency(file: string) { this.watched.push(file); } });
+
+test("the webpack loader makes a data file's module and passes a file with a query through as it came", () => {
+  const loader = toWebpackLoader(plugin);
+  const path = join(dir, "app.toml");
+  assert.match(loader.call(loaderContext(path), 'name = "x"\n'), /const data = \{"name": "x"\};/);
+  for (const query of ["?raw", "?url"]) assert.equal(loader.call(loaderContext(path, query), 'name = "x"\n'), 'name = "x"\n', query);
+  assert.throws(() => loader.call(loaderContext(path), "name = \n"), /motherload: .*app\.toml: Invalid TOML document/);
+});
+
+test("the webpack loader watches the other files a loader names, and still does when the module fails", () => {
+  const reader: LoaderPlugin = {
+    name: "reader",
+    extensions: [".ref"],
+    filter: /\.ref$/,
+    load: (source, path) => ({ code: "export default 1;", problems: source ? [] : [{ message: "empty", start: 0, length: 1, code: 1 }], watchFiles: [join(dirname(path), "tag.txt")] }),
+    types: () => ({ types: "", problems: [] }),
+  };
+  const loader = toWebpackLoader(reader);
+  const good = loaderContext(join(dir, "good.ref"));
+  loader.call(good, "tag.txt");
+  assert.deepEqual(good.watched, [join(dir, "tag.txt")]);
+  const lost = loaderContext(join(dir, "lost.ref"));
+  assert.throws(() => loader.call(lost, ""), /reader: .*lost\.ref: empty/);
+  assert.deepEqual(lost.watched, [join(dir, "tag.txt")]);
 });
 
 test("ranges convert from UTF-16 code units to UTF-8 bytes", () => {

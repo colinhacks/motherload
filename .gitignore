@@ -10,3 +10,8 @@ coverage/
 
 # Lab emit output
 lab/**/dist/
+
+# Next.js output in the Next.js lab
+lab/nextjs/.next/
+lab/nextjs/next-env.d.ts
+lab/nextjs/tsconfig.tsbuildinfo

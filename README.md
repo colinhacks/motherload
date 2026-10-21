@@ -54,6 +54,8 @@ Each tool has its setup in [the docs](https://motherload.dev):
 
 - [Node.js](https://motherload.dev/#node): `--import motherload/register`
 - [Nub](https://motherload.dev/#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
+- [Next.js](https://motherload.dev/#plugins): `motherload/webpack-loader` in Turbopack's `rules`, with `next build`'s own type check turned off
+- [webpack and Rspack](https://motherload.dev/#plugins): `use: "motherload/webpack-loader"` in a rule for the data files
 - [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
 - [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
 
