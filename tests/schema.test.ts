@@ -290,6 +290,38 @@ test("a keyword ajv reads that the draft does not define is ignored in a file th
   assert.deepEqual([s.is({ tag: "a" }), s.is({ tag: null }), s.is({ tag: 1 })], [true, false, false]);
 });
 
+test("a 2020-12 $dynamicRef ajv resolves to the root in place of its anchor is a problem at the reference", async () => {
+  const S = "https://json-schema.org/draft/2020-12/schema";
+  const message = (ref: string, fix: string) => `ajv resolves the $dynamicRef "${ref}" to the root of its schema, not where it points: ${fix}.`;
+  const anchored = (name: string) => `declare "$dynamicAnchor": "${name}" at the root of the schema or of a schema with an $id, or write it as a $ref`;
+  // The anchor in `$defs`: the validator checked the root's rules, and at the root recursed until the stack ran out.
+  for (const [schema, ref, fix] of [
+    [{ $schema: S, $defs: { content: { $dynamicAnchor: "content", type: "string" } }, type: "array", items: { $dynamicRef: "#content" } }, "#content", anchored("content")],
+    [{ $schema: S, $defs: { s: { $dynamicAnchor: "s", type: "string" } }, $dynamicRef: "#s" }, "#s", anchored("s")],
+    [{ $schema: S, $defs: { s: { type: "string" } }, type: "array", items: { $dynamicRef: "#/$defs/s" } }, "#/$defs/s", "write it as a $ref"],
+  ] as const) {
+    const source = JSON.stringify(schema, null, 2);
+    for (const problems of [schemaTypes(source, PATH).problems, schemaCode(source, PATH).problems]) {
+      assert.deepEqual(problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]), [[message(ref, fix), ref]]);
+    }
+  }
+  // An anchor at the root of the file, or of a schema with an $id, is resolved as the spec says.
+  const tree = (extra: object) => ({ $dynamicAnchor: "node", type: "object", properties: { kids: { type: "array", items: { $dynamicRef: "#node" } } }, ...extra });
+  for (const schema of [{ $schema: S, ...tree({}) }, { $schema: S, $ref: "https://example.com/tree", $defs: { tree: tree({ $id: "https://example.com/tree" }) } }]) {
+    const { code, problems } = schemaCode(JSON.stringify(schema), PATH);
+    assert.deepEqual(problems, []);
+    const { default: s } = await evaluate(code);
+    assert.deepEqual([s.is({ kids: [{ kids: [] }] }), s.is({ kids: [1] })], [true, false]);
+  }
+  // In another file, placed at the root's reference to it; in draft-07, which ignores $dynamicRef, no problem.
+  const { path, source } = project({
+    "user.schema.jsonc": { $schema: S, type: "object", properties: { list: { $ref: "./list.schema.jsonc" } } },
+    "list.schema.jsonc": { $defs: { item: { $dynamicAnchor: "item" } }, type: "array", items: { $dynamicRef: "#item" } },
+  });
+  assert.deepEqual(schemaTypes(source, path).problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]), [[`./list.schema.jsonc: ${message("#item", anchored("item"))}`, "./list.schema.jsonc"]]);
+  assert.deepEqual(schemaCode(JSON.stringify({ type: "array", items: { $dynamicRef: "#item" } }), PATH).problems, []);
+});
+
 test("a format ajv-formats checks with a function, such as date-time or uri, is inlined: the module requires nothing", async () => {
   const { code, problems } = schemaCode(JSON.stringify({ type: "object", properties: { at: { type: "string", format: "date-time" }, url: { type: "string", format: "uri" } } }), PATH);
   assert.deepEqual(problems, []);

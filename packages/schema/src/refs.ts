@@ -51,6 +51,9 @@ const mapRefs = (schema: Value, map: (ref: string) => string): Value =>
     if (typeof copy["$ref"] === "string") copy["$ref"] = map(copy["$ref"]);
   });
 
+/** Calls `visit` with `schema` and then every schema inside it, keyword by keyword, as `mapSchemas` walks them. */
+const eachSchema = (schema: Value, visit: (schema: Obj) => void): void => void mapSchemas(schema, visit);
+
 /** A copy of `schema` without `keywords`, in it and in every schema inside it. */
 export const withoutKeywords = (schema: Value, keywords: readonly string[]): Value =>
   keywords.length
@@ -186,6 +189,39 @@ export function collect(rootPath: string, root: Value, rootSource: string, draft
     }
   }
   return { schemas, places, watched, problems };
+}
+
+/**
+ * Each 2020-12 `$dynamicRef` that ajv resolves otherwise than the spec, as a problem placed as
+ * `collect`'s are. ajv 8.20.0 (`dist/vocabularies/dynamic/dynamicRef.js`) resolves `"#name"` to the
+ * `$dynamicAnchor` of that name only when it has compiled one already, which it has for one at the
+ * root of the file or of a schema with an `$id`, and otherwise, as for a JSON Pointer, to the root
+ * of the schema: measured on 2026-10-20, with the anchor in `$defs` the validator checked the
+ * root's rules in its place, and with the reference at the root it recursed until the stack ran out.
+ */
+export function dynamicRefProblems(files: Files, rootPath: string, rootSource: string): Problem[] {
+  const problems: Problem[] = [];
+  for (const [path, schema] of files.schemas) {
+    const anchors = new Set<string>();
+    const refs = new Set<string>();
+    let root = true;
+    eachSchema(schema, (s) => {
+      if ((root || typeof s["$id"] === "string") && typeof s["$dynamicAnchor"] === "string") anchors.add(s["$dynamicAnchor"]);
+      if (typeof s["$dynamicRef"] === "string") refs.add(s["$dynamicRef"]);
+      root = false;
+    });
+    for (const ref of refs) {
+      // `#` is the root for ajv and the spec alike; a reference to another document ajv refuses itself.
+      if (ref === "#" || !ref.startsWith("#")) continue;
+      const name = ref.includes("/") ? undefined : ref.slice(1);
+      if (name !== undefined && anchors.has(name)) continue;
+      const fix = name === undefined ? "write it as a $ref" : `declare "$dynamicAnchor": "${name}" at the root of the schema or of a schema with an $id, or write it as a $ref`;
+      const where = path === rootPath ? "" : `${specifierOf(rootPath, path)}: `;
+      const place = path === rootPath ? placeOf(rootSource, ref) : files.places.get(path)!;
+      problems.push({ message: `${where}ajv resolves the $dynamicRef "${ref}" to the root of its schema, not where it points: ${fix}.`, ...place, code: CODES.schema });
+    }
+  }
+  return problems;
 }
 
 /**

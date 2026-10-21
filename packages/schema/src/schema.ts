@@ -16,7 +16,7 @@ import { createRequire } from "node:module";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
-import { collect, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
+import { collect, dynamicRefProblems, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
 import { schemaDeclarations, type Draft } from "./schema-types.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
@@ -103,7 +103,10 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
  */
 function filesOf(source: string, path: string, schema: Value): Files {
   const clean = (value: Value) => withoutKeywords(value, IGNORED[draftOf(schema) ?? "draft-07"]);
-  return collect(path, clean(schema), source, { of: declaredDraft, none: "ajv" }, clean);
+  const files = collect(path, clean(schema), source, { of: declaredDraft, none: "ajv" }, clean);
+  // ajv resolves some of 2020-12's `$dynamicRef`s otherwise than the spec (refs.ts).
+  if (draftOf(schema) === "2020-12") files.problems.push(...dynamicRefProblems(files, path, source));
+  return files;
 }
 
 /** The validator, compiled from the root with every other file added to ajv under its id; a problem when a file is not a valid schema. */
