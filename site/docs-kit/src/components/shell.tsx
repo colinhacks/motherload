@@ -51,6 +51,7 @@ export function DocsShell({
   github,
   before,
   titleAside,
+  footer,
   children,
 }: {
   /** The page tree (`source.getPageTree()`). */
@@ -68,6 +69,8 @@ export function DocsShell({
   before?: ReactNode;
   /** Rendered at the right end of the title's row, above its rule: `<CopyAgentPrompt />`, say. */
   titleAside?: ReactNode;
+  /** Rendered at the foot of the column, under a hairline, in small muted text: the licence and the copyright, say. */
+  footer?: ReactNode;
   /** The page's MDX, rendered. */
   children: ReactNode;
 }) {
@@ -95,6 +98,7 @@ export function DocsShell({
           <DocsTitle>{title}</DocsTitle>
         )}
         <DocsBody>{children}</DocsBody>
+        {footer ? <footer className="dk-footer">{footer}</footer> : null}
       </DocsPage>
     </DocsLayout>
   );

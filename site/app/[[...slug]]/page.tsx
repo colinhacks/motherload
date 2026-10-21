@@ -22,9 +22,17 @@ export default async function Page({ params }: Props) {
 
   // docs-kit's page: no bar stays above it; the brand sits at the top of the table of contents on
   // the left, and the GitHub link, the "Leave a star!" note and the theme switch at its foot, or in
-  // a row above the title where Fumadocs hides that column.
+  // a row above the title where Fumadocs hides that column. The column ends on the licence.
   return (
-    <DocsShell tree={source.getPageTree()} title={page.data.title} toc={page.data.toc} fold={FOLD} brand={<Brand />} github={githubUrl}>
+    <DocsShell
+      tree={source.getPageTree()}
+      title={page.data.title}
+      toc={page.data.toc}
+      fold={FOLD}
+      brand={<Brand />}
+      github={githubUrl}
+      footer={<>Released under the MIT License. Copyright © 2026 Colin McDonnell.</>}
+    >
       <MDX components={getMDXComponents()} />
     </DocsShell>
   );

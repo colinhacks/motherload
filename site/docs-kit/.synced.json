@@ -1,9 +1,9 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "e50022d",
+  "commit": "456916f",
   "files": {
     "package.json": "e77d2ad4f3879fb80f08152eb7c25fe930aee0936d9e3e9d42ca0f0cd4f68ddb",
-    "README.md": "c3afc9c00c0358740569ed195a000b30261c81317cd153bd744ce7dfcf2c42f4",
+    "README.md": "edeb9074ddc719e0f9907b2d8f722c55f8a20665adc1681334e25ca0d73fb8a3",
     "src/components/agent-prompt.tsx": "d2ff449d1623faad0ac7e96a41d5d8285f81d235b5acd0643ca1417de1db55bf",
     "src/components/chrome.tsx": "2406305d9db24be97199d4cc774425e596e7ea56b4c6f4664d59ffa9c73b2c26",
     "src/components/code-tabs.tsx": "392de2165f31253907c82c010f44cfe29ed5aac179e5577314a71d373e60d4d9",
@@ -15,7 +15,7 @@
     "src/components/mdx.tsx": "baf0a411394395d606e58c87a725aa9e102dbdc20d9ad2d8fad2538b2fa3ab5e",
     "src/components/prepaint.tsx": "c51099f537a1b52dd96c4ddc5e51f3334cf4deb28a6bc51f4b18beb6eaf88ae3",
     "src/components/root.tsx": "a7b2bdeea27f706dc595770a63a3e2af839cd795ed1d5fbd99f743e769498417",
-    "src/components/shell.tsx": "c0b30a4035d2b96b3c368b176e7aa7a5f38ffac07244a14c3b9982204aa5fed0",
+    "src/components/shell.tsx": "3c74698dc039177bf14af31dc5ca2b2d833b1cd80a8fac5f3ac57cab6a30eba0",
     "src/components/variant-tabs.tsx": "c62ed24a2ea6ff1c50b14ec0092060ccbe5c2bffe7529c75aebe9b53b84e35d2",
     "src/mdx/hanging-indent.ts": "44982cd93fd12745ef11d30fac08cd39f98fda94aa836a2c817a5222231e8e20",
     "src/mdx/index.ts": "370019f852de4c6a6cf872df0a9a0058788d6fa6b1a712a1a737fc55a7c46c07",
@@ -25,7 +25,7 @@
     "src/mdx/twoslash.ts": "a2039253b7f020858c6606bd352f069f2834c3a5a9eddc695b115bf032bf29e6",
     "src/mdx-dev-loader.mjs": "0bdecfe183d6dcaddb63e337b83f8fe7f8a1e9828efd0e95713d1ff6dc9c3013",
     "src/next.mjs": "e6acab07c6a94d2f2fefec5dc6495117f3828698d3aac05a87a74dfeef7eeaf9",
-    "src/style.css": "b24e065e527e436de9548da80dd00c44c4289151542d38b1ec6a302fb8cbe3d6",
+    "src/style.css": "c43fb020b7cf2af3e207ca408de05975e8458d7221344872b0b2a7b7a7935c50",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626"
   }
 }
