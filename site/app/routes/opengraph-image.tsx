@@ -46,7 +46,7 @@ const imp = (name: string, file: string): Token[] => [
 const hero: Token[][] = [
   imp('plans', 'plans.toml'),
   imp('team', 'team.yaml'),
-  imp('strings', 'strings.json5'),
+  imp('strings', 'strings.jsonc'),
   imp('posts', 'posts.csv'),
   imp('notes', 'notes.md'),
   [['import', 'keyword'], [' "./.env"', 'string'], [';', 'plain']],
@@ -166,7 +166,7 @@ function Card(): ReactNode {
             </div>
           ))}
         </div>
-        <Window tabs={['main.ts', 'plans.toml', 'team.yaml', 'strings.json5']} style={{ width: 680, marginTop: 8 }}>
+        <Window tabs={['main.ts', 'plans.toml', 'team.yaml', 'strings.jsonc']} style={{ width: 680, marginTop: 8 }}>
           <div style={{ display: 'flex', padding: '18px 26px 22px' }}>
             <Code lines={hero} />
           </div>

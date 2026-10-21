@@ -10,7 +10,7 @@ It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/ty
 ```ts twoslash tab="main.ts"
 import plans from "./plans.toml";
 import team from "./team.yaml";
-import strings from "./strings.json5";
+import strings from "./strings.jsonc";
 import posts from "./posts.csv";
 import notes from "./notes.md";
 import "./.env";
@@ -33,11 +33,11 @@ seats = 10
   role: member
 ```
 
-```json5 tab="strings.json5"
+```jsonc tab="strings.jsonc"
 {
   // shown on the sign-in page
-  welcome: 'Welcome back',
-  signIn: 'Sign in',
+  "welcome": "Welcome back",
+  "signIn": "Sign in",
 }
 ```
 
