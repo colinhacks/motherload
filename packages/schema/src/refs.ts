@@ -27,38 +27,37 @@ const ONE = ["additionalProperties", "unevaluatedProperties", "items", "addition
 const LIST = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
 const MAP = ["properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependencies"];
 
-/** A copy of `schema` with `map` applied to every `$ref` in it, keyword by keyword, so data that holds a `$ref` key stays as written. */
-function mapRefs(schema: Value, map: (ref: string) => string): Value {
+/** A copy of `schema` with `change` applied to it and then to every schema inside it, keyword by keyword, so data (`const`, an unknown keyword) stays as written. */
+function mapSchemas(schema: Value, change: (copy: Record<string, Value>) => void): Value {
   if (!isObj(schema)) return schema;
   const copy: Record<string, Value> = { ...schema };
-  if (typeof schema["$ref"] === "string") copy["$ref"] = map(schema["$ref"]);
-  for (const key of ONE) if (isObj(schema[key])) copy[key] = mapRefs(schema[key], map);
+  change(copy);
+  for (const key of ONE) if (isObj(copy[key])) copy[key] = mapSchemas(copy[key], change);
   for (const key of LIST) {
-    const list = schema[key];
-    if (Array.isArray(list)) copy[key] = list.map((item) => mapRefs(item, map));
+    const list = copy[key];
+    if (Array.isArray(list)) copy[key] = list.map((item) => mapSchemas(item, change));
   }
   for (const key of MAP) {
-    const group = schema[key];
+    const group = copy[key];
     // A `dependencies` entry that is a list names properties; one that is an object is a schema.
-    if (isObj(group)) copy[key] = Object.fromEntries(Object.entries(group).map(([name, item]) => [name, Array.isArray(item) ? item : mapRefs(item, map)]));
+    if (isObj(group)) copy[key] = Object.fromEntries(Object.entries(group).map(([name, item]) => [name, Array.isArray(item) ? item : mapSchemas(item, change)]));
   }
   return copy;
 }
 
-/** Calls `visit` with `schema` and every schema inside it, keyword by keyword, as `mapRefs` walks them. */
-export function eachSchema(schema: Value, visit: (schema: Obj) => void): void {
-  if (!isObj(schema)) return;
-  visit(schema);
-  for (const key of ONE) eachSchema(schema[key]!, visit);
-  for (const key of LIST) {
-    const list = schema[key];
-    if (Array.isArray(list)) for (const item of list) eachSchema(item, visit);
-  }
-  for (const key of MAP) {
-    const group = schema[key];
-    if (isObj(group)) for (const item of Object.values(group)) if (!Array.isArray(item)) eachSchema(item, visit);
-  }
-}
+/** A copy of `schema` with `map` applied to every `$ref` in it, so data that holds a `$ref` key stays as written. */
+const mapRefs = (schema: Value, map: (ref: string) => string): Value =>
+  mapSchemas(schema, (copy) => {
+    if (typeof copy["$ref"] === "string") copy["$ref"] = map(copy["$ref"]);
+  });
+
+/** A copy of `schema` without `keywords`, in it and in every schema inside it. */
+export const withoutKeywords = (schema: Value, keywords: readonly string[]): Value =>
+  keywords.length
+    ? mapSchemas(schema, (copy) => {
+        for (const keyword of keywords) delete copy[keyword];
+      })
+    : schema;
 
 /** Every `$ref` in `schema`, in document order. */
 export function refsIn(schema: Value): string[] {
@@ -127,9 +126,10 @@ export type Files = {
  * The root schema and every file it reaches. `drafts.of` names the draft a schema declares, or
  * undefined when it declares none, and `drafts.none` the draft a root that declares none is read
  * in: ajv compiles every file in the root's draft, so a file that declares another is a problem,
- * while one that declares none is read in the root's.
+ * while one that declares none is read in the root's. `clean` is applied to each other file as it
+ * is read, as the caller applied it to the root, before its references are followed.
  */
-export function collect(rootPath: string, root: Value, rootSource: string, drafts: { of: (schema: Value) => string | undefined; none: string }): Files {
+export function collect(rootPath: string, root: Value, rootSource: string, drafts: { of: (schema: Value) => string | undefined; none: string }, clean: (schema: Value) => Value = (schema) => schema): Files {
   const schemas = new Map<string, Value>([[rootPath, root]]);
   const places = new Map<string, { start: number; length: number }>();
   const watched: string[] = [];
@@ -176,7 +176,7 @@ export function collect(rootPath: string, root: Value, rootSource: string, draft
           failed.add(target.path);
           continue;
         }
-        schemaThere = parsed.value;
+        schemaThere = clean(parsed.value);
         schemas.set(target.path, schemaThere);
         places.set(target.path, place);
         queue.push({ path: target.path, schema: schemaThere, via: place });

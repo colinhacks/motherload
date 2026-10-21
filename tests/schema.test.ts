@@ -197,25 +197,97 @@ test("each draft ajv validates compiles, draft-06 with the meta-schema ajv's def
   }
 });
 
-test("a schema with no $schema is draft-07, and a later draft's keyword, which ajv ignores there, is a problem at the keyword", () => {
-  const source = '{\n  "type": "array",\n  "prefixItems": [{ "type": "string" }],\n  "contains": { "const": 1 },\n  "minContains": 2\n}';
+test("a schema with no $schema is draft-07, and a later draft's keyword is ignored there, by the validator and the type alike", async () => {
+  const source = JSON.stringify({ type: "array", prefixItems: [{ type: "string" }], contains: { const: 1 }, minContains: 2 });
   const typed = schemaTypes(source, PATH);
-  assert.deepEqual(
-    typed.problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]),
-    [
-      ['"prefixItems" is a JSON Schema 2020-12 keyword, which draft-07, the draft of a schema with no "$schema", ignores: declare "$schema": "https://json-schema.org/draft/2020-12/schema".', "prefixItems"],
-      ['"minContains" is a JSON Schema 2019-09 keyword, which draft-07, the draft of a schema with no "$schema", ignores: declare "$schema": "https://json-schema.org/draft/2019-09/schema".', "minContains"],
-    ],
-  );
-  // The type is what draft-07 validates: prefixItems makes no tuple.
+  assert.deepEqual(typed.problems, []);
   assert.match(typed.types, /export type Type = unknown\[\];/);
-  assert.deepEqual(schemaCode(source, PATH).problems, typed.problems);
-  // Declared, the same keywords need no problem in 2020-12, and prefixItems still does in 2019-09.
-  const declared = (draft: string) => source.replace("{", `{\n  "$schema": "https://json-schema.org/draft/${draft}/schema",`);
-  assert.deepEqual(schemaTypes(declared("2020-12"), PATH).problems, []);
-  assert.deepEqual(schemaTypes(declared("2019-09"), PATH).problems.map((p) => p.message), ['"prefixItems" is a JSON Schema 2020-12 keyword, which this schema\'s draft, 2019-09, ignores: declare "$schema": "https://json-schema.org/draft/2020-12/schema".']);
-  // A schema with no $schema that uses only draft-07's keywords is fine, as before.
-  assert.deepEqual(schemaTypes(JSON.stringify({ type: "array", items: [{ type: "string" }] }), PATH).problems, []);
+  const built = schemaCode(source, PATH);
+  assert.deepEqual(built.problems, []);
+  // draft-07 reads `contains` and neither `prefixItems` nor `minContains`.
+  const { default: s } = await evaluate(built.code);
+  assert.deepEqual([s.is([1]), s.is([2])], [true, false]);
+  // Without `type`, a keyword the draft ignores does not make the type an array.
+  assert.match(schemaTypes(JSON.stringify({ prefixItems: [{ type: "string" }] }), PATH).types, /export type Type = unknown;/);
+  // Declared 2020-12, both are read.
+  const declared = JSON.stringify({ $schema: "https://json-schema.org/draft/2020-12/schema", ...JSON.parse(source) });
+  assert.match(schemaTypes(declared, PATH).types, /export type Type = \[string\?, \.\.\.unknown\[\]\];/);
+  const { default: t } = await evaluate(schemaCode(declared, PATH).code);
+  assert.deepEqual([t.is([1]), t.is(["a", 1]), t.is(["a", 1, 1])], [false, false, true]);
+});
+
+test("a keyword no draft defines is ignored in every draft: a vendor's, an unknown format, and one that holds a $ref", async () => {
+  const unknown = {
+    "x-foo": 1,
+    tsType: "Foo",
+    errorMessage: "must be a user",
+    markdownDescription: "**user**",
+    discriminator: { propertyName: "kind" },
+    "x-ref": { $ref: "./missing.schema.jsonc" },
+    "x-nested": { type: "number", required: ["nope"] },
+    type: "object",
+    properties: { name: { type: "string", "x-label": "Name", format: "my-own-format" }, tags: { type: "array", items: { type: "string" }, uniqueItemProperties: ["id"] } },
+    required: ["name"],
+    additionalProperties: false,
+  };
+  for (const $schema of [undefined, "http://json-schema.org/draft-06/schema#", "http://json-schema.org/draft-07/schema#", "https://json-schema.org/draft/2019-09/schema", "https://json-schema.org/draft/2020-12/schema"]) {
+    const source = JSON.stringify($schema ? { $schema, ...unknown } : unknown);
+    const draft = $schema ?? "no $schema";
+    const typed = schemaTypes(source, PATH);
+    assert.deepEqual(typed.problems, [], draft);
+    assert.match(typed.types, /export interface Type \{\n  name: string;\n  tags\?: string\[\];\n\}/, draft);
+    const { code, problems } = schemaCode(source, PATH);
+    assert.deepEqual(problems, [], draft);
+    const { default: s } = await evaluate(code);
+    assert.deepEqual([s.is({ name: "a", tags: ["x"] }), s.is({}), s.is({ name: 1 }), s.is({ name: "a", other: 1 })], [true, false, false, false], draft);
+  }
+});
+
+test("a keyword ajv reads that the schema's draft does not define is ignored: $async, nullable, id, and another draft's", async () => {
+  const D07 = "http://json-schema.org/draft-07/schema#";
+  const D2019 = "https://json-schema.org/draft/2019-09/schema";
+  const D2020 = "https://json-schema.org/draft/2020-12/schema";
+  /** Each schema compiles with no problem, and the validator gives `expected` for `values`. */
+  const check = async (schema: object, values: unknown[], expected: boolean[], type?: RegExp) => {
+    const source = JSON.stringify(schema);
+    const typed = schemaTypes(source, PATH);
+    assert.deepEqual(typed.problems, [], source);
+    if (type) assert.match(typed.types, type, source);
+    const { code, problems } = schemaCode(source, PATH);
+    assert.deepEqual(problems, [], source);
+    const { default: s } = await evaluate(code);
+    assert.deepEqual(values.map((value) => s.is(value)), expected, source);
+  };
+  // ajv's `$async: true` made the validator return a promise, which `is` took for a pass; nested, ajv refused the schema.
+  await check({ $async: true, type: "object", properties: { name: { type: "string" } }, required: ["name"] }, [{ name: "a" }, { name: 1 }], [true, false]);
+  await check({ type: "object", properties: { inner: { $async: true, type: "string" } } }, [{ inner: "a" }, { inner: 1 }], [true, false]);
+  // OpenAPI 3.0's `nullable`: null is refused as `type` says, and the shapes ajv refused compile.
+  await check({ type: "string", nullable: true }, ["a", null], [true, false], /export type Type = string;/);
+  await check({ nullable: true, const: "a" }, ["a", null], [true, false]);
+  await check({ type: ["string", "null"], nullable: false }, ["a", null], [true, true]);
+  await check({ type: "string", nullable: "yes" }, ["a", null], [true, false]);
+  // Draft-04's `id`, which ajv refused as "NOT SUPPORTED".
+  await check({ $schema: D07, id: "user", type: "string" }, ["a", 1], [true, false]);
+  // 2020-12's `$dynamicRef` in 2019-09, and 2019-09's `$recursiveRef` in 2020-12.
+  await check({ $schema: D2019, $defs: { s: { $dynamicAnchor: "s", type: "string" } }, $dynamicRef: "#s" }, ["a", 1], [true, true]);
+  await check({ $schema: D2020, $recursiveAnchor: true, type: "object", properties: { c: { $recursiveRef: "#" } } }, [{ c: 1 }], [true]);
+  // Draft-07's `dependencies`, which 2019-09 replaced, is read in draft-07 alone.
+  await check({ $schema: D07, dependencies: { a: ["b"] } }, [{ a: 1 }, { a: 1, b: 1 }], [false, true]);
+  await check({ $schema: D2019, dependencies: { a: ["b"] } }, [{ a: 1 }], [true]);
+  await check({ $schema: D2020, dependencies: { a: { required: ["b"] } } }, [{ a: 1 }], [true]);
+});
+
+test("a keyword ajv reads that the draft does not define is ignored in a file the schema refers to, as in the schema", async () => {
+  const { path, source } = project({
+    "user.schema.jsonc": { type: "object", properties: { tag: { $ref: "./tag.schema.jsonc" } }, required: ["tag"] },
+    "tag.schema.jsonc": { $async: true, type: "string", nullable: true, id: "tag" },
+  });
+  const typed = schemaTypes(source, path);
+  assert.deepEqual(typed.problems, []);
+  const { code, problems } = schemaCode(source, path);
+  assert.deepEqual(problems, []);
+  const { default: s } = await evaluate(code);
+  assert.deepEqual([s.is({ tag: "a" }), s.is({ tag: null }), s.is({ tag: 1 })], [true, false, false]);
 });
 
 test("a format ajv-formats checks with a function, such as date-time or uri, is inlined: the module requires nothing", async () => {

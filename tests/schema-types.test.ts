@@ -44,9 +44,8 @@ test("const, enum, combinators, and the keywords that only narrow", () => {
   assert.equal(emit({ type: "string", allOf: [false] }), "export type Type = never;");
   assert.equal(emit({}), "export type Type = unknown;");
   assert.equal(emit({ properties: { a: { type: "string" } }, additionalProperties: false }), "export interface Type {\n  a?: string;\n}");
-  // OpenAPI 3.0's `nullable`, which ajv honours beside `type`.
-  assert.equal(emit({ type: "string", nullable: true }), "export type Type = string | null;");
-  assert.equal(emit({ type: ["string", "number"], nullable: false }), "export type Type = string | number;");
+  // OpenAPI 3.0's `nullable` is no JSON Schema keyword: not read, and taken out of what ajv compiles.
+  assert.equal(emit({ type: "string", nullable: true }), "export type Type = string;");
 });
 
 test("with a draft, a keyword is read only in the drafts that have it, as ajv reads it", () => {
@@ -57,6 +56,10 @@ test("with a draft, a keyword is read only in the drafts that have it, as ajv re
   const closed = { type: "object", properties: { a: { type: "string" } }, unevaluatedProperties: false };
   assert.equal(schemaDeclarations(closed as never, undefined, "2019-09"), "export interface Type {\n  a?: string;\n}");
   assert.equal(schemaDeclarations(closed as never, undefined, "draft-07"), "export interface Type {\n  a?: string;\n  [key: string]: unknown;\n}");
+  // Without `type`, only a keyword the draft reads makes an array.
+  assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2020-12"), "export type Type = [string?, ...unknown[]];");
+  assert.equal(schemaDeclarations({ prefixItems: [{ type: "string" }] }, undefined, "2019-09"), "export type Type = unknown;");
+  assert.equal(schemaDeclarations({ additionalItems: { type: "string" } }, undefined, "2020-12"), "export type Type = unknown;");
 });
 
 test("a oneOf of objects told apart by a `const` is a union TypeScript narrows", () => {
