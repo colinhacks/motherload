@@ -28,7 +28,7 @@ const LIST = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
 const MAP = ["properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependencies"];
 
 /** A copy of `schema` with `change` applied to it and then to every schema inside it, keyword by keyword, so data (`const`, an unknown keyword) stays as written. */
-function mapSchemas(schema: Value, change: (copy: Record<string, Value>) => void): Value {
+export function mapSchemas(schema: Value, change: (copy: Record<string, Value>) => void): Value {
   if (!isObj(schema)) return schema;
   const copy: Record<string, Value> = { ...schema };
   change(copy);
@@ -52,7 +52,7 @@ const mapRefs = (schema: Value, map: (ref: string) => string): Value =>
   });
 
 /** Calls `visit` with `schema` and then every schema inside it, keyword by keyword, as `mapSchemas` walks them. */
-const eachSchema = (schema: Value, visit: (schema: Obj) => void): void => void mapSchemas(schema, visit);
+export const eachSchema = (schema: Value, visit: (schema: Obj) => void): void => void mapSchemas(schema, visit);
 
 /** A copy of `schema` without `keywords`, in it and in every schema inside it. */
 export const withoutKeywords = (schema: Value, keywords: readonly string[]): Value =>

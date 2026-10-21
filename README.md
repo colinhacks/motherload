@@ -245,7 +245,7 @@ import user, { type Type as User } from "./user.schema.jsonc";
 // Never throws: the value, or every issue.
 const result = user.validate(input);
 if (result.issues) {
-  result.issues; // [{ message, path, keyword, params, schemaPath }]
+  result.issues; // [{ message, path, keyword }]
 } else {
   result.value; // User: the input itself
 }
@@ -257,7 +257,7 @@ user["~standard"].validate(input); // the same as validate
 user["~standard"].jsonSchema;
 ```
 
-- **Issues:** an issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`.
+- **Issues:** an issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`. For a `oneOf` whose variants each fix one required property to a different string (`"kind": { "const": "click" }`), the issues are those of the variant the value names. Neither method throws: a value the validator cannot check, such as one nested deeper than the stack, is one issue with the keyword `error`, and `is` returns `false`.
 - **The type:** the `Type` export, a type-only import (`import { type Type as User }`). A `default` in the schema is not applied: `validate` returns the value as it was given, so a property with a default stays optional in the type.
 - **`schema` and `jsonSchema`:** `user.schema` is the file as written, its `$ref`s to other files and the keywords Motherload ignores included. To hand the schema to another tool, use `user["~standard"].jsonSchema.input({ target: "draft-2020-12" })` (or `"draft-07"`), which is one self-contained schema.
 - **References:** a `$ref` to another schema file, by a path relative to the file that holds it, is followed. `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.

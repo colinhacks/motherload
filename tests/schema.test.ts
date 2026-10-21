@@ -35,14 +35,14 @@ test("the module validates with ajv's standalone code and imports nothing", asyn
   assert.deepEqual(Object.keys(user), ["validate", "is", "schema", "~standard"]);
 });
 
-test("validate reports every issue, each with ajv's message, keyword, params and schema path, and never throws for an invalid value", async () => {
+test("validate reports every issue, each with ajv's message and keyword and its path, and nothing else", async () => {
   const { default: user } = await evaluate(schemaCode(SCHEMA, PATH).code);
   // Three ways at once: an empty name, a duplicate tag, a property the schema closes out.
   assert.deepEqual(user.validate({ name: "", tags: [{}, {}], extra: 1 }), {
     issues: [
-      { message: "must NOT have additional properties", path: ["extra"], keyword: "additionalProperties", params: { additionalProperty: "extra" }, schemaPath: "#/additionalProperties" },
-      { message: "must NOT have fewer than 1 characters", path: ["name"], keyword: "minLength", params: { limit: 1 }, schemaPath: "#/properties/name/minLength" },
-      { message: "must NOT have duplicate items (items ## 0 and 1 are identical)", path: ["tags"], keyword: "uniqueItems", params: { i: 1, j: 0 }, schemaPath: "#/properties/tags/uniqueItems" },
+      { message: "must NOT have additional properties", path: ["extra"], keyword: "additionalProperties" },
+      { message: "must NOT have fewer than 1 characters", path: ["name"], keyword: "minLength" },
+      { message: "must NOT have duplicate items (items ## 0 and 1 are identical)", path: ["tags"], keyword: "uniqueItems" },
     ],
   });
   assert.deepEqual(user.validate(null).issues.map((i: any) => [i.path, i.keyword]), [[[], "type"]]);
@@ -163,23 +163,24 @@ test("neither method throws for a value that is not JSON, and a path that cannot
   assert.deepEqual(s.validate(changing).issues.map((i: any) => i.path), [["list", "0"]]);
 });
 
-test("neither method throws where ajv does: is is false, and validate gives one issue at the root with what was thrown", async () => {
+test("neither method throws where ajv does: is is false, and validate gives one issue at the root with what was thrown as its message", async () => {
   const check = async (schema: object, values: unknown[]) => {
     const { default: s } = await evaluate(schemaCode(JSON.stringify(schema), PATH).code);
     return values.map((value) => {
       const { issues } = s.validate(value);
       assert.equal(issues.length, 1);
       const [issue] = issues;
-      assert.deepEqual([issue.path, issue.keyword, issue.schemaPath], [[], "error", "#"]);
-      assert.ok(issue.message.startsWith("could not be checked: "), issue.message);
+      assert.deepEqual(Object.keys(issue), ["message", "path", "keyword"]);
+      assert.deepEqual([issue.path, issue.keyword], [[], "error"]);
       assert.equal(s.is(value), false);
-      return [issue.message, issue.params.error?.constructor?.name];
+      return issue.message;
     });
   };
   // Any JSON value, recursively: JSON.parse of 3000 nested arrays, 6 KB of text, outruns ajv's stack.
   const json = { $defs: { json: { anyOf: [{ type: ["null", "boolean", "number", "string"] }, { type: "array", items: { $ref: "#/$defs/json" } }, { type: "object", additionalProperties: { $ref: "#/$defs/json" } }] } }, $ref: "#/$defs/json" };
   const deep = JSON.parse("[".repeat(3000) + "]".repeat(3000));
-  assert.deepEqual(await check(json, [deep]), [["could not be checked: Maximum call stack size exceeded", "RangeError"]]);
+  const overflow = "could not be checked: Maximum call stack size exceeded";
+  assert.deepEqual(await check(json, [deep]), [overflow]);
   // A value that refers to itself where the schema recurses, and uniqueItems over two such values.
   const tree = { $defs: { node: { type: "object", properties: { kids: { type: "array", items: { $ref: "#/$defs/node" } } } } }, $ref: "#/$defs/node" };
   const cyclic: any = { kids: [] };
@@ -188,8 +189,12 @@ test("neither method throws where ajv does: is is false, and validate gives one 
   a.me = a;
   const b: any = {};
   b.me = b;
-  assert.deepEqual((await check(tree, [cyclic])).map(([, name]) => name), ["RangeError"]);
-  assert.deepEqual((await check({ type: "array", uniqueItems: true }, [[a, b]])).map(([, name]) => name), ["RangeError"]);
+  assert.deepEqual(await check(tree, [cyclic]), [overflow]);
+  assert.deepEqual(await check({ type: "array", uniqueItems: true }, [[a, b]]), [overflow]);
+  // ajv-validator/ajv#2624: an object whose valueOf is not a function, against an object in `enum` or `const`.
+  const valueOf = { toString: 1, valueOf: 1 };
+  assert.deepEqual(await check({ enum: ["a", { x: 1 }] }, [valueOf]), ["could not be checked: a.valueOf is not a function"]);
+  assert.deepEqual(await check({ const: { x: 1 } }, [valueOf]), ["could not be checked: a.valueOf is not a function"]);
   // A getter that throws, a thrown value that is not an Error, and a revoked proxy.
   const revocable = Proxy.revocable({}, {});
   revocable.revoke();
@@ -206,8 +211,7 @@ test("neither method throws where ajv does: is is false, and validate gives one 
     },
     revocable.proxy,
   ]);
-  assert.deepEqual(messages.slice(0, 2), [["could not be checked: no a", "Error"], ["could not be checked: a string", "String"]]);
-  assert.deepEqual(messages.slice(2).map(([, name]) => name), ["TypeError"]);
+  assert.deepEqual(messages, ["could not be checked: no a", "could not be checked: a string", "could not be checked: Cannot perform 'IsArray' on a proxy that has been revoked"]);
   // A cycle the schema does not descend into is validated as any other value.
   const { default: s } = await evaluate(schemaCode(JSON.stringify(tree), PATH).code);
   const flat: any = { kids: [] };

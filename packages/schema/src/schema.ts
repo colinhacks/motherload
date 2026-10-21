@@ -18,7 +18,7 @@ import { createRequire } from "node:module";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
-import { collect, dynamicRefProblems, embeddedIdProblems, forAjv, parseSchemaFile, withoutKeywords, type Files } from "./refs.ts";
+import { collect, dynamicRefProblems, eachSchema, embeddedIdProblems, fileOf, forAjv, mapSchemas, parseSchemaFile, pointer, pointTo, withoutKeywords, type Files } from "./refs.ts";
 import { LITERAL_NAME, schemaDeclarations, type Draft } from "./schema-types.ts";
 import { jsonSchemas } from "./json-schema.ts";
 
@@ -74,7 +74,7 @@ type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?:
  * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
  * package's dependencies resolve from the package only, not from the project's directory.
  */
-function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = true): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
+function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = true, discriminator = false): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
   const require = createRequire(import.meta.url);
   const entry = ajvEntry(schema);
   if ("error" in entry) return entry;
@@ -96,7 +96,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = t
   // and multipleOfPrecision, so that `multipleOf` is read in decimals (by default ajv refused 19.99
   // for 0.01 and 0.3 for 0.1, whose quotients a double misses by 1e-13): within 1e-7 of a step is
   // a multiple, which keeps every quotient below 1e8 exact and still refuses 0.015 for 0.01.
-  const ajv = new AjvClass({ allErrors, strict: false, logger: false, ownProperties: true, multipleOfPrecision: 7, ...(standalone ? { code: { source: true } } : {}) });
+  const ajv = new AjvClass({ allErrors, strict: false, logger: false, ownProperties: true, multipleOfPrecision: 7, ...(discriminator ? { discriminator: true } : {}), ...(standalone ? { code: { source: true } } : {}) });
   // ajv's default class knows draft-07's meta-schema alone; draft-06's is added for a schema, or a
   // file it refers to, that declares it (ajv's documentation, "JSON Schema draft-06").
   if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
@@ -138,6 +138,100 @@ function compile(ajv: Ajv, files: Files, path: string): { validate: unknown } | 
   } catch (error) {
     return { problem: problem(`The schema is not valid: ${(error as Error).message}`) };
   }
+}
+
+// ---- the copy ajv compiles ----------------------------------------------------------------------
+
+const isObj = (value: Value | undefined): value is Record<string, Value> => typeof value === "object" && value !== null && !Array.isArray(value) && !(value instanceof Date);
+
+/**
+ * Whether some schema the validator is compiled from has `contains` beside a tuple (`prefixItems`,
+ * or draft-07's list of `items`). ajv 8.20.0's validator without allErrors accepts `[]` there,
+ * which the schema refuses: its `prefixItems` code sets the validity it gates `contains` on only
+ * for an array that has items. The validator with allErrors is right, so `is` confirms a pass with it.
+ */
+export function needsConfirmation(files: Files): boolean {
+  let found = false;
+  for (const schema of files.schemas.values())
+    eachSchema(schema, (sub) => {
+      if (sub["contains"] !== undefined && (Array.isArray(sub["prefixItems"]) || Array.isArray(sub["items"]))) found = true;
+    });
+  return found;
+}
+
+/** The value a `$ref` in the file `from` points to, among the files the validator is compiled from; undefined for an anchor, a URL or nothing. */
+function refTarget(files: Files, ref: string, from: string): Value | undefined {
+  const other = fileOf(ref, from);
+  const [file, fragment] = other ? [other.path, other.fragment] : ref.startsWith("#") ? [from, ref.slice(1)] : [undefined, ""];
+  const schema = file === undefined ? undefined : files.schemas.get(file);
+  const segments = pointer(fragment);
+  return schema === undefined || !segments ? undefined : pointTo(schema, segments);
+}
+
+/**
+ * The property that tells a `oneOf`'s variants apart, where ajv's `discriminator` (8.20.0,
+ * dist/vocabularies/discriminator) can stand for the `oneOf` and give the same verdict on every
+ * value: the schema is `type: "object"` (ajv skips the `oneOf` beside a discriminator, and the
+ * discriminator checks objects alone, so without it a number passed); each variant, or the schema
+ * a variant that is only a `$ref` points to, has the property in its own `properties` with a
+ * `const` that is a non-empty string or an `enum` of one string, the values distinct; and the
+ * property is required beside the `oneOf` or in every variant. Then a value whose tag is one
+ * variant's fails every other variant, so the `oneOf` holds exactly when that variant does.
+ */
+function discriminatorOf(files: Files, schema: Record<string, Value>, from: string): string | undefined {
+  const oneOf = schema["oneOf"];
+  if (schema["type"] !== "object" || !Array.isArray(oneOf) || oneOf.length < 2) return undefined;
+  const variants = oneOf.map((variant) => (isObj(variant) && Object.keys(variant).length === 1 && typeof variant["$ref"] === "string" ? refTarget(files, variant["$ref"], from) : variant));
+  if (!variants.every(isObj)) return undefined;
+  const tagOf = (variant: Record<string, Value>, name: string): string | undefined => {
+    const properties = variant["properties"];
+    const property = isObj(properties) && Object.hasOwn(properties, name) ? properties[name] : undefined;
+    if (!isObj(property)) return undefined;
+    if ("const" in property) return typeof property["const"] === "string" && property["const"] !== "" ? property["const"] : undefined;
+    const values = property["enum"];
+    return Array.isArray(values) && values.length === 1 && typeof values[0] === "string" ? values[0] : undefined;
+  };
+  const required = (owner: Record<string, Value>, name: string) => Array.isArray(owner["required"]) && owner["required"].includes(name);
+  const first = variants[0]!["properties"];
+  for (const name of isObj(first) ? Object.keys(first) : []) {
+    const tags = variants.map((variant) => tagOf(variant as Record<string, Value>, name));
+    if (tags.some((tag) => tag === undefined) || new Set(tags).size !== tags.length) continue;
+    if (required(schema, name) || variants.every((variant) => required(variant as Record<string, Value>, name))) return name;
+  }
+  return undefined;
+}
+
+/**
+ * The files as ajv compiles them for the module: a `discriminator` on each `oneOf` whose variants a
+ * property tells apart (`discriminatorOf`), so that a failing value is reported against its own
+ * variant alone, and none that the schema itself holds (OpenAPI's, which ajv ignores without its
+ * `discriminator` option and would read with it). Never the module's `schema` or its Standard JSON
+ * Schema, which stay as written. `count` is how many were added. None is added where any file uses
+ * `unevaluatedProperties` or `unevaluatedItems`: ajv's discriminator does not pass on what its
+ * variant evaluated, so `{ "kind": "y" }` failed `unevaluatedProperties: false` beside a oneOf
+ * that the same schema passes without it (measured).
+ */
+export function withDiscriminators(files: Files): { files: Files; count: number } {
+  let unevaluated = false;
+  for (const schema of files.schemas.values())
+    eachSchema(schema, (sub) => {
+      if (sub["unevaluatedProperties"] !== undefined || sub["unevaluatedItems"] !== undefined) unevaluated = true;
+    });
+  if (unevaluated) return { files, count: 0 };
+  let count = 0;
+  const schemas = new Map(
+    [...files.schemas].map(([path, schema]) => [
+      path,
+      mapSchemas(withoutKeywords(schema, ["discriminator"]), (copy) => {
+        const propertyName = discriminatorOf(files, copy, path);
+        if (propertyName !== undefined) {
+          copy["discriminator"] = { propertyName };
+          count++;
+        }
+      }),
+    ]),
+  );
+  return { files: { ...files, schemas }, count };
 }
 
 // ---- types --------------------------------------------------------------------------------------
@@ -236,9 +330,9 @@ const VALIDATOR = `
 // Standard Schema's path for an ajv error. ajv's instancePath is a JSON Pointer, which writes an
 // array index as it writes an object key, so each segment is read against the value it names: in
 // an array, a number. The key of a property that is missing, unexpected or misnamed, which ajv
-// gives in the error's params, ends the path; so does the key whose name an error inside
+// gives in the error's params (for the discriminator, the tag's), ends the path; so does the key whose name an error inside
 // propertyNames is about, which ajv gives on the error itself.
-const __KEYS = { required: "missingProperty", dependentRequired: "missingProperty", dependencies: "missingProperty", additionalProperties: "additionalProperty", unevaluatedProperties: "unevaluatedProperty", propertyNames: "propertyName" };
+const __KEYS = { required: "missingProperty", dependentRequired: "missingProperty", dependencies: "missingProperty", additionalProperties: "additionalProperty", unevaluatedProperties: "unevaluatedProperty", propertyNames: "propertyName", discriminator: "tag" };
 const __path = (value, error) => {
   const path = [];
   const segments = error.instancePath ? error.instancePath.slice(1).split("/").map((s) => s.replace(/~1/g, "/").replace(/~0/g, "~")) : [];
@@ -259,7 +353,9 @@ const __path = (value, error) => {
   else if (typeof error.propertyName === "string") path.push(error.propertyName);
   return path;
 };
-const __issue = (value, error) => ({ message: error.message ?? "is not valid", path: __path(value, error), keyword: error.keyword, params: error.params ?? {}, schemaPath: error.schemaPath });
+// The discriminator Motherload adds for a oneOf whose variants a property tells apart (withDiscriminators
+// in schema.ts) is not in the schema as written, so its failure is reported as the oneOf's.
+const __issue = (value, error) => ({ message: error.message ?? "is not valid", path: __path(value, error), keyword: error.keyword === "discriminator" ? "oneOf" : error.keyword });
 // What ajv threw, as text, for a value it could not check: a value nested deeper than the stack, one
 // that refers to itself where the schema recurses, a getter or proxy that throws.
 const __thrown = (error) => {
@@ -270,20 +366,21 @@ const __thrown = (error) => {
   }
 };
 // Every issue, from the validator compiled with allErrors; the value itself on success. Nothing
-// throws: what ajv throws is one issue at the root, the thrown value in its params.
+// throws: what ajv throws is one issue at the root, with its message.
 const __validate = (value) => {
   try {
     if (__validateAll(value)) return { value };
   } catch (error) {
-    return { issues: [{ message: "could not be checked: " + __thrown(error), path: [], keyword: "error", params: { error }, schemaPath: "#" }] };
+    return { issues: [{ message: "could not be checked: " + __thrown(error), path: [], keyword: "error" }] };
   }
   return { issues: __validateAll.errors.map((error) => __issue(value, error)) };
 };
 // The validator compiled without allErrors, which returns at the first failure; a value it
-// cannot check is not known to be valid.
+// cannot check is not known to be valid. Where ajv's first-failure code can pass a value the schema
+// refuses (\`contains\` beside a tuple, needsConfirmation in schema.ts), a pass is confirmed.
 const __is = (value) => {
   try {
-    return __validateFirst(value);
+    return __validateFirst(value) && (!__confirm || __validateAll(value));
   } catch {
     return false;
   }
@@ -310,8 +407,9 @@ export default schema;
  * The module's JavaScript, with problems in place of a validator that cannot be built, which a
  * bundler or the preload reports as a load error. `watchFiles` are the other schema files the
  * validator was compiled from, for a bundler to rebuild the module when one changes.
+ * `discriminators: false` compiles each oneOf as written, for the test that compares the two.
  */
-export function schemaCode(source: string, path: string): { code: string; problems: Problem[]; watchFiles: string[] } {
+export function schemaCode(source: string, path: string, { discriminators = true } = {}): { code: string; problems: Problem[]; watchFiles: string[] } {
   const failed = (problems: Problem[], watchFiles: string[] = []) => ({ code: "export default undefined;\n", problems, watchFiles });
   const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return failed(parsed.problems);
@@ -319,10 +417,18 @@ export function schemaCode(source: string, path: string): { code: string; proble
   if (files.problems.length) return failed(files.problems, files.watched);
   // Two validators from the same files, formats and meta-schemas: every error for `validate`, the first for `is`.
   const standalones: { name: string; source: string }[] = [];
+  // Each oneOf a property tells apart gets ajv's discriminator, so that its issues are the matching
+  // variant's; were ajv to refuse one, the validator is compiled as the schema is written.
+  const tagged = discriminators ? withDiscriminators(files) : { files, count: 0 };
   for (const [name, allErrors] of [["__validateAll", true], ["__validateFirst", false]] as const) {
-    const loaded = loadAjv(path, parsed.value, true, allErrors);
+    let loaded = loadAjv(path, parsed.value, true, allErrors, tagged.count > 0);
     if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
-    const compiled = compile(loaded.ajv, files, path);
+    let compiled = tagged.count > 0 ? compile(loaded.ajv, tagged.files, path) : compile(loaded.ajv, files, path);
+    if ("problem" in compiled && tagged.count > 0) {
+      loaded = loadAjv(path, parsed.value, true, allErrors);
+      if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
+      compiled = compile(loaded.ajv, files, path);
+    }
     if ("problem" in compiled) return failed([compiled.problem], files.watched);
     try {
       const standaloneModule = loaded.require("ajv/dist/standalone");
@@ -335,7 +441,7 @@ export function schemaCode(source: string, path: string): { code: string; proble
   // (`date-time`, `uri`), both dependencies of this package, so they resolve from this module:
   // from ajv's own directory ajv-formats does not resolve, and was left a bare `require`.
   return {
-    code: [inline(standalones, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, VALIDATOR, ""].join("\n"),
+    code: [inline(standalones, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, `const __confirm = ${needsConfirmation(files)};`, VALIDATOR, ""].join("\n"),
     problems: [],
     watchFiles: files.watched,
   };

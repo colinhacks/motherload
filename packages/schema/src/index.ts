@@ -79,18 +79,14 @@ export type SchemaResult<T> =
   | { readonly value: T; readonly issues?: undefined }
   | { readonly value?: undefined; readonly issues: readonly [SchemaIssue, ...SchemaIssue[]] };
 
-/** One way a value fails: ajv's error, with its place in the value as Standard Schema's path. */
+/** One way a value fails: ajv's message and keyword, with its place in the value as Standard Schema's path. */
 export interface SchemaIssue extends StandardSchemaV1.Issue {
-  /** ajv's message: "must be string", "must have required property 'name'". */
+  /** ajv's message: "must be string", "must have required property 'name'"; for a value the validator could not check, "could not be checked: " and why. */
   readonly message: string;
   /** Where in the value: object keys as strings, array indexes as numbers; a missing or unexpected property's key ends it. */
   readonly path: ReadonlyArray<string | number>;
-  /** The keyword that failed: "type", "required", "minLength", "additionalProperties", "format". */
+  /** The keyword that failed: "type", "required", "minLength", "additionalProperties", "format"; "error" for a value the validator could not check. */
   readonly keyword: string;
-  /** ajv's details for that keyword: `{ type: "string" }`, `{ missingProperty: "name" }`, `{ limit: 1 }`. */
-  readonly params: Readonly<Record<string, unknown>>;
-  /** Where in the schema, as a JSON Pointer: "#/properties/name/minLength". */
-  readonly schemaPath: string;
 }
 
 /**
