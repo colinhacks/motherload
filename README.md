@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center"><img src="site/public/motherload.svg" width="56" height="56" alt=""><br/>Motherload</h1>
+  <h1 align="center"><img src="https://motherload.dev/motherload.svg" width="56" height="56" alt=""><br/>Motherload</h1>
   <p align="center">
     Import a data file and get a typed module
     <br/>
@@ -47,14 +47,14 @@ tsc --noEmit --runExternalCode
 node --import motherload/register main.ts
 ```
 
-Each tool has its setup in the docs:
+Each tool has its setup in [the docs](https://motherload.dev):
 
-- [Node.js](site/content/sections/02-setup.mdx#node): `--import motherload/register`
-- [Nub](site/content/sections/02-setup.mdx#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
-- [esbuild](site/content/sections/02-setup.mdx#plugins): `plugins: [motherload()]` from `motherload/esbuild`
-- [VS Code, Cursor and Zed](site/content/sections/02-setup.mdx#editors): the TypeScript 7.1 language server, with content mappers on
+- [Node.js](https://motherload.dev/#node): `--import motherload/register`
+- [Nub](https://motherload.dev/#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
+- [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
+- [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
 
-Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](site/content/sections/02-setup.mdx#one-format-at-a-time).
+Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](https://motherload.dev/#one-format-at-a-time).
 
 ## Loaders
 
@@ -262,7 +262,3 @@ users.csv:3:1 - error motherload1: This row has 3 fields; the header has 2.
 3 Grace,grace@example.com,extra
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
-
-## Repository
-
-[PLAN.md](./PLAN.md) is where Motherload is going, [DESIGN.md](./DESIGN.md) records each decision and its evidence, and [AGENTS.md](./AGENTS.md) describes the layout and the checks. `motherload` is this directory; `@motherload/core` and the package of each format are in [packages/](./packages). [lab/basic](./lab/basic) imports every format, and [lab/packages](./lab/packages) three format packages alone.
