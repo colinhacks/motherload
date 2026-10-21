@@ -267,6 +267,4 @@ await esbuild.build({
 });
 ```
 
-- **One package per extension.** Two packages that claim one extension fail the type check, so list `motherload` or a format's package for each extension, never both.
-- **A process per package.** TypeScript runs one content mapper process per package, so two format packages are two processes; `motherload` serves every format from one.
-- **A schema stays a schema beside `.jsonc`.** With `@motherload/jsonc` and `@motherload/schema` both listed, TypeScript gives `user.schema.jsonc` to the entry with the longer suffix, and the preloads and plugins do the same, in any order.
+List each extension once, under `motherload` or under its own package: two packages that claim one extension fail the type check.

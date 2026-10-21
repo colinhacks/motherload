@@ -268,10 +268,7 @@ PORT=3000
 
 <Details summary="How the .env file is loaded" id="env-loading">
 
-- **Other names:** a name the file does not set keeps the type `@types/node` gives every variable, `string | undefined`, so a misspelled one is an error wherever a string is needed.
-- **The environment wins:** a variable the environment already sets keeps its value.
-- **Bundles:** no value from the file is in the module or in a bundle. A bundle reads the file from the working directory when it runs, and loads nothing if the file is absent.
-- **File names:** the `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.env`, but not `.env.local`, which ends in `.local`.
+A variable the environment already sets keeps its value. A bundle holds none of the file's values: it reads the file from the working directory when it runs, and loads nothing if the file is absent.
 
 </Details>
 
