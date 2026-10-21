@@ -19,8 +19,11 @@ export function agentPromptText(card: Element): string {
  * The instructions a coding agent follows to set the product up in a project, as the maintainer
  * asked on 2026-10-20 for Reylo's Setup: "some kind of complete, copyable instruction block for
  * agents that's visually obvious". A card with one Copy button, which copies the whole prompt (the
- * code block given as children, as plain text), and the prompt below it, folded to its first lines
- * until it is opened.
+ * code block given as children, as plain text), and the prompt below it as an ordinary code block,
+ * which scrolls where it is taller than a code block may be. It was folded to its first lines behind
+ * a fade with a control to open it until the maintainer, 2026-10-20: "I don't like the fade-out CSS/
+ * animation you have on the agent instructions block. it should just be a regular scrollable code
+ * block. The user can skim through it if they want, but the expand and collapse are not necessary."
  */
 export function AgentPrompt({
   title,
@@ -32,7 +35,6 @@ export function AgentPrompt({
   children: ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -56,13 +58,9 @@ export function AgentPrompt({
           <span data-shown={copied || undefined}>Copied</span>
         </button>
       </div>
-      <div ref={body} className="dk-agent-body" data-open={open || undefined}>
+      <div ref={body} className="dk-agent-body">
         {children}
       </div>
-      {/* Kept under the pointer when it folds the instructions above it (KEEP_IN_PLACE_SCRIPT). */}
-      <button type="button" className="dk-agent-toggle" onClick={() => setOpen(!open)} aria-expanded={open} data-keep-in-place={open || undefined}>
-        {open ? 'Show less' : 'Show the instructions'}
-      </button>
     </section>
   );
 }

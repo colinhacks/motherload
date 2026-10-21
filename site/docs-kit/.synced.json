@@ -1,10 +1,10 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "744735e",
+  "commit": "b011715",
   "files": {
     "package.json": "e77d2ad4f3879fb80f08152eb7c25fe930aee0936d9e3e9d42ca0f0cd4f68ddb",
-    "README.md": "6d4dfa33099a12f609818521d1fe13f83b475052b794ec45a90f3d540a8e21c9",
-    "src/components/agent-prompt.tsx": "8a540a4475f25ef54c536d86df284f6463eaab71084aa429cd19bbd5d55072b1",
+    "README.md": "c3afc9c00c0358740569ed195a000b30261c81317cd153bd744ce7dfcf2c42f4",
+    "src/components/agent-prompt.tsx": "d2ff449d1623faad0ac7e96a41d5d8285f81d235b5acd0643ca1417de1db55bf",
     "src/components/chrome.tsx": "2406305d9db24be97199d4cc774425e596e7ea56b4c6f4664d59ffa9c73b2c26",
     "src/components/code-tabs.tsx": "392de2165f31253907c82c010f44cfe29ed5aac179e5577314a71d373e60d4d9",
     "src/components/copy-agent-prompt.tsx": "909074a5c6c70e3c098dab57ff502d9261dfda3baa7c89caad6f18205de2fef8",
@@ -12,7 +12,7 @@
     "src/components/head-scripts.ts": "51ea8f5874e100127a9ca178c5e1352fe4e327b0e0a80b7816fc4f691219b777",
     "src/components/heading.tsx": "ceab616ee1d3abb4297979e3af6be79084bf34b5fe918067065bef18c4cdff66",
     "src/components/index.ts": "656fbbdb6e29ec6db6fc1cd6e77275a656466fecacca163c8ffc80193b8f0fd3",
-    "src/components/mdx.tsx": "09f0aec7389827abf485ab2a35957138e151abff421eccf63feafb60f89fe7cb",
+    "src/components/mdx.tsx": "baf0a411394395d606e58c87a725aa9e102dbdc20d9ad2d8fad2538b2fa3ab5e",
     "src/components/prepaint.tsx": "c51099f537a1b52dd96c4ddc5e51f3334cf4deb28a6bc51f4b18beb6eaf88ae3",
     "src/components/root.tsx": "a7b2bdeea27f706dc595770a63a3e2af839cd795ed1d5fbd99f743e769498417",
     "src/components/shell.tsx": "c0b30a4035d2b96b3c368b176e7aa7a5f38ffac07244a14c3b9982204aa5fed0",
@@ -25,7 +25,7 @@
     "src/mdx/twoslash.ts": "a2039253b7f020858c6606bd352f069f2834c3a5a9eddc695b115bf032bf29e6",
     "src/mdx-dev-loader.mjs": "0bdecfe183d6dcaddb63e337b83f8fe7f8a1e9828efd0e95713d1ff6dc9c3013",
     "src/next.mjs": "e6acab07c6a94d2f2fefec5dc6495117f3828698d3aac05a87a74dfeef7eeaf9",
-    "src/style.css": "fe4c32f44cd0b15051f8f06bb4cad56003b9fee809dc08dbf3f06768ac52ed51",
+    "src/style.css": "bc106ba74bf6fc985c636bdc505692ffb28357d74cd4346d608453506c8edc54",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626"
   }
 }

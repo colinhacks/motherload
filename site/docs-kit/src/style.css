@@ -20,11 +20,11 @@
 
 /* docs-kit: the stylesheet of a one-page Fumadocs docs site. A site imports it first in its own
    global.css and then sets its colours: Fumadocs' `--color-fd-*` variables for both themes (`:root`
-   and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name,
-   the bar under an h3 and the selection. Inline code and the table of contents' code chips are a
+   and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name
+   and the selection. Inline code and the table of contents' code chips are a
    wash of the text's own grey (`--dk-code-tint`), and the washes are variables too, for a palette
    that wants them lighter or stronger. Everything else here is the maintainer's rules for the docs
-   sites, from the reviews of Reylo's site (Reylo's docs/docs-site.md): the layout follows zod.dev
+   sites, from the reviews of Reylo's site (Reylo's wiki/docs-site.md): the layout follows zod.dev
    (ruled h1 and h2, borderless inline code, mono tab labels), with a reading measure, quiet
    collapsibles, code that never scrolls sideways and one cursor per kind of thing. */
 
@@ -85,12 +85,13 @@
 
 /* The subheader under the title, the page's first element (`<p className="dk-subheader">`, which
    can hold inline code where the frontmatter's description cannot): Fumadocs' description size
-   and colour, close above the first paragraph. */
+   and colour, with 2rem under it before the first paragraph, where it had 1.25rem, the gap
+   between two paragraphs (the maintainer, 2026-10-20: "Let's add more spacing underneath" it). */
 #nd-page .prose .dk-subheader {
   font-size: 1.125rem;
   line-height: 1.6;
   color: var(--color-fd-muted-foreground);
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
 }
 
 /* A feature list (`<div className="dk-features">` around a list): square bullets in the muted
@@ -123,31 +124,33 @@ html .prose {
     letter-spacing: -0.02em;
   }
 
-  /* An h3 is a step inside a section: smaller than an h2, and marked by a short bar of the accent
-     under its first letters where an h2 is ruled across the column (the maintainer, 2026-10-20: "I
-     kind of feel like h3s should have an underline. It may not need to go full width, but some
-     indication that they're an h3"; chosen from seven marks mocked for him: a bar of the accent or
-     of grey, a rule as wide as the heading, full-width rules solid, dotted or fading). The bar
-     hangs below the heading's box, which keeps its height, so the link icon and the copy button
-     stay centred on its text; the margin under the heading makes room for it. */
+  /* An h3 is a step inside a section: smaller than an h2, and ruled across the column by a hairline
+     fainter than the h2's rule (the maintainer, 2026-10-20: "I kind of feel like h3s should have
+     an underline. It may not need to go full width, but some indication that they're an h3"). A
+     short bar of the accent under the first letters came first, chosen from seven marks; that
+     evening, on Motherload's page, he called it "absolute trash" and, from ten treatments mocked
+     there (a leader line, an accent underline, a gold bar, section numbers, a bar in the margin, a
+     highlighter, a fading rule, amber text, heavier type, this hairline), said: "Honestly, the
+     hairline is fine." The rule hangs below the heading's box, which keeps its height, so the
+     link icon and the copy button stay centred on its text; the margin under the heading makes
+     room for it. */
   & > h3 {
     color: var(--color-fd-headings);
     font-size: 1.2rem;
     font-weight: 600;
     line-height: 1.4;
     @apply mt-10;
-    margin-bottom: calc(0.6em + 0.625rem);
+    margin-bottom: calc(0.6em + 0.5rem);
   }
 
   & > h3::after {
     content: '';
     position: absolute;
     left: 0;
-    bottom: -0.625rem;
-    width: 2rem;
-    height: 2px;
-    border-radius: 1px;
-    background-color: var(--dk-accent);
+    right: 0;
+    bottom: -0.5rem;
+    height: 1px;
+    background-color: color-mix(in oklab, var(--color-fd-border) 80%, transparent);
     pointer-events: none;
   }
 
@@ -262,135 +265,10 @@ html .prose {
   }
 }
 
-/* ── Accordions (`<Accordions>`, `<Accordion title>`; components/mdx.tsx marks them) ─────────
-   A list of setups a reader picks one from (Reylo's plugins and editors): each item a rounded bar
-   in the muted grey, 6px apart, its name in the headings' colour and weight with a plus on the
-   right that turns to a minus when open; the open item's text and code sit under its bar at the
-   column's width and the page's size, outside any box, so its code blocks are the page's own
-   cards with the page's edges. It replaced Fumadocs' card (one grey box with a hairline between
-   rows, a link icon on every row and the open item's code a card inside the card, inset from the
-   column), which the maintainer found did not look very good (2026-10-20); chosen from seven
-   designs mocked for him (that card, a ruled list with or without each item's file, separate
-   tiles, filled bars, a ruled list hanging the open item from a rule, a picker of buttons): the
-   bars have the most structure, which the plugins' accordion was asked for over the quiet
-   `<Details>`, and keep every code block on the column's edges. The link to an item sits in the
-   left margin as a heading's does, always visible. */
+/* The setup accordions: a quiet list, one hairline between items. */
 #nd-page .prose [data-accordion-item] h3,
 #nd-page .prose h3.not-prose {
   margin: 0;
-}
-
-#nd-page .dk-accordions {
-  display: grid;
-  gap: 0.375rem;
-  margin-block: 1.25rem 1.5rem;
-  border: none;
-  border-radius: 0;
-  background: none;
-  overflow: visible;
-}
-
-#nd-page .dk-accordions > .dk-accordion {
-  border: none;
-}
-
-#nd-page .dk-accordion > h3 {
-  position: relative;
-  border-radius: 0.5rem;
-  background-color: var(--color-fd-muted);
-  color: var(--color-fd-headings);
-  font-size: 1.03125rem;
-  font-weight: 600;
-  transition: background-color 120ms;
-}
-
-#nd-page .dk-accordion > h3:hover,
-#nd-page .dk-accordion > h3:has(:focus-visible) {
-  background-color: var(--color-fd-accent);
-}
-
-#nd-page .dk-accordion > h3 > button:first-child {
-  gap: 0.75rem;
-  padding: 0.625rem 2.75rem 0.625rem 0.875rem;
-  line-height: 1.6;
-}
-
-/* Fumadocs' chevron on the left gives way to a plus at the bar's right end, a minus when open. It
-   is drawn on the header, over the trigger, and lets clicks through to it. */
-#nd-page .dk-accordion > h3 > button:first-child > svg {
-  display: none;
-}
-
-#nd-page .dk-accordion > h3::after {
-  content: '';
-  position: absolute;
-  right: 0.875rem;
-  top: 50%;
-  translate: 0 -50%;
-  width: 0.875rem;
-  height: 0.875rem;
-  background:
-    linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat,
-    linear-gradient(currentColor, currentColor) center / 1.5px 100% no-repeat;
-  color: var(--color-fd-muted-foreground);
-  pointer-events: none;
-}
-
-#nd-page .dk-accordion > h3[data-state='open']::after {
-  background: linear-gradient(currentColor, currentColor) center / 100% 1.5px no-repeat;
-}
-
-/* The item's link button, Fumadocs' "Copy Link", in the left margin where a heading's link icon
-   is, the same grey; below md, where the margin is too narrow, it sits in the bar just left of the
-   plus, as a heading's icon joins its copy button at the right end of the line. */
-#nd-page .dk-accordion > h3 > button[aria-label] {
-  position: absolute;
-  left: -1.75rem;
-  top: 50%;
-  translate: 0 -50%;
-  margin: 0;
-  padding: 0.25rem;
-  border-radius: 0.25rem;
-  background: none;
-  color: color-mix(in oklab, var(--color-fd-muted-foreground) 55%, transparent);
-}
-
-#nd-page .dk-accordion > h3 > button[aria-label]:hover {
-  color: var(--color-fd-muted-foreground);
-}
-
-#nd-page .dk-accordion > h3 > button[aria-label] svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-@media (width < 48rem) {
-  #nd-page .dk-accordion > h3 > button[aria-label] {
-    left: auto;
-    right: 2.25rem;
-    padding: 0.3125rem;
-  }
-
-  #nd-page .dk-accordion > h3 > button:first-child {
-    padding-inline-end: 4.5rem;
-  }
-}
-
-/* The open item's text: the column's full width and the page's size (Fumadocs insets it 16px at
-   15px), clear of its bar above and of the next bar below. */
-#nd-page .dk-accordion > [role='region'] > div {
-  padding: 1rem 0 0.75rem;
-  font-size: inherit;
-}
-
-#nd-page .dk-accordion > [role='region'] > div > :first-child,
-#nd-page .dk-accordion > [role='region'] > div > :is(ol, ul):first-child > li:first-child,
-#nd-page .dk-accordion > [role='region'] > div > :is(ol, ul):first-child > li:first-child > :first-child {
-  margin-top: 0;
-}
-
-#nd-page .dk-accordion > [role='region'] > div > :last-child {
-  margin-bottom: 0;
 }
 
 /* The table of contents sits on the left, beside the text it indexes. */
@@ -705,9 +583,28 @@ code {
 /* A table of two columns (Reylo's Data types tables, "SQL type | TypeScript") splits the width in
    halves, as the maintainer asked; its columns once came out 197px beside 603px and then, sized by
    their content, the other way round. A wider table shares its width by its content. */
-#nd-page .prose table:has(tr > :nth-child(2):last-child) {
+#nd-page .prose table:has(tr > :nth-child(2):last-child):has(th:not(:empty)) {
   table-layout: fixed;
   width: 100%;
+}
+
+/* A table whose header cells are all empty is a list of labels and their values (Reylo's dialect
+   pages open with one: "Versions | Postgres 18, 17 and 14"). It shows no header row, which would be
+   an empty band, and its first column is as wide as its longest label, so the values keep the rest
+   of the width; in halves, a one-word label sat in 320px beside values that wrapped to three
+   lines. */
+#nd-page .prose table:not(:has(th:not(:empty))) {
+  width: 100%;
+}
+
+#nd-page .prose table:not(:has(th:not(:empty))) > thead {
+  display: none;
+}
+
+#nd-page .prose table:not(:has(th:not(:empty))) td:first-child {
+  width: 1%;
+  white-space: nowrap;
+  color: var(--color-fd-headings);
 }
 
 /* On a phone, a table of four columns fits the text column in a smaller face and
@@ -802,8 +699,8 @@ code {
 }
 
 /* ── The agent card, `<AgentPrompt>` (components/agent-prompt.tsx) ─────────────
-   A plain card in the page's own greys, like a code block's, with one Copy button; the
-   instructions under it are folded to their first lines until opened. It carries no accent: in
+   A plain card in the page's own greys, like a code block's, with one Copy button over the
+   instructions, an ordinary code block. It carries no accent: in
    the accent's border and fill it read as a warning ("It looks scary and awful", the maintainer
    on Reylo's yellow card, 2026-10-20). */
 
@@ -864,34 +761,15 @@ code {
   visibility: hidden;
 }
 
+/* The instructions are an ordinary code block under the head, which scrolls where it is taller than
+   Fumadocs lets a code block be; no fold, no fade and no control to open it (the maintainer,
+   2026-10-20: "it should just be a regular scrollable code block"). */
 #nd-page .dk-agent-body {
-  position: relative;
-  padding-inline: 1.25rem;
-  max-height: 9rem;
-  overflow: hidden;
-  mask-image: linear-gradient(to bottom, #000 55%, transparent);
-}
-
-#nd-page .dk-agent-body[data-open] {
-  max-height: none;
-  mask-image: none;
+  padding: 0 1.25rem 1.25rem;
 }
 
 #nd-page .dk-agent-body figure {
   margin: 0;
-}
-
-#nd-page .dk-agent-toggle {
-  display: block;
-  width: 100%;
-  padding: 0.625rem 1.25rem 0.875rem;
-  text-align: left;
-  font-size: 0.875rem;
-  color: var(--color-fd-muted-foreground);
-}
-
-#nd-page .dk-agent-toggle:hover {
-  color: var(--color-fd-headings);
 }
 
 /* ── "Copy agent prompt" on the title's row (components/copy-agent-prompt.tsx) ──
