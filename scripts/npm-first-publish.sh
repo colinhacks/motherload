@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# One-time, run by the maintainer in a terminal before the first release: put every Motherload package
-# on npm and point its trusted publisher at .github/workflows/release.yml, so that workflow can stage
-# it. From nub's scripts/npm-first-publish-runner.sh, which did the same for nub's runner packages.
+# Run by the maintainer in a terminal before the release that first ships a package: put every
+# Motherload package missing from npm on it and point its trusted publisher at
+# .github/workflows/release.yml, so that workflow can stage it (DESIGN.md, "Releasing"). From nub's
+# scripts/npm-first-publish-runner.sh, which did the same for nub's runner packages.
 #
 #   bash scripts/npm-first-publish.sh
 #

@@ -1,6 +1,6 @@
 {
   "name": "@motherload/jsonc",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Import .jsonc files, JSON with comments, as typed modules, read with jsonc-parser.",
   "license": "MIT",
@@ -29,7 +29,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.1.0",
+    "@motherload/core": "0.0.1",
     "jsonc-parser": "^3.3.1"
   }
 }
