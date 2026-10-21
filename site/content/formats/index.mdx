@@ -16,7 +16,6 @@ import scores from "./scores.tsv";
 import notes from "./notes.txt";
 import post from "./post.md";
 import user from "./user.schema.jsonc";
-import point from "./point.schema.json5";
 import "./.env";
 ```
 
@@ -91,19 +90,6 @@ The body of the post.
     "role": { "enum": ["admin", "member"] }
   },
   "required": ["name", "role"]
-}
-```
-
-```json5 title="point.schema.json5"
-{
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  type: 'object',
-  properties: {
-    x: { type: 'integer' },
-    y: { type: 'integer' },
-    label: { type: 'string' },
-  },
-  required: ['x', 'y'],
 }
 ```
 
