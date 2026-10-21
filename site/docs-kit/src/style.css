@@ -510,22 +510,22 @@ code {
   row-gap: 0;
 }
 
-/* A strip of seven tabs or more stays on one line in the 40rem column: its labels are 11px and 6px
-   a side, in place of 12px and 8px, and the active tab's rule keeps to its label. Motherload's
-   hero, main.ts and its seven files, needed 682px of the strip's 622px and now needs 604px of
-   620px; the strip starts 2px further in, so the first label still lines up with the code under
-   it. On a phone such a strip still wraps. */
+/* A strip of seven tabs or more stays on one line in the 40rem column: its labels are 11px and 5px
+   a side, in place of 12px and 8px, the active tab's rule keeps to its label, and the strip starts
+   11px in, so the first label still lines up with the code under it, and ends 4px in. Of the
+   strip's 623px, Motherload's hero (main.ts and its seven files) takes 588px, where it needed
+   682px of 622px, and Reylo's nine SQLite drivers 611px. On a phone such a strip still wraps. */
 #nd-page [role='tablist']:has(> [role='tab']:nth-child(7)) {
-  padding-inline-start: 0.625rem;
+  padding-inline: 0.6875rem 0.25rem;
 }
 
 #nd-page [role='tablist']:has(> [role='tab']:nth-child(7)) > [role='tab'] {
   font-size: 0.6875rem;
-  padding-inline: 0.375rem;
+  padding-inline: 0.3125rem;
 }
 
 #nd-page [role='tablist']:has(> [role='tab']:nth-child(7)) > [role='tab'] > div {
-  inset-inline: 0.375rem;
+  inset-inline: 0.3125rem;
 }
 
 .dk-code-tabs-file {
