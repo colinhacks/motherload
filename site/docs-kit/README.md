@@ -47,6 +47,7 @@ Everything about how a docs page looks and behaves is here. A rule the maintaine
 | --- | --- | --- |
 | `--dk-accent` | Reylo's yellow | link underline, open Twoslash name, the selection |
 | `--dk-code-tint` | `var(--color-fd-foreground)` | the colour inline code and the table of contents' code chips are a wash of |
+| `--dk-code-size` | `13px` | code in the blocks and in Twoslash's popups, so a page that draws its code larger draws its popups' to match |
 | `--color-fd-primary` | Fumadocs' | the accent where it carries text (active tabs, links on hover, the star note) |
 | `--dk-wash-code` | `9%` | inline code |
 | `--dk-wash-toc`, `--dk-wash-toc-hover`, `--dk-wash-toc-active` | `8%`, `11%`, `14%` | code chips in the table of contents |
@@ -125,6 +126,9 @@ export default [index('routes/home.tsx')] satisfies RouteConfig;
 import './global.css';
 import { DocsDocument } from 'docs-kit/document';
 import { Outlet } from 'react-router';
+import fontsCss from './fonts.css?url'; // the site's own @font-face rules
+
+export const links = () => [{ rel: 'stylesheet', href: fontsCss }];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return <DocsDocument>{children}</DocsDocument>;
@@ -159,7 +163,6 @@ export default function Home() {
 
 ```css title="app/global.css"
 @import 'docs-kit/style.css';
-@import './fonts.css'; /* the site's own @font-face rules */
 
 :root {
   --font-text: 'Geist', 'Geist Fallback';
@@ -175,7 +178,7 @@ export default function Home() {
 }
 ```
 
-Give its text and code fonts `font-display: optional` and preload their Latin files from `app/root.tsx`'s `links` (a font that arrives after the first paint rewraps the text, a layout shift), and let the code font fall back to the system's monospace. `react-router build` then writes the site to `build/client`, which any static host serves as it is (a `vercel.json` of `{ "framework": null, "outputDirectory": "build/client" }` on Vercel).
+Give its text and code fonts `font-display: optional` and preload their Latin files from `app/root.tsx`'s `links` (a font that arrives after the first paint rewraps the text, a layout shift), and let the code font fall back to the system's monospace. Link the `@font-face` rules from `links` as a stylesheet of their own, never `@import` them from `global.css`: under `vite dev`, React Router serves imported CSS as a stylesheet it removes once the page hydrates, when Vite injects its own copy, and faces declared again then miss `optional`'s window, so the page drops to its fallback fonts for the rest of the visit (Motherload's page went from IBM Plex to Arial, 2026-10-21). `react-router build` then writes the site to `build/client`, which any static host serves as it is (a `vercel.json` of `{ "framework": null, "outputDirectory": "build/client" }` on Vercel).
 
 A long page splits into one MDX file per h2, so that an edit compiles one section: a second collection (`defineCollections({ type: 'doc', dir: 'content/sections', mdxOptions })`), rendered after the page's own MDX in the order of the files' names, with the table of contents theirs in order (`[...page.data.toc, ...sections.flatMap((s) => s.toc)]`).
 

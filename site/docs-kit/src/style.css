@@ -1114,12 +1114,15 @@ html #nd-page .prose > h3 {
   letter-spacing: -0.01em;
 }
 
-/* Code at 13px with room between lines (it was 13px at 1.43), in the blocks and the type popups. */
+/* Code at 13px with room between lines (it was 13px at 1.43), in the blocks and the type popups.
+   The size is `--dk-code-size`, so a page that sets its code larger sets its popups' to match:
+   Motherload's screenshot page draws its code at 17px, and its popups' types stayed at 13px (the
+   maintainer, 2026-10-21: "the popovers in the showcase page are the same size as the code"). */
 #nd-page figure.shiki pre,
 #nd-page figure.shiki pre code,
 .fd-twoslash-popover pre,
 .fd-twoslash-popover code {
-  font-size: 13px;
+  font-size: var(--dk-code-size, 13px);
   line-height: 1.7;
 }
 

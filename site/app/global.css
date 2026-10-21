@@ -447,9 +447,10 @@
 }
 
 /* The hover cards, which Twoslash puts at the end of the page, in the code's own size, as on the
-   docs page, where both are 13px. */
+   docs page, where both are 13px: docs-kit sets a card's code at `--dk-code-size`. */
 html:has(.ml-showcase) {
   --shot-code-size: 17px;
+  --dk-code-size: var(--shot-code-size);
 }
 
 html:has(.ml-showcase) .fd-twoslash-popover {
