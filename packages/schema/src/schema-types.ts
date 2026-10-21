@@ -2,9 +2,10 @@
 // `Type`, and each entry of the root's `$defs` (or draft-07 `definitions`) is a named type of its
 // own, its key in PascalCase, so `{ "$ref": "#/$defs/person" }` is `Person` and a recursive schema
 // stays finite. Keywords that only narrow a value TypeScript cannot narrow (`minLength`, `format`,
-// `pattern`, `multipleOf`, ...) are left out; one the emitter does not cover (`not`,
-// `if`/`then`/`else`, a `$ref` it cannot resolve) widens that part of the type to `unknown`. A
-// `$ref` to another schema file is a type imported from that file's own module (refs.ts).
+// `pattern`, `multipleOf`, ...) are left out; one the emitter does not cover (`not`, an
+// `if`/`then`/`else` that does not test a property's listed values, a `$ref` it cannot resolve)
+// widens that part of the type to `unknown`. A `$ref` to another schema file is a type imported
+// from that file's own module (refs.ts).
 import { basename } from "node:path";
 import { literal, propertyName, type Value } from "@motherload/core";
 import { fileOf, pointer, pointTo, specifierOf } from "./refs.ts";
@@ -98,6 +99,45 @@ export interface SchemaFiles {
 
 /** A schema file whose pointers a reference can follow: the root's own, or another file's, whose names are imported. */
 type Document = { schema: Value; path: string | undefined; names: Map<string, string>; own: boolean };
+
+/**
+ * The keywords that evaluate properties in place, beside `properties` and `patternProperties`: a
+ * key one of them allows is not refused by `unevaluatedProperties: false`.
+ */
+const EVALUATING = ["allOf", "anyOf", "oneOf", "if", "then", "else", "dependentSchemas", "$ref", "$dynamicRef", "$recursiveRef"];
+
+const ANNOTATIONS = ["$comment", "title", "description"];
+
+type Primitive = string | number | boolean | null;
+const isPrimitive = (value: Value): value is Primitive => value === null || ["string", "number", "boolean"].includes(typeof value);
+
+/** Whether `value` is of the JSON type `name`. */
+function ofType(value: Primitive, name: string): boolean {
+  if (name === "integer") return Number.isInteger(value);
+  return name === "null" ? value === null : typeof value === name;
+}
+
+/** The values a schema of `const` or `enum` admits, when each is a string, number, boolean or null; `exact` refuses a schema with any other keyword than `type` and annotations. */
+function literalsOf(schema: Value | undefined, exact: boolean): Primitive[] | undefined {
+  if (!isObj(schema) || (exact && !Object.keys(schema).every((k) => ["const", "enum", "type", ...ANNOTATIONS].includes(k)))) return undefined;
+  const listed = Array.isArray(schema["enum"]) ? schema["enum"] : undefined;
+  const values = Object.hasOwn(schema, "const") ? [schema["const"]!].filter((value) => !listed || listed.includes(value)) : listed;
+  if (!values?.every(isPrimitive)) return undefined;
+  const types = typeof schema["type"] === "string" ? [schema["type"]] : strings(schema["type"]);
+  return [...new Set(schema["type"] === undefined ? values : values.filter((value) => types.some((name) => ofType(value, name))))];
+}
+
+/** An `if` that tests one property's value with `const` or `enum`, and nothing else: the property and the values that pass. */
+function propertyTest(test: Value | undefined): { key: string; values: Primitive[] } | undefined {
+  if (!isObj(test) || !Object.keys(test).every((k) => ["properties", "required", "type", ...ANNOTATIONS].includes(k))) return undefined;
+  if (test["type"] !== undefined && test["type"] !== "object") return undefined;
+  const keys = isObj(test["properties"]) ? Object.keys(test["properties"]) : [];
+  if (keys.length !== 1) return undefined;
+  const key = keys[0]!;
+  if (test["required"] !== undefined && !(Array.isArray(test["required"]) && test["required"].every((name) => name === key))) return undefined;
+  const values = literalsOf((test["properties"] as Obj)[key], true);
+  return values && { key, values };
+}
 
 /** The drafts whose keywords differ for a type: draft-06 reads as draft-07. */
 export type Draft = "draft-07" | "2019-09" | "2020-12";
@@ -194,9 +234,10 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
     }
     for (const key of required) if (!Object.hasOwn(properties, key)) lines.push(`${inner}${propertyName(key)}: unknown;`);
     // Keys outside `properties`: an index signature, unless `additionalProperties` (or, without it,
-    // `unevaluatedProperties`) is false. Its type covers the named properties too, as TypeScript requires.
+    // `unevaluatedProperties`, when no keyword beside it can allow another key) is false. Its type
+    // covers the named properties too, as TypeScript requires.
     const additional = schema["additionalProperties"];
-    const closed = additional === false || (additional === undefined && unevaluated && schema["unevaluatedProperties"] === false);
+    const closed = additional === false || (additional === undefined && unevaluated && schema["unevaluatedProperties"] === false && !EVALUATING.some((k) => Object.hasOwn(schema, k)));
     const extra = isObj(schema["patternProperties"]) ? Object.values(schema["patternProperties"]).map((pattern) => emit(pattern, inner)) : [];
     if (!closed) extra.push(additional === undefined || additional === true ? "unknown" : emit(additional, inner));
     if (extra.length) lines.push(`${inner}[key: string]: ${union([...extra, ...valueTypes])};`);
@@ -218,6 +259,54 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
     const elements = tuple.map((element, i) => `${emit(element, indent)}${i < min ? "" : "?"}`);
     if (rest !== false) elements.push(`...${arrayOf(restType)}`);
     return `[${elements.join(", ")}]`;
+  }
+
+  /** A schema that is a `$ref` within its document, with nothing beside it but annotations, as the schema it points to. */
+  function followLocal(schema: Value | undefined): Value | undefined {
+    for (let hops = 0; hops < 8 && isObj(schema) && typeof schema["$ref"] === "string" && schema["$ref"].startsWith("#") && Object.keys(schema).every((k) => k === "$ref" || ANNOTATIONS.includes(k)); hops++) {
+      const path = pointer(schema["$ref"].slice(1));
+      schema = path ? pointTo(current.schema, path) : undefined;
+    }
+    return schema;
+  }
+
+  /**
+   * The `if`/`then`/`else` of an object schema, its own and those of `allOf` members that hold
+   * nothing else, as a union with one member per value of a required property they test, when that
+   * property's schema lists its values (`enum` or `const`) and each `if` tests the value alone. Each
+   * member is that value with the `then` of every test it passes and the `else` of every test it
+   * fails, so every value the validator accepts is in the member for its own value, and TypeScript
+   * narrows the union on the property. A conditional of another shape is not read, and widens.
+   */
+  function conditionalCases(schema: Obj, indent: string): string | undefined {
+    const onlyConditional = (member: Value) => isObj(member) && Object.hasOwn(member, "if") && Object.keys(member).every((k) => ["if", "then", "else", ...ANNOTATIONS].includes(k));
+    const conditionals = [schema, ...(Array.isArray(schema["allOf"]) ? schema["allOf"].filter(onlyConditional) : [])].filter((member): member is Obj => isObj(member) && Object.hasOwn(member, "if"));
+    const properties = isObj(schema["properties"]) ? schema["properties"] : {};
+    const required = new Set(strings(schema["required"]));
+    let key: string | undefined;
+    let domain: Primitive[] = [];
+    const tests: { values: Primitive[]; then: Value | undefined; else: Value | undefined }[] = [];
+    for (const conditional of conditionals) {
+      const test = propertyTest(conditional["if"]);
+      if (!test || !required.has(test.key) || (key !== undefined && test.key !== key)) continue;
+      if (key === undefined) {
+        const values = literalsOf(followLocal(properties[test.key]), false);
+        if (!values) continue;
+        [key, domain] = [test.key, values];
+      }
+      tests.push({ values: test.values, then: conditional["then"], else: conditional["else"] });
+    }
+    if (key === undefined) return undefined;
+    const name = propertyName(key);
+    const variants = domain.map((value) => {
+      const members = [`{ ${name}: ${literal(value)} }`];
+      for (const test of tests) {
+        const branch = test.values.includes(value) ? test.then : test.else;
+        if (branch !== undefined) members.push(emit(branch, indent));
+      }
+      return members.includes("never") ? "never" : members.filter((member) => member !== "unknown").map(paren).join(" & ");
+    });
+    return union(variants.map(paren));
   }
 
   function typeOf(name: string, schema: Obj, indent: string): string {
@@ -259,6 +348,8 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Dra
             ? ["array"]
             : [];
       if (types.length) parts.push(union(types.map((name) => typeOf(name, schema, indent))));
+      const cases = types.length === 1 && types[0] === "object" ? conditionalCases(schema, indent) : undefined;
+      if (cases !== undefined) parts.push(cases);
     }
     for (const member of Array.isArray(schema["allOf"]) ? schema["allOf"] : []) parts.push(emit(member, indent));
     for (const keyword of ["anyOf", "oneOf"]) {

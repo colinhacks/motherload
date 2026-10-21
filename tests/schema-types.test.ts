@@ -5,8 +5,9 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { schemaDeclarations } from "../packages/schema/src/schema-types.ts";
-import { run, TSC } from "./helpers.ts";
+import { schemaCode } from "../packages/schema/src/schema.ts";
+import { schemaDeclarations, type Draft } from "../packages/schema/src/schema-types.ts";
+import { evaluate, run, TSC } from "./helpers.ts";
 
 const emit = (schema: unknown) => schemaDeclarations(schema as never);
 
@@ -112,4 +113,118 @@ test("every emitted declaration type-checks", () => {
   const { status, out } = run(TSC, ["-p", join(dir, "tsconfig.json")]);
   assert.equal(out, "");
   assert.equal(status, 0);
+});
+
+/**
+ * Each sample the validator accepts is assigned to the schema's type, and `use`, TypeScript run
+ * against `Type`, must type-check: the type admits every value the validator accepts. Returns how
+ * many samples of each schema were accepted, so a test can tell its samples are not all refused.
+ */
+async function agrees(cases: { schema: Record<string, unknown>; samples: unknown[]; use?: string }[]): Promise<number[]> {
+  const dir = mkdtempSync(join(tmpdir(), "motherload-agrees-"));
+  const drafts: Record<string, Draft> = { "https://json-schema.org/draft/2020-12/schema": "2020-12", "https://json-schema.org/draft/2019-09/schema": "2019-09" };
+  const counts: number[] = [];
+  for (const [i, { schema, samples, use = "" }] of cases.entries()) {
+    const { code, problems } = schemaCode(JSON.stringify(schema), join(dir, `s${i}.schema.jsonc`));
+    assert.deepEqual(problems, []);
+    const { default: validator } = await evaluate(code);
+    const accepted = samples.filter((sample) => validator.is(sample));
+    counts.push(accepted.length);
+    const types = schemaDeclarations(schema as never, undefined, drafts[schema["$schema"] as string] ?? "draft-07");
+    writeFileSync(join(dir, `s${i}.ts`), [types, ...accepted.map((sample, j) => `export const accepted${j}: Type = ${JSON.stringify(sample)};`), use, ""].join("\n"));
+  }
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true, noEmit: true, target: "esnext", module: "nodenext", types: [] }, include: ["*.ts"] }));
+  const { status, out } = run(TSC, ["-p", join(dir, "tsconfig.json")]);
+  assert.equal(out, "");
+  assert.equal(status, 0);
+  return counts;
+}
+
+test("if/then/else on a required property's listed values is a union TypeScript narrows", () => {
+  const schema = {
+    type: "object",
+    properties: { kind: { enum: ["click", "visit"] }, at: { type: "string" } },
+    required: ["kind", "at"],
+    if: { properties: { kind: { const: "click" } } },
+    then: { properties: { x: { type: "number" } }, required: ["x"] },
+    else: { properties: { url: { type: "string" } }, required: ["url"] },
+  };
+  assert.equal(
+    emit(schema),
+    'export type Type = {\n  kind: "click" | "visit";\n  at: string;\n  [key: string]: unknown;\n} & (({ kind: "click" } & {\n  x: number;\n  [key: string]: unknown;\n}) | ({ kind: "visit" } & {\n  url: string;\n  [key: string]: unknown;\n}));',
+  );
+  // `allOf` members that hold a conditional each, an `enum` test, a `$ref` to the values, and a value no test names.
+  const chain = {
+    type: "object",
+    properties: { kind: { $ref: "#/$defs/kind" } },
+    required: ["kind"],
+    allOf: [
+      { if: { properties: { kind: { const: "click" } } }, then: { properties: { x: { type: "number" } }, required: ["x"] } },
+      { if: { properties: { kind: { enum: ["visit", "leave"] } }, required: ["kind"] }, then: { properties: { url: { type: "string" } }, required: ["url"] } },
+    ],
+    $defs: { kind: { enum: ["click", "visit", "leave", "idle"] } },
+  };
+  assert.match(emit(chain), /\| \(\{ kind: "leave" \} & \{\n  url: string;\n  \[key: string\]: unknown;\n\}\) \| \{ kind: "idle" \}\);/);
+  // A `then: false` leaves its value out; a test with `type` beside its values passes only those of that type.
+  assert.equal(
+    emit({ type: "object", properties: { n: { enum: [1, "1", 2] } }, required: ["n"], if: { properties: { n: { type: "string", enum: ["1", 2] } } }, then: false }),
+    'export type Type = {\n  n: 1 | "1" | 2;\n  [key: string]: unknown;\n} & ({ n: 1 } | { n: 2 });',
+  );
+});
+
+test("a conditional of another shape is not read: the type is as wide as without it", () => {
+  const base = { type: "object", properties: { kind: { type: "string" } }, required: ["kind"] };
+  const wide = emit(base);
+  const then = { properties: { x: { type: "number" } }, required: ["x"] };
+  // The property's values are not listed; it is not required; the `if` tests more than one value; another keyword sits in the test.
+  assert.equal(emit({ ...base, if: { properties: { kind: { const: "click" } } }, then }), wide);
+  assert.equal(emit({ type: "object", properties: { kind: { enum: ["a", "b"] } }, if: { properties: { kind: { const: "a" } } }, then }), emit({ type: "object", properties: { kind: { enum: ["a", "b"] } } }));
+  const listed = { type: "object", properties: { kind: { enum: ["a", "b"] }, y: {} }, required: ["kind"] };
+  assert.equal(emit({ ...listed, if: { properties: { kind: { const: "a" }, y: { const: 1 } } }, then }), emit(listed));
+  assert.equal(emit({ ...listed, if: { properties: { kind: { const: "a", minLength: 1 } } }, then }), emit(listed));
+  assert.equal(emit({ ...listed, if: { required: ["y"] }, then }), emit(listed));
+});
+
+test("the type admits every value the validator accepts, and narrows, for conditionals and unevaluatedProperties", async () => {
+  const counts = await agrees([
+    {
+      schema: { type: "object", properties: { kind: { enum: ["click", "visit"] }, at: { type: "string" } }, required: ["kind", "at"], if: { properties: { kind: { const: "click" } } }, then: { properties: { x: { type: "number" } }, required: ["x"] }, else: { properties: { url: { type: "string" } }, required: ["url"] } },
+      samples: [{ kind: "click", at: "t", x: 1 }, { kind: "visit", at: "t", url: "u" }, { kind: "click", at: "t", x: 1, url: "u" }, { kind: "visit", at: "t", url: "u", x: "any" }, { kind: "click", at: "t" }, { kind: "visit", at: "t", x: 1 }],
+      use: [
+        "declare const v: Type;",
+        "if (v.kind === \"click\") v.x.toFixed(); else v.url.toUpperCase();",
+        "// @ts-expect-error: `x` is a number only on a click",
+        "v.x.toFixed();",
+      ].join("\n"),
+    },
+    {
+      schema: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: { kind: { $ref: "#/$defs/kind" } },
+        required: ["kind"],
+        unevaluatedProperties: false,
+        allOf: [
+          { if: { properties: { kind: { const: "click" } } }, then: { properties: { x: { type: "number" } }, required: ["x"] } },
+          { if: { properties: { kind: { enum: ["visit", "leave"] } }, required: ["kind"] }, then: { properties: { url: { type: "string" } }, required: ["url"] } },
+        ],
+        $defs: { kind: { enum: ["click", "visit", "leave", "idle"] } },
+      },
+      samples: [{ kind: "idle" }, { kind: "idle", x: 1 }, { kind: "click", x: 1 }, { kind: "leave", url: "u" }, { kind: "click", x: 1, url: "u" }, { kind: "visit" }],
+      use: [
+        "export function describe(v: Type): string {",
+        "  switch (v.kind) {",
+        "    case \"click\": return v.x.toFixed();",
+        "    case \"visit\": case \"leave\": return v.url;",
+        "    case \"idle\": return \"idle\";",
+        "    default: { const none: never = v; return none; }",
+        "  }",
+        "}",
+      ].join("\n"),
+    },
+    // `unevaluatedProperties: false` refuses no key that `allOf` allows, so the type has no `[key: string]: never`.
+    { schema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", allOf: [{ properties: { a: { type: "string" } } }], unevaluatedProperties: false }, samples: [{ a: "x" }, {}, { b: 1 }] },
+    { schema: { $schema: "https://json-schema.org/draft/2020-12/schema", type: "object", $ref: "#/$defs/a", unevaluatedProperties: false, $defs: { a: { properties: { a: { type: "string" } } } } }, samples: [{ a: "x" }, { b: 1 }] },
+  ]);
+  assert.deepEqual(counts, [4, 3, 2, 1]);
 });
