@@ -6,9 +6,9 @@
 //   user.is(input);             // input is User
 //   user["~standard"];          // Standard Schema v1, for any library that accepts one
 //
-// The types come from Motherload's own emitter (schema-types.ts), the validator from ajv, an
-// optional peer dependency resolved from the schema's own directory. The generated module imports
-// nothing: ajv's standalone code is inlined with the few run-time helpers it requires.
+// The types come from Motherload's own emitter (schema-types.ts), the validator from ajv, a
+// dependency of Motherload's, resolved from this module. The generated module imports nothing:
+// ajv's standalone code is inlined with the few run-time helpers it requires.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
@@ -36,9 +36,12 @@ function ajvEntry(schema: Value): { entry: string } | { error: string } {
 
 type Ajv = { compile(schema: unknown): unknown; errorsText?(errors: unknown): string };
 
-/** ajv and ajv-formats as the project installed them, looked up from the schema's directory. */
+/**
+ * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
+ * package's dependencies resolve from the package only, not from the project's directory.
+ */
 function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
-  const require = createRequire(path);
+  const require = createRequire(import.meta.url);
   const entry = ajvEntry(schema);
   if ("error" in entry) return entry;
   let AjvClass: new (options: object) => Ajv;
@@ -46,7 +49,7 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
     const mod = require(entry.entry);
     AjvClass = mod.default ?? mod;
   } catch {
-    return { error: `Validating ${basename(path)} needs ajv, an optional peer dependency of Motherload: install it in the project.` };
+    return { error: `Validating ${basename(path)} needs ajv, a dependency of Motherload, which did not load: reinstall Motherload.` };
   }
   // allErrors: a Standard Schema result lists every issue. strict: false and no logger: a schema
   // written for another validator (unknown keywords, formats) still compiles, as the spec allows.

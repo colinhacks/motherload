@@ -97,12 +97,17 @@ test("draft-04 is refused with the drafts ajv validates", () => {
   assert.match(problems[0]!.message, /drafts 06, 07, 2019-09 and 2020-12/);
 });
 
-test("outside a project with ajv, the types are still built and the code says what to install", () => {
-  const dir = mkdtempSync(join(tmpdir(), "motherload-no-peers-"));
+test("a schema outside any project that installs ajv still validates: ajv is Motherload's own dependency", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "motherload-no-ajv-"));
   const path = join(dir, "a.schema.jsonc");
   writeFileSync(path, SCHEMA);
   const { types, problems } = schemaTypes(SCHEMA, path);
   assert.deepEqual(problems, []);
   assert.match(types, /export interface Type \{\n  name: string;\n  tags\?: \{\n    \[key: string\]: unknown;\n  \}\[\];\n\}/);
-  assert.match(schemaCode(SCHEMA, path).problems[0]!.message, /needs ajv/);
+  const { code, problems: codeProblems } = schemaCode(SCHEMA, path);
+  assert.deepEqual(codeProblems, []);
+  assert.doesNotMatch(code, /^import /m);
+  const { default: user } = await evaluate(code);
+  assert.equal(user.is({ name: "Ada" }), true);
+  assert.equal(user.is({ name: "" }), false);
 });

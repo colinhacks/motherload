@@ -91,12 +91,6 @@ npm install -D motherload
 npm install -D typescript@next
 ```
 
-Schema imports need two optional peer dependencies, which run only when a module is built:
-
-```sh
-npm install -D ajv ajv-formats
-```
-
 The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`.
 
 ### TypeScript
@@ -135,38 +129,50 @@ Type-check with `--runExternalCode`. Without the flag, `tsc` ignores content map
 
 The editor needs the TypeScript 7.1 language server, with content mappers on.
 
-<Tabs items={["VS Code", "Cursor", "Zed"]}>
-<Tab value="VS Code">
+<Accordions type="multiple">
+<Accordion title="VS Code" id="editor-vscode">
 
-1. Install the **TypeScript (Native Preview)** extension (`TypeScriptTeam.native-preview`).
-2. Turn it on:
-
-   ```json title=".vscode/settings.json"
-   {
-     "typescript.experimental.useTsgo": true,
-     "js/ts.contentMappers.enabled": true
-   }
-   ```
-
-3. Trust the workspace. The extension runs no content mapper in an untrusted workspace.
-
-</Tab>
-<Tab value="Cursor">
-
-1. Install the **TypeScript (Native Preview)** extension (`TypeScriptTeam.native-preview`).
-2. Turn it on:
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
+2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
 
    ```json title=".vscode/settings.json"
    {
-     "typescript.experimental.useTsgo": true,
-     "js/ts.contentMappers.enabled": true
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript"
    }
    ```
 
-3. Trust the workspace. The extension runs no content mapper in an untrusted workspace.
+3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
 
-</Tab>
-<Tab value="Zed">
+To suggest the extension to everyone who opens the project:
+
+```json title=".vscode/extensions.json"
+{ "recommendations": ["TypeScriptTeam.native-preview"] }
+```
+
+</Accordion>
+<Accordion title="Cursor" id="editor-cursor">
+
+1. Install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`).
+2. Point it at the project's TypeScript: the extension's own copy is TypeScript 7.0, which has no content mappers.
+
+   ```json title=".vscode/settings.json"
+   {
+     "js/ts.experimental.useTsgo": true,
+     "js/ts.tsdk.path": "./node_modules/typescript"
+   }
+   ```
+
+3. Trust the workspace, and click **Allow** when the extension asks to use the workspace's TypeScript. Content mappers run in a trusted workspace only.
+
+To suggest the extension to everyone who opens the project:
+
+```json title=".vscode/extensions.json"
+{ "recommendations": ["TypeScriptTeam.native-preview"] }
+```
+
+</Accordion>
+<Accordion title="Zed" id="editor-zed">
 
 1. Install the **TypeScript Language Server** extension by Zed Industries (search for "tsgo").
 2. Point it at the project's TypeScript, with content mappers on:
@@ -175,16 +181,29 @@ The editor needs the TypeScript 7.1 language server, with content mappers on.
    {
      "languages": {
        "TypeScript": {
-         "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+         "language_servers": [
+           "typescript-ls",
+           "!vtsls",
+           "!typescript-language-server",
+           "..."
+         ]
        },
        "TSX": {
-         "language_servers": ["typescript-ls", "!vtsls", "!typescript-language-server", "..."]
+         "language_servers": [
+           "typescript-ls",
+           "!vtsls",
+           "!typescript-language-server",
+           "..."
+         ]
        }
      },
      "lsp": {
        "typescript-ls": {
          // the extension's own download is TypeScript 7.0, which has no content mappers
-         "binary": { "path": "node_modules/typescript/bin/tsc", "arguments": ["--lsp", "--stdio"] },
+         "binary": {
+           "path": "node_modules/typescript/bin/tsc",
+           "arguments": ["--lsp", "--stdio"]
+         },
          "initialization_options": { "runExternalCode": true }
        }
      }
@@ -193,18 +212,27 @@ The editor needs the TypeScript 7.1 language server, with content mappers on.
 
 3. Trust the folder. In restricted mode, Zed starts no language server.
 
-</Tab>
-</Tabs>
+After a change to `binary.path`, close the window and open it again. In a monorepo whose TypeScript is installed at the root, `binary.path` points at that copy.
 
-### Runtimes
+</Accordion>
+</Accordions>
 
-A preload turns each data file into a module as it loads. Node.js takes it with `--import`:
+### Node
+
+Node loads Motherload with `--import`, which turns each data file into a module as it loads:
 
 ```sh
 node --import motherload/register main.ts
 ```
 
-Nub reads the preload from `nub.jsonc`, so no flag is needed:
+### Plugins
+
+Everywhere else, a plugin turns each data file into a module: Nub loads Motherload's preload from its config file, and a bundler builds each module at build time, so a bundled app needs no `--import` and no preload, and Motherload stays a development dependency.
+
+<Accordions type="multiple">
+<Accordion title="Nub" id="setup-nub">
+
+Nub takes the preload in `nub.jsonc`, so `nub main.ts` needs no flag:
 
 ```jsonc title="nub.jsonc"
 {
@@ -212,11 +240,7 @@ Nub reads the preload from `nub.jsonc`, so no flag is needed:
 }
 ```
 
-### Bundlers
-
-A bundler plugin turns each data file into a module at build time, so a bundled app needs no preload, and Motherload stays a development dependency.
-
-<Accordions type="multiple">
+</Accordion>
 <Accordion title="esbuild" id="setup-esbuild">
 
 ```js title="build.mjs"
@@ -226,10 +250,14 @@ import motherload from "motherload/esbuild";
 await esbuild.build({
   entryPoints: ["main.ts"],
   bundle: true,
+  platform: "node",
+  format: "esm",
   plugins: [motherload()],
-  outfile: "dist/main.js",
+  outfile: "dist/main.mjs",
 });
 ```
+
+Use `build`: esbuild runs plugins in `build` only, and `buildSync` throws.
 
 </Accordion>
 </Accordions>
@@ -258,17 +286,17 @@ import text from "./plans.toml?raw";
 
 Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml). TOML has four kinds of date. Only an offset date-time names an instant, so only that one becomes a `Date`:
 
-```toml title="release.toml"
+```ts twoslash tab="main.ts"
+import release from "./release.toml";
+//     ^?
+```
+
+```toml tab="release.toml"
 published = 1979-05-27T07:32:00Z   # offset date-time
 day = 1979-05-27                   # local date
 at = 07:32:00                      # local time
 downloads = 9007199254740993       # past 2^53
 ratio = inf
-```
-
-```ts twoslash title="main.ts"
-import release from "./release.toml";
-//     ^?
 ```
 
 A local date-time, date or time is its ISO text. An integer that a `number` cannot hold exactly is a `bigint`.
@@ -277,7 +305,16 @@ A local date-time, date or time is its ISO text. An integer that a `number` cann
 
 Motherload reads YAML 1.2 with [yaml](https://eemeli.org/yaml/), so `yes` is a string. Merge keys (`<<`) are read, and a duplicate key is an error. A `.yml` file is read the same way.
 
-```yaml title="app.yaml"
+```ts twoslash tab="main.ts"
+import app from "./app.yaml";
+
+const production = app.production;
+//    ^?
+const enabled = app.enabled;
+//    ^?
+```
+
+```yaml tab="app.yaml"
 defaults: &defaults
   retries: 3
   timeout: 1.5
@@ -287,34 +324,30 @@ production:
 enabled: yes
 ```
 
-```ts twoslash title="main.ts"
-import app from "./app.yaml";
-
-const production = app.production;
-//    ^?
-const enabled = app.enabled;
-//    ^?
-```
-
 A file of several documents (`---`) is the list of them:
 
-```yaml title="deploy.yaml"
+```ts twoslash tab="main.ts"
+import deploy from "./deploy.yaml";
+//     ^?
+```
+
+```yaml tab="deploy.yaml"
 kind: Service
 ---
 kind: Deployment
 replicas: 2
 ```
 
-```ts twoslash title="main.ts"
-import deploy from "./deploy.yaml";
-//     ^?
-```
-
 ### `.json5`
 
 Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own parser.
 
-```json5 title="data.json5"
+```ts twoslash tab="main.ts"
+import data from "./data.json5";
+//     ^?
+```
+
+```json5 tab="data.json5"
 {
   unquoted: 'single quotes',
   hex: 0x10,
@@ -323,16 +356,16 @@ Motherload reads JSON5 with [json5](https://json5.org), the JSON5 project's own 
 }
 ```
 
-```ts twoslash title="main.ts"
-import data from "./data.json5";
-//     ^?
-```
-
 ### `.jsonc`
 
 Motherload reads JSON with comments with Microsoft's [jsonc-parser](https://github.com/microsoft/node-jsonc-parser). Comments and trailing commas are allowed.
 
-```jsonc title="settings.jsonc"
+```ts twoslash tab="main.ts"
+import settings from "./settings.jsonc";
+//     ^?
+```
+
+```jsonc tab="settings.jsonc"
 {
   // the editor's font size
   "editor.fontSize": 14,
@@ -340,26 +373,28 @@ Motherload reads JSON with comments with Microsoft's [jsonc-parser](https://gith
 }
 ```
 
-```ts twoslash title="main.ts"
-import settings from "./settings.jsonc";
-//     ^?
-```
-
 ### `.env`
 
-Importing a `.env` file loads its variables into `process.env` when the module runs, and types each one as a `string`:
+Importing a `.env` file loads it: its variables are set on `process.env` when the module runs, with no dotenv and no `--env-file`. The import also adds each of them to the type of `process.env`, across the whole project, so the editor completes their names and each one is a `string`:
 
-```sh title=".env"
+```ts twoslash tab="main.ts"
+// @errors: 2345
+import "./.env";
+
+process.env.D;
+//           ^|
+
+const url = new URL(process.env.DATABASE_URL);
+//                              ^?
+const typo = new URL(process.env.DATABSE_URL);
+```
+
+```sh tab=".env"
 DATABASE_URL=postgres://localhost/app
 PORT=3000
 ```
 
-```ts twoslash title="main.ts"
-import "./.env";
-
-const url = process.env.DATABASE_URL;
-//    ^?
-```
+A name the file does not set keeps the type `@types/node` gives every variable, `string | undefined`, so a misspelled one is an error wherever a string is needed.
 
 A variable the environment already sets keeps its value. No value from the file is in the module or in a bundle. A bundle reads the file from the working directory when it runs, and loads nothing if the file is absent.
 
@@ -369,15 +404,15 @@ The `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.
 
 Motherload reads CSV with [csv-parse](https://csv.js.org/parse/). The first row names the columns, and each later row is an object of strings keyed by them:
 
-```csv title="users.csv"
+```ts twoslash tab="main.ts"
+import users from "./users.csv";
+//     ^?
+```
+
+```csv tab="users.csv"
 name,email,zip
 Ada Lovelace,ada@example.com,02134
 "Hopper, Grace",grace@example.com,10001
-```
-
-```ts twoslash title="main.ts"
-import users from "./users.csv";
-//     ^?
 ```
 
 Values stay as written, so a zip code such as `02134` keeps its leading zero. A quoted field can hold commas, doubled quotes and line breaks. Blank lines are skipped. A row whose field count differs from the header's is an error, as is an empty or repeated column name.
@@ -386,36 +421,41 @@ Values stay as written, so a zip code such as `02134` keeps its leading zero. A 
 
 A `.tsv` file is read the same way, with a tab between fields. Quotes are ordinary characters, so a field is exactly the text between two tabs.
 
-```tsv title="scores.tsv"
+```ts twoslash tab="main.ts"
+import scores from "./scores.tsv";
+//     ^?
+```
+
+```tsv tab="scores.tsv"
 player	score
 Ada	42
 Grace	37
-```
-
-```ts twoslash title="main.ts"
-import scores from "./scores.tsv";
-//     ^?
 ```
 
 ### `.txt`
 
 Importing a `.txt` file gives its text as a string.
 
-```txt title="notes.txt"
-Notes from the lab.
-A second line.
-```
-
-```ts twoslash title="main.ts"
+```ts twoslash tab="main.ts"
 import notes from "./notes.txt";
 //     ^?
+```
+
+```txt tab="notes.txt"
+Notes from the lab.
+A second line.
 ```
 
 ### `.md`
 
 Importing a `.md` file gives an object of two parts: `frontmatter`, read and typed as a `.yaml` file is, and `md`, the Markdown body without the frontmatter:
 
-```md title="post.md"
+```ts twoslash tab="main.ts"
+import post from "./post.md";
+//     ^?
+```
+
+```md tab="post.md"
 ---
 title: Hello, world
 draft: false
@@ -426,18 +466,26 @@ tags: [data, types]
 The body of the post.
 ```
 
-```ts twoslash title="main.ts"
-import post from "./post.md";
-//     ^?
-```
-
 Each part is also a named export, as in `import { frontmatter } from "./post.md"`, and a bundle that imports only the frontmatter leaves the body out. The frontmatter runs from a `---` first line to the next `---` line; a file without one has `{}`. Pass `md` to a Markdown renderer for HTML, and add `?raw` to the import for the whole file.
 
 ### `.schema.jsonc`
 
 A `.schema.jsonc` file is a schema, not data. Its module is the type the schema describes and a validator for it.
 
-```jsonc title="user.schema.jsonc"
+```ts twoslash tab="main.ts"
+declare const input: unknown;
+// ---cut---
+import user, { type Type as User } from "./user.schema.jsonc";
+
+const ada = user.parse(input);       // or a TypeError listing every issue
+//    ^?
+
+user.is(input);                      // input is User
+user["~standard"].validate(input);   // Standard Schema v1
+user.schema;                         // the schema, as a literal type
+```
+
+```jsonc tab="user.schema.jsonc"
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
@@ -451,23 +499,10 @@ A `.schema.jsonc` file is a schema, not data. Its module is the type the schema 
 }
 ```
 
-```ts twoslash title="main.ts"
-declare const input: unknown;
-// ---cut---
-import user, { type Type as User } from "./user.schema.jsonc";
-
-const ada = user.parse(input);       // or a TypeError listing every issue
-//    ^?
-
-user.is(input);                      // input is User
-user["~standard"].validate(input);   // Standard Schema v1
-user.schema;                         // the schema, as a literal type
-```
-
 The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
 
 - **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
-- **Formats:** checked when `ajv-formats` is installed.
+- **Formats:** checked, with [ajv-formats](https://ajv.js.org/packages/ajv-formats.html).
 - **References:** a `$ref` within the file is followed; a `$ref` to another file or a URL is an error.
 - **The suffix:** `.schema.jsonc`, or `.schema.json5` for a schema written in JSON5, because TypeScript refuses a content mapper extension that ends in `.json`. A `.schema.jsonc` file is read as JSON with comments, so comments and trailing commas are allowed, and VS Code checks it against the draft its `$schema` names.
 
@@ -475,7 +510,16 @@ The schema's type is always exported as `Type`. The validator is compiled by [aj
 
 A `.schema.json5` file is a schema written in JSON5, read as a `.json5` file is. Its module is the same as a `.schema.jsonc` file's.
 
-```json5 title="point.schema.json5"
+```ts twoslash tab="main.ts"
+declare const input: unknown;
+// ---cut---
+import point, { type Type as Point } from "./point.schema.json5";
+
+const origin = point.parse(input);   // or a TypeError listing every issue
+//    ^?
+```
+
+```json5 tab="point.schema.json5"
 {
   // a point on a grid
   type: 'object',
@@ -488,15 +532,6 @@ A `.schema.json5` file is a schema written in JSON5, read as a `.json5` file is.
 }
 ```
 
-```ts twoslash title="main.ts"
-declare const input: unknown;
-// ---cut---
-import point, { type Type as Point } from "./point.schema.json5";
-
-const origin = point.parse(input);   // or a TypeError listing every issue
-//    ^?
-```
-
 ### `.json`
 
 Plain `.json` stays TypeScript's own: a content mapper cannot claim it. Turn on `resolveJsonModule` to import it:
@@ -504,6 +539,10 @@ Plain `.json` stays TypeScript's own: a content mapper cannot claim it. Turn on 
 ```ts
 import pkg from "./package.json";
 ```
+
+### `.sql`
+
+`.sql` files are [Reylo](https://reylo.dev)'s: a content mapper that types each query from your live Postgres, MySQL or SQLite database.
 
 ## Errors
 

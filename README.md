@@ -219,7 +219,7 @@ import { frontmatter } from "./post.md"; // one part; a bundle leaves out the bo
 
 ### `.schema.jsonc`
 
-A JSON Schema becomes its type and a validator. Install `ajv` and `ajv-formats` beside Motherload; the validator is compiled when the module is built, so the module imports nothing at run time. The suffix is `.schema.jsonc` or `.schema.json5`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; a `.schema.jsonc` file is read as JSON with comments, so comments and trailing commas are allowed.
+A JSON Schema becomes its type and a validator. The validator is compiled by ajv, a dependency of Motherload's, when the module is built, so the module imports nothing at run time. The suffix is `.schema.jsonc` or `.schema.json5`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; a `.schema.jsonc` file is read as JSON with comments, so comments and trailing commas are allowed.
 
 ```jsonc
 {

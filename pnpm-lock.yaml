@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.20.0)
       csv-parse:
         specifier: ^7.0.3
         version: 7.0.3
@@ -27,12 +33,6 @@ importers:
       '@types/node':
         specifier: ^26.6.1
         version: 26.6.4
-      ajv:
-        specifier: ^8.20.0
-        version: 8.20.0
-      ajv-formats:
-        specifier: ^3.0.1
-        version: 3.0.1(ajv@8.20.0)
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
