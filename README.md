@@ -54,7 +54,7 @@ Each tool has its setup in [the docs](https://motherload.dev):
 - [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
 - [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
 
-Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](https://motherload.dev/#one-format-at-a-time).
+Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [Loaders à la carte](https://motherload.dev/#loaders-a-la-carte).
 
 ## Loaders
 

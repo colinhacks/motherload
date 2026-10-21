@@ -21,7 +21,7 @@ It runs from the repository's own build: install from npm.
    7.1 (typescript@next): https://motherload.dev/#install
    A project that reads only some formats can install each
    format's package instead:
-   https://motherload.dev/#one-format-at-a-time
+   https://motherload.dev/#loaders-a-la-carte
 2. Add Motherload to tsconfig.json as a content mapper, listing
    the extensions the project imports, and add a typecheck script
    that runs tsc --noEmit --runExternalCode:
@@ -49,7 +49,7 @@ npm install -D motherload
 npm install -D typescript@next
 ```
 
-The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`. Each format is also a package of its own, for a project that reads only some of them: see [One format at a time](#one-format-at-a-time).
+The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`. Each format is also a package of its own, for a project that reads only some of them: see [Loaders à la carte](#loaders-a-la-carte).
 
 ### TypeScript
 
@@ -216,7 +216,7 @@ Use `.build()`: esbuild runs plugins in `.build()` only, and `.buildSync()` thro
 </Accordion>
 </Accordions>
 
-### One format at a time
+### Loaders à la carte [#loaders-a-la-carte]
 
 The `motherload` package is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
 

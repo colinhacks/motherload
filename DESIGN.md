@@ -327,7 +327,7 @@ The sources started from the loader template in [lab/universal](./lab/universal)
 
 ## Packaging
 
-Decided by the maintainer on 2026-10-08 and 2026-10-09: Motherload becomes a family of packages released together at one version. Each format is a package of its own under the `@motherload` scope, complete with its mapper, preload, esbuild plugin and parser; `motherload` is the package of all of them, with one mapper, one preload and one plugin; the code they share is `@motherload/core`, a published dependency of every other package. Built on 2026-10-20, the maintainer's answer that day: "Build them, then document them in Setup" (the docs page's "One format at a time").
+Decided by the maintainer on 2026-10-08 and 2026-10-09: Motherload becomes a family of packages released together at one version. Each format is a package of its own under the `@motherload` scope, complete with its mapper, preload, esbuild plugin and parser; `motherload` is the package of all of them, with one mapper, one preload and one plugin; the code they share is `@motherload/core`, a published dependency of every other package. Built on 2026-10-20, the maintainer's answer that day: "Build them, then document them in Setup" (the docs page's "Loaders à la carte").
 
 | Package | Extensions | Dependencies, each at an exact version |
 | --- | --- | --- |
