@@ -31,16 +31,17 @@ Both run from the repository's own build: install from npm.
 
 1. Check the requirements and install motherload and the
    TypeScript 7.1 beta (typescript@beta), motherload as a
-   devDependency in a bundled app (Next.js, webpack, Rspack,
-   esbuild) and as a dependency in one that runs under the
-   preload: https://motherload.dev/#setup
+   devDependency in a bundled app (Next.js, Vite, webpack,
+   Rspack, Rollup, Rolldown, esbuild) and as a dependency in one
+   that runs under the preload: https://motherload.dev/#setup
 2. Add Motherload to tsconfig.json as a content mapper, listing
    the extensions the project imports, and add a typecheck script
    that runs tsc --noEmit --runExternalCode:
    https://motherload.dev/#typescript
 3. Make the imports load wherever the project runs code, with
    Node's --import (https://motherload.dev/#node) or the plugin
-   for Next.js, webpack, Rspack, esbuild or Nub
+   for Next.js, Vite (also Vitest, Rollup and Rolldown), webpack,
+   Rspack, esbuild or Nub, and Jest's transformer for Jest tests
    (https://motherload.dev/#plugins). Next.js also needs its
    build's own type check turned off, with the typecheck script
    run before next build. If the project runs on anything else,
@@ -187,7 +188,7 @@ node --import motherload/register main.ts
 
 ### Plugins
 
-Everywhere else, a plugin turns each data file into a module: Nub loads Motherload's preload from its config file, and a bundler builds each module at build time, so a bundled app needs no `--import` and no preload, and Motherload stays a development dependency.
+Everywhere else, a plugin turns each data file into a module: Nub loads Motherload's preload from its config file, and a bundler builds each module at build time, so a bundled app needs no `--import` and no preload, and Motherload stays a development dependency. Jest takes a transformer.
 
 <Accordions type="multiple">
 <Accordion title="Next.js" id="setup-nextjs">
@@ -201,7 +202,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.{toml,yaml,yml,jsonc,json5,csv,tsv,txt,md}": {
-        loaders: ["motherload/webpack-loader"],
+        loaders: ["motherload/turbopack"],
         as: "*.js",
       },
     },
@@ -240,10 +241,33 @@ const nextConfig: NextConfig = {
   webpack(config) { // [!code ++]
     config.module.rules.push({ // [!code ++]
       test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/, // [!code ++]
-      use: "motherload/webpack-loader", // [!code ++]
+      use: "motherload/webpack", // [!code ++]
     }); // [!code ++]
     return config; // [!code ++]
   }, // [!code ++]
+};
+```
+
+</Accordion>
+<Accordion title="Vite" id="setup-vite">
+
+```ts title="vite.config.ts"
+import { defineConfig } from "vite";
+import motherload from "motherload/vite";
+
+export default defineConfig({
+  plugins: [motherload()],
+});
+```
+
+Vitest runs the same plugin from the Vite config. Rollup and Rolldown take it too:
+
+```js title="rollup.config.mjs"
+import motherload from "motherload/vite";
+
+export default {
+  // ...
+  plugins: [motherload()],
 };
 ```
 
@@ -257,7 +281,7 @@ export default {
     rules: [
       {
         test: /\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$/,
-        use: "motherload/webpack-loader",
+        use: "motherload/webpack",
       },
     ],
   },
@@ -265,17 +289,6 @@ export default {
 ```
 
 Rspack takes the same rule in `rspack.config.mjs`.
-
-</Accordion>
-<Accordion title="Nub" id="setup-nub">
-
-Nub takes the preload in `nub.jsonc`, so `nub main.ts` needs no flag:
-
-```jsonc title="nub.jsonc"
-{
-  "preload": ["motherload/register"]
-}
-```
 
 </Accordion>
 <Accordion title="esbuild" id="setup-esbuild">
@@ -295,6 +308,45 @@ await esbuild.build({
 ```
 
 Use `.build()`: esbuild runs plugins in `.build()` only, and `.buildSync()` throws.
+
+</Accordion>
+<Accordion title="Nub" id="setup-nub">
+
+Nub takes the preload in `nub.jsonc`, so `nub main.ts` needs no flag:
+
+```jsonc title="nub.jsonc"
+{
+  "preload": ["motherload/register"]
+}
+```
+
+</Accordion>
+<Accordion title="Jest" id="setup-jest">
+
+Jest reads test code itself, so it takes Motherload's transformer:
+
+```js title="jest.config.js"
+export default {
+  transform: {
+    "\\.[jt]sx?$": "babel-jest",
+    "\\.(toml|ya?ml|jsonc|json5|env|[ct]sv|txt|md)$": "motherload/jest", // [!code ++]
+  },
+};
+```
+
+With `--experimental-vm-modules`, list the extensions as ES modules too:
+
+```js title="jest.config.js"
+export default {
+  transform: {
+    // ...
+  },
+  extensionsToTreatAsEsm: [ // [!code ++]
+    ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env", // [!code ++]
+    ".csv", ".tsv", ".txt", ".md", // [!code ++]
+  ], // [!code ++]
+};
+```
 
 </Accordion>
 </Accordions>
@@ -349,16 +401,26 @@ await esbuild.build({
 });
 ```
 
+```ts tab="Vite"
+import { defineConfig } from "vite";
+import yaml from "@motherload/yaml/vite";
+import toml from "@motherload/toml/vite";
+
+export default defineConfig({
+  plugins: [yaml(), toml()],
+});
+```
+
 ```ts tab="Next.js"
 const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.{yaml,yml}": {
-        loaders: ["@motherload/yaml/webpack-loader"],
+        loaders: ["@motherload/yaml/turbopack"],
         as: "*.js",
       },
       "*.toml": {
-        loaders: ["@motherload/toml/webpack-loader"],
+        loaders: ["@motherload/toml/turbopack"],
         as: "*.js",
       },
     },
@@ -370,8 +432,8 @@ const nextConfig: NextConfig = {
 export default {
   module: {
     rules: [
-      { test: /\.ya?ml$/, use: "@motherload/yaml/webpack-loader" },
-      { test: /\.toml$/, use: "@motherload/toml/webpack-loader" },
+      { test: /\.ya?ml$/, use: "@motherload/yaml/webpack" },
+      { test: /\.toml$/, use: "@motherload/toml/webpack" },
     ],
   },
 };

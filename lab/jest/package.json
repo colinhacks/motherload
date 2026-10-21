@@ -1,0 +1,13 @@
+{
+  "name": "lab-jest",
+  "private": true,
+  "scripts": {
+    "test:cjs": "jest -c jest.cjs.config.cjs",
+    "test:esm": "NODE_OPTIONS=--experimental-vm-modules jest -c jest.esm.config.cjs",
+    "test:vitest": "vitest run"
+  },
+  "devDependencies": {
+    "jest": "30.5.2",
+    "vitest": "5.0.5"
+  }
+}

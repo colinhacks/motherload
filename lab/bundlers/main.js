@@ -1,4 +1,4 @@
-// lab/basic's data files, bundled through motherload/webpack-loader by webpack
+// lab/basic's data files, bundled through motherload/webpack by webpack
 // (webpack.config.mjs) and Rspack (rspack.config.mjs). JavaScript, so that neither needs a loader
 // for TypeScript; lab/basic's main.ts checks the types. It prints what lab/basic prints.
 import config from "../basic/config.toml";

@@ -6,12 +6,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { rspack } from "@rspack/core";
+import { rolldown } from "rolldown";
+import { rollup } from "rollup";
+import { build as viteBuild } from "vite";
 import webpack from "webpack";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { standalone, toBunPlugin, toEsbuildPlugin, toNodeHooks, type LoaderPlugin } from "../packages/core/src/index.ts";
+import { standalone, toBunPlugin, toEsbuildPlugin, toNodeHooks, toVitePlugin, type LoaderPlugin } from "../packages/core/src/index.ts";
 import { loader as jsonc } from "../packages/jsonc/src/loader.ts";
 import { loader as json5 } from "../packages/json5/src/loader.ts";
 import { loaders, plugin } from "../src/plugin.ts";
@@ -37,11 +40,11 @@ test("each package is private in the repository, at motherload's version, and li
   }
 });
 
-test("each format package has its loader, preload, esbuild plugin and mapper", () => {
+test("each format package has its loader, preload, bundler plugins, Jest transformer and mapper", () => {
   for (const name of FORMATS) {
     const pkg = manifest(name);
     const dir = `${ROOT}packages/${name}/`;
-    for (const entry of ["./loader", "./register", "./esbuild"]) assert.ok(existsSync(dir + pkg.exports[entry]), `${name} ${entry}`);
+    for (const entry of ["./loader", "./register", "./esbuild", "./webpack", "./turbopack", "./vite", "./jest"]) assert.ok(existsSync(dir + pkg.exports[entry]), `${name} ${entry}`);
     assert.deepEqual(pkg.typescript.contentMapper.exec, ["node", "src/mapper.ts"], name);
     assert.ok(existsSync(`${dir}src/mapper.ts`), name);
   }
@@ -144,8 +147,8 @@ for (const [name, bundler] of [["webpack", webpack], ["Rspack", rspack]] as cons
   test(`${name}: the JSONC and JSON5 loaders pass a longer suffix through to the loader whose rule claims it, before or after theirs`, async () => {
     writeFileSync(join(dir, "main.js"), 'import a from "./user.schema.jsonc"; import b from "./user.schema.json5"; import c from "./app.jsonc"; import d from "./app.json5"; console.log(a, b, c.a, d.a);');
     const ours = [
-      { test: /\.jsonc$/, use: `${ROOT}packages/jsonc/src/webpack-loader.ts` },
-      { test: /\.json5$/, use: `${ROOT}packages/json5/src/webpack-loader.ts` },
+      { test: /\.jsonc$/, use: `${ROOT}packages/jsonc/src/webpack.ts` },
+      { test: /\.json5$/, use: `${ROOT}packages/json5/src/webpack.ts` },
     ];
     const standIn = { test: /\.schema\.json[c5]$/, use: join(dir, "stand-in-loader.cjs") };
     for (const [i, rules] of [[...ours, standIn], [standIn, ...ours]].entries()) {
@@ -157,6 +160,33 @@ for (const [name, bundler] of [["webpack", webpack], ["Rspack", rspack]] as cons
       assert.equal(text.match(/"stand-in"/g)?.length, 2, text);
       assert.doesNotMatch(text, /"type": "string"|type: 'string'/);
       assert.equal(text.match(/\{"a": 1\}/g)?.length, 2, text);
+    }
+  });
+}
+
+// The stand-in as a Rollup-shaped plugin, its object marked with its loader as an esbuild plugin object is.
+const standInVite = {
+  name: "stand-in",
+  [Symbol.for("motherload.plugin")]: STAND_IN,
+  load: (id: string) => (STAND_IN.filter.test(id) ? { code: STAND_IN.load("", id).code, moduleType: "js" } : null),
+};
+
+for (const name of ["Rollup", "Rolldown", "Vite"] as const) {
+  test(`${name}: the JSONC and JSON5 plugins leave a longer suffix to the plugin that claims it, before or after them`, async () => {
+    writeFileSync(join(dir, "main.js"), 'import a from "./user.schema.jsonc"; import b from "./user.schema.json5"; import c from "./app.jsonc"; import d from "./app.json5"; console.log(a, b, c.a, d.a);');
+    const ours = [toVitePlugin(JSONC), toVitePlugin(JSON5)];
+    for (const plugins of [[...ours, standInVite], [standInVite, ...ours]]) {
+      let text: string;
+      if (name === "Vite") {
+        const out: any = await viteBuild({ configFile: false, logLevel: "silent", root: dir, plugins: plugins as any, build: { write: false, ssr: join(dir, "main.js"), minify: false } });
+        text = out.output[0].code;
+      } else {
+        const bundle = await (name === "Rollup" ? rollup : rolldown)({ input: join(dir, "main.js"), plugins: plugins as any, onLog: () => {} } as any);
+        text = (await bundle.generate({ format: "es" })).output[0].code;
+      }
+      assert.equal(text.match(/"stand-in"/g)?.length, 2, text);
+      assert.doesNotMatch(text, /"type": "string"/);
+      assert.equal(text.match(/\{\s*"?a"?: 1\s*\}/g)?.length, 2, text);
     }
   });
 }

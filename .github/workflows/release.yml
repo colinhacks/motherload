@@ -32,6 +32,11 @@ jobs:
         with:
           nub-version: "0.9.6"
       - run: nub install --frozen-lockfile
+      # lab/nextjs and lab/jest have their own dependencies; without them their tests are skipped
+      - run: nub install --frozen-lockfile
+        working-directory: lab/nextjs
+      - run: nub install --frozen-lockfile
+        working-directory: lab/jest
       - run: nub run typecheck
       - run: nub run test
       - run: nub run build

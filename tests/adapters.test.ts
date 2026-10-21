@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 import { build } from "esbuild";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { plugin } from "../src/plugin.ts";
-import { toEsbuildPlugin, toNodeHooks, toWebpackLoader, utf8Range, type LoaderPlugin } from "../packages/core/src/universal.ts";
+import { evaluate } from "./helpers.ts";
+import { toEsbuildPlugin, toJestTransformer, toNodeHooks, toVitePlugin, toWebpackLoader, utf8Range, type LoaderPlugin } from "../packages/core/src/universal.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "motherload-adapters-"));
 writeFileSync(join(dir, "app.toml"), 'name = "x"\n');
@@ -87,6 +89,55 @@ test("the webpack loader watches the other files a loader names, and still does 
   const lost = loaderContext(join(dir, "lost.ref"));
   assert.throws(() => loader.call(lost, ""), /reader: .*lost\.ref: empty/);
   assert.deepEqual(lost.watched, [join(dir, "tag.txt")]);
+});
+
+/** The Vite plugin's `load` with a context that keeps what it is told to watch and throws what it is told is an error. */
+function viteLoad(id: string) {
+  const context = { watched: [] as string[], addWatchFile(file: string) { this.watched.push(file); }, error(message: string): never { throw new Error(message); } };
+  return { result: toVitePlugin(plugin).load.call(context, id), watched: context.watched };
+}
+
+test("the Vite plugin loads a data file as JavaScript and leaves an id with a query to other plugins", () => {
+  const { result } = viteLoad(join(dir, "app.toml"));
+  assert.match(result!.code, /const data = \{"name": "x"\};/);
+  assert.equal(result!.moduleType, "js");
+  for (const query of ["?raw", "?url", "#x"]) assert.equal(viteLoad(join(dir, "app.toml") + query).result, null, query);
+  assert.equal(viteLoad(join(dir, "app.ts")).result, null);
+  writeFileSync(join(dir, "bad.toml"), "name = \n");
+  assert.throws(() => viteLoad(join(dir, "bad.toml")), /motherload: .*bad\.toml: Invalid TOML document/);
+});
+
+const jest = toJestTransformer(plugin);
+/** CommonJS code run as Node runs a module: its exports, given `require` and `__filename`. */
+const commonJsModule = (code: string, filename: string) => {
+  const module = { exports: {} as Record<string, any> };
+  new Function("exports", "require", "module", "__filename", code)(module.exports, createRequire(filename), module, filename);
+  return module.exports;
+};
+
+test("the Jest transformer makes ESM when Jest loads the file as ESM, and CommonJS otherwise", async () => {
+  const source = 'name = "x"\n';
+  const esm = jest.process(source, join(dir, "app.toml"), { supportsStaticESM: true }).code;
+  assert.equal((await evaluate(esm)).default.name, "x");
+  const cjs = jest.process(source, join(dir, "app.toml"), { supportsStaticESM: false }).code;
+  assert.doesNotMatch(cjs, /^(import|export)\b/m);
+  const exports = commonJsModule(cjs, join(dir, "app.toml"));
+  assert.equal(exports.__esModule, true);
+  assert.equal(exports.default.name, "x");
+  // A .md file's named exports, and a string that reads like the code the rewrite changes, kept as it is.
+  const md = jest.process('---\ntitle: "import.meta.url"\n---\nexport default 1\n', join(dir, "post.md"), { supportsStaticESM: false }).code;
+  const post = commonJsModule(md, join(dir, "post.md"));
+  assert.equal(post.frontmatter.title, "import.meta.url");
+  assert.equal(post.md, "export default 1\n");
+  assert.equal(post.default.md, post.md);
+  assert.throws(() => jest.process("name = \n", join(dir, "bad.toml"), { supportsStaticESM: false }), /bad\.toml: Invalid TOML document/);
+});
+
+test("the Jest transformer's cache key follows the module and how Jest loads it", () => {
+  const key = (source: string, esm: boolean) => jest.getCacheKey(source, join(dir, "app.toml"), { supportsStaticESM: esm, configString: "{}" });
+  assert.equal(key('name = "x"\n', false), key('name = "x"\n', false));
+  assert.notEqual(key('name = "x"\n', false), key('name = "y"\n', false));
+  assert.notEqual(key('name = "x"\n', false), key('name = "x"\n', true));
 });
 
 test("ranges convert from UTF-16 code units to UTF-8 bytes", () => {

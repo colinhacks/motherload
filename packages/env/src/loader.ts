@@ -14,14 +14,16 @@ export function parseEnvFile(source: string): Parsed {
 }
 
 /**
- * When the module runs, Node reads the file into `process.env` (`process.loadEnvFile`, which leaves
- * a variable the environment already sets), so no value is in the module, and the types declare
- * each variable on `NodeJS.ProcessEnv`. Under the preload the module's own URL is the file; in a
- * bundle the file is the same path from the working directory as at build time, and a missing
- * file loads nothing, as a deploy that sets its variables another way has none. webpack and Rspack
- * write `import.meta.url` as the source file's URL at build time, so their bundle tries that path
- * first and the one from the working directory after it. The module is an ES module with no
- * exports, so that a bundler imports it for its effect alone.
+ * When the module runs, it reads the file into `process.env`, setting each variable the environment
+ * does not already set, with `util.parseEnv`, so that it does what `process.loadEnvFile` does
+ * (DESIGN.md, "The `.env` module") to whichever `process` is in scope: Jest gives each test file a
+ * copy of `process.env`, which `process.loadEnvFile` never writes to. No value is in the module,
+ * and the types declare each variable on `NodeJS.ProcessEnv`. Under the preload the module's own
+ * URL is the file; in a bundle the file is the same path from the working directory as at build
+ * time, and a missing file loads nothing, as a deploy that sets its variables another way has none.
+ * webpack and Rspack write `import.meta.url` as the source file's URL at build time, so their
+ * bundle tries that path first and the one from the working directory after it. The module is an
+ * ES module with no exports, so that a bundler imports it for its effect alone.
  */
 export function envModule(source: string, path: string): ModuleText {
   const parsed = parseEnvFile(source);
@@ -31,8 +33,14 @@ export function envModule(source: string, path: string): ModuleText {
   return {
     code: [
       `const files = [typeof import.meta.url === "string" && import.meta.url.endsWith(${JSON.stringify(`/${name}`)}) && new URL(import.meta.url), ${JSON.stringify(fromCwd)}];`,
+      `const { readFileSync } = process.getBuiltinModule("node:fs");`,
+      `const { parseEnv } = process.getBuiltinModule("node:util");`,
       `for (const file of files.filter(Boolean)) {`,
-      `  try { process.loadEnvFile(file); break; } catch (error) { if (error?.code !== "ENOENT") throw error; }`,
+      `  let text;`,
+      `  try { text = readFileSync(file, "utf8"); } catch (error) { if (error?.code === "ENOENT") continue; throw error; }`,
+      `  const vars = parseEnv(text);`,
+      `  for (const key of Object.keys(vars)) process.env[key] ??= vars[key];`,
+      `  break;`,
       `}`,
       `export {};`,
       "",

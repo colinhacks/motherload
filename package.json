@@ -16,7 +16,10 @@
   "exports": {
     "./register": "./src/register.ts",
     "./esbuild": "./src/esbuild.ts",
-    "./webpack-loader": "./src/webpack-loader.ts"
+    "./webpack": "./src/webpack.ts",
+    "./turbopack": "./src/turbopack.ts",
+    "./vite": "./src/vite.ts",
+    "./jest": "./src/jest.ts"
   },
   "typescript": {
     "contentMapper": {
@@ -55,10 +58,13 @@
     "@types/node": "^26.6.1",
     "esbuild": "^0.28.2",
     "motherload": "link:.",
+    "rolldown": "^1.2.0",
+    "rollup": "^4.64.0",
     "typescript": "7.1.0-dev.20261002.1",
     "universal-toml": "link:lab/universal/plugin",
     "universal-toml-2": "link:lab/universal/plugin",
     "unplugin": "^3.4.0",
+    "vite": "^8.3.0",
     "webpack": "^5.112.0"
   }
 }

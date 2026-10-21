@@ -6,6 +6,7 @@
 // longer suffix of a file loads it, as TypeScript routes it, whatever order the host was given them
 // in. The two global keys, `Symbol.for("motherload.registered")` and `Symbol.for("motherload.plugin")`,
 // are the protocol: dotschema joins it through them to claim `.schema.jsonc` from `@motherload/jsonc`.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Problem } from "./problems.ts";
@@ -178,6 +179,100 @@ export function toWebpackLoader(plugin: LoaderPlugin): (this: WebpackLoaderConte
     return result.code;
   }
   return Object.assign(loader, { [PLUGIN]: plugin });
+}
+
+// ---- Vite, Rollup and Rolldown: a Rollup-shaped plugin ---------------------------------------
+
+type RollupContext = { addWatchFile(id: string): void; error(message: string): never };
+
+/** The Motherload plugins among a host's plugins (a plugin or a list of them, nested), each plugin object marked as an esbuild plugin object is. */
+const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).flatMap((p) => ((p as Record<symbol, unknown> | null)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
+
+/**
+ * One `load` hook, which Vite, Rollup and Rolldown each take. `enforce: "pre"` runs it before
+ * Vite's own handling of a file type (`.txt` is an asset to Vite), and `moduleType: "js"` tells
+ * Rolldown, which reads a module's type from its extension, that the code is JavaScript; Rollup
+ * ignores both. An id with a query (`./app.toml?raw`) is left to other plugins, as is a file another
+ * Motherload plugin in the build claims more strongly: Vite hands its resolved plugins to
+ * `configResolved`, and Rollup and Rolldown their input options to `options`.
+ */
+export function toVitePlugin(plugin: LoaderPlugin): {
+  name: string;
+  enforce: "pre";
+  configResolved(config: { plugins: unknown }): void;
+  options(options: { plugins?: unknown }): null;
+  load(this: RollupContext, id: string): { code: string; map: null; moduleType: "js" } | null;
+} {
+  let siblings: LoaderPlugin[] = [];
+  return {
+    name: plugin.name,
+    enforce: "pre" as const,
+    [PLUGIN]: plugin,
+    configResolved(config: { plugins: unknown }) {
+      siblings = marked(config.plugins);
+    },
+    options(options: { plugins?: unknown }) {
+      if (options.plugins) siblings = marked(options.plugins);
+      return null;
+    },
+    load(this: RollupContext, id: string) {
+      if (/[?#]/.test(id) || !plugin.filter.test(id) || outranked(plugin, id, siblings)) return null;
+      const result = plugin.load(readFileSync(id, "utf8"), id);
+      // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
+      for (const file of result.watchFiles ?? []) this.addWatchFile(file);
+      if (result.problems.length) this.error(loadError(plugin, id, result.problems));
+      return { code: result.code, map: null, moduleType: "js" };
+    },
+  } as ReturnType<typeof toVitePlugin>;
+}
+
+// ---- Jest: a transformer ---------------------------------------------------------------------
+
+type JestOptions = { supportsStaticESM?: boolean; configString?: string };
+
+/**
+ * A transformer for `transform` in Jest's config. Jest reads and compiles a test's modules itself,
+ * never through Node's loader, so the preload's hooks never see a data file there, and a transformer
+ * is where Jest takes one. Its module is ESM when Jest loads the file as one
+ * (`--experimental-vm-modules` with the extension in `extensionsToTreatAsEsm`), and CommonJS
+ * otherwise. Jest keeps a transformer's output across runs, keyed by the file unless the
+ * transformer says otherwise, so the key is the module itself, which a new version of a parser
+ * changes.
+ */
+export function toJestTransformer(plugin: LoaderPlugin) {
+  const make = (source: string, path: string, options: JestOptions): string => {
+    const result = plugin.load(source, path);
+    if (result.problems.length) throw new Error(loadError(plugin, path, result.problems));
+    return options.supportsStaticESM ? result.code : commonJs(plugin, path, result.code);
+  };
+  return {
+    getCacheKey(source: string, path: string, options: JestOptions): string {
+      let code: string;
+      try {
+        code = make(source, path, options);
+      } catch (error) {
+        code = String(error);
+      }
+      return createHash("sha256").update(code).update(String(options.supportsStaticESM)).update(options.configString ?? "").digest("hex");
+    },
+    process(source: string, path: string, options: JestOptions): { code: string } {
+      return { code: make(source, path, options) };
+    },
+  };
+}
+
+/**
+ * A Motherload module as CommonJS: each `export` is one line at the start of a line, and every
+ * string in it is a JSON string, so a rewrite that steps over strings changes no value.
+ */
+function commonJs(plugin: LoaderPlugin, path: string, code: string): string {
+  const out = code
+    .replace(/"(?:[^"\\]|\\.)*"|import\.meta\.url/g, (match) => (match.startsWith('"') ? match : 'require("node:url").pathToFileURL(__filename).href'))
+    .replace(/^export const (\w+) = /gm, "const $1 = exports.$1 = ")
+    .replace(/^export default /m, "exports.default = ")
+    .replace(/^export \{\};\n?/m, "");
+  if (/^(import|export)\b/m.test(out)) throw new Error(`${plugin.name}: ${path}: the module has a shape the Jest transformer cannot make CommonJS.`);
+  return `Object.defineProperty(exports, "__esModule", { value: true });\n${out}`;
 }
 
 // ---- TypeScript 7.1 content mapper ------------------------------------------------------------

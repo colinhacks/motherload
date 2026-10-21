@@ -1,11 +1,12 @@
 // Checks the packages scripts/build.ts wrote to dist/ as a project installs them: each packed into
 // a tarball, installed from the tarballs into a project outside the repository (so nothing
 // resolves to the repository's own links), then type-checked through the installed mappers, run
-// under the installed preloads and bundled with the installed esbuild plugins and webpack loader.
-// Four projects: a copy of lab/basic on `motherload`, a copy of lab/packages on two format packages
-// alone, and copies of lab/bundlers (webpack and Rspack) and lab/nextjs (Next.js with Turbopack and
-// with webpack) on `motherload`. Needs the npm registry for TypeScript, the bundlers, Next.js and
-// the parsers. Run `nub run build` first.
+// under the installed preloads, bundled with the installed esbuild plugins, webpack loader and Vite
+// plugin, and tested with the installed Jest transformer.
+// Five projects: a copy of lab/basic on `motherload`, a copy of lab/packages on two format packages
+// alone, and copies of lab/bundlers (webpack, Rspack, Vite, Rollup and Rolldown), lab/nextjs (Next.js
+// with Turbopack and with webpack) and lab/jest (Jest and Vitest) on `motherload`. Needs the npm
+// registry for TypeScript, the bundlers, Next.js, Jest and the parsers. Run `nub run build` first.
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -65,9 +66,10 @@ function project(lab: string, dependencies: string[], commands: [string, string[
   for (const [command, args, expected] of commands) {
     const out = run(command, args, dir);
     if (!out.includes(expected)) throw new Error(`${lab}: ${command} ${args.join(" ")} printed\n${out}`);
-    if (/\bwarning\b/i.test(out)) throw new Error(`${lab}: ${command} ${args.join(" ")} warned\n${out}`);
+    // Node's own notice that Jest's ES modules (`--experimental-vm-modules`) are experimental is not a tool's warning.
+    if (/\bwarning\b/i.test(out.replace(/^.*(ExperimentalWarning|--trace-warnings).*$/gm, ""))) throw new Error(`${lab}: ${command} ${args.join(" ")} warned\n${out}`);
   }
-  console.log(`${lab}: ${existsSync(join(dir, "tsconfig.json")) ? "type-checked, " : ""}ran and bundled, from ${dependencies.join(", ")}`);
+  console.log(`${lab}: ${existsSync(join(dir, "tsconfig.json")) ? "type-checked, and " : ""}${commands.length} commands passed, from ${dependencies.join(", ")}`);
 }
 
 // What each lab prints, as tests/lab.test.ts checks it in the repository.
@@ -86,16 +88,24 @@ project("packages", ["@motherload/toml", "@motherload/jsonc"], [
   [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=3 node_modules=0"],
   [process.execPath, ["dist/main.mjs"], PACKAGES],
 ]);
-// lab/bundlers reads lab/basic's files, copied beside it above; webpack and Rspack come from the registry.
+// lab/bundlers reads lab/basic's files, copied beside it above; the bundlers come from the registry.
 const BUNDLED = '"greeting":"hello world"';
-project("bundlers", ["motherload"], [
-  [process.execPath, ["build.mjs", "webpack"], "errors=0 warnings=0 node_modules=0"],
-  [process.execPath, ["dist/webpack/main.cjs"], BASIC],
-  [process.execPath, ["dist/webpack/main.cjs"], BUNDLED],
-  [process.execPath, ["build.mjs", "rspack"], "errors=0 warnings=0 node_modules=0"],
-  [process.execPath, ["dist/rspack/main.cjs"], TABLES],
-  [process.execPath, ["dist/rspack/main.cjs"], BUNDLED],
-], { extra: { webpack: "^5.112.0", "@rspack/core": "^2.2.9" } });
+const bundle = (bundler: string, file: string): [string, string[], string][] => [
+  [process.execPath, ["build.mjs", bundler], "errors=0 warnings=0 node_modules=0"],
+  [process.execPath, [`dist/${bundler}/${file}`], BASIC],
+  [process.execPath, [`dist/${bundler}/${file}`], TABLES],
+  [process.execPath, [`dist/${bundler}/${file}`], BUNDLED],
+];
+project("bundlers", ["motherload"], [...bundle("webpack", "main.cjs"), ...bundle("rspack", "main.cjs"), ...bundle("vite", "main.mjs"), ...bundle("rollup", "main.mjs"), ...bundle("rolldown", "main.mjs")], {
+  extra: { webpack: "^5.112.0", "@rspack/core": "^2.2.9", vite: "^8.3.0", rollup: "^4.64.0", rolldown: "^1.2.0" },
+});
+// lab/jest: Jest's CommonJS and ES module runs through motherload/jest, and Vitest through motherload/vite.
+const jest = join(work, "jest/node_modules/.bin/jest");
+project("jest", ["motherload"], [
+  [jest, ["-c", "jest.cjs.config.cjs", "--ci"], "Tests:       1 passed, 1 total"],
+  ["env", ["NODE_OPTIONS=--experimental-vm-modules", jest, "-c", "jest.esm.config.cjs", "--ci"], "Tests:       2 passed, 2 total"],
+  [join(work, "jest/node_modules/.bin/vitest"), ["run"], "Tests  1 passed (1)"],
+]);
 // lab/nextjs, built with Turbopack and then with webpack. Turbopack's root is the lab's parent's
 // parent in the repository, and here the work directory, which holds the copy of lab/basic.
 const NEXT = '&quot;port&quot;:8080,&quot;big&quot;:&quot;9007199254740993&quot;';

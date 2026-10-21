@@ -1,9 +1,11 @@
 // The end-to-end checks: the type check through TypeScript's content mapper, the preload, and the
-// esbuild plugin, on lab/basic; the webpack loader under webpack and Rspack, on lab/bundlers, and
-// under Next.js with Turbopack and with webpack, on lab/nextjs.
+// esbuild plugin, on lab/basic; the webpack loader under webpack and Rspack and the Vite plugin under
+// Vite, Rollup and Rolldown, on lab/bundlers; the loader under Next.js with Turbopack and with
+// webpack, on lab/nextjs; and the Jest transformer and the Vite plugin under Vitest, on lab/jest.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { ROOT, run, TSC } from "./helpers.ts";
 
 test("lab/basic type-checks through the content mapper", () => {
@@ -88,15 +90,15 @@ test("lab/packages bundles with the two packages' esbuild plugins and runs with 
   assert.equal(ran.out.trim(), PACKAGES);
 });
 
-// lab/bundlers: lab/basic's files through motherload/webpack-loader.
-for (const bundler of ["webpack", "rspack"]) {
-  test(`lab/bundlers bundles with ${bundler} through the webpack loader and runs with nothing installed`, () => {
+// lab/bundlers: lab/basic's files through motherload/webpack and motherload/vite.
+for (const [bundler, through, file] of [["webpack", "the webpack loader", "main.cjs"], ["rspack", "the webpack loader", "main.cjs"], ["vite", "the Vite plugin", "main.mjs"], ["rollup", "the Vite plugin", "main.mjs"], ["rolldown", "the Vite plugin", "main.mjs"]] as const) {
+  test(`lab/bundlers bundles with ${bundler} through ${through} and runs with nothing installed`, () => {
     rmSync(`${ROOT}lab/bundlers/dist/${bundler}`, { recursive: true, force: true });
     const built = run(process.execPath, ["build.mjs", bundler], `${ROOT}lab/bundlers`);
     assert.equal(built.status, 0, built.out);
     assert.match(built.out, /errors=0 warnings=0 node_modules=0/);
-    assert.doesNotMatch(readFileSync(`${ROOT}lab/bundlers/dist/${bundler}/main.cjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
-    const ran = run(process.execPath, [`dist/${bundler}/main.cjs`], `${ROOT}lab/bundlers`);
+    assert.doesNotMatch(readFileSync(`${ROOT}lab/bundlers/dist/${bundler}/${file}`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
+    const ran = run(process.execPath, [`dist/${bundler}/${file}`], `${ROOT}lab/bundlers`);
     assert.equal(ran.status, 0, ran.out);
     assert.ok(ran.out.includes(EXPECTED), ran.out);
     assert.ok(ran.out.includes(GREETING), ran.out);
@@ -135,3 +137,27 @@ for (const args of [[], ["--webpack"]]) {
     assert.ok(chunks.some((f) => readFileSync(`${ROOT}lab/nextjs/.next/static/chunks/${f}`, "utf8").includes("Hopper, Grace")));
   });
 }
+
+// lab/jest has its own dependencies, installed with `nub install` in lab/jest.
+const JEST = `${ROOT}lab/jest/node_modules/.bin/jest`;
+const jestInstalled = existsSync(JEST) || "lab/jest is not installed: run `nub install` in lab/jest";
+const jestRun = (config: string, env: Record<string, string> = {}) =>
+  spawnSync(JEST, ["-c", config, "--ci", "--no-cache"], { cwd: `${ROOT}lab/jest`, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "", ...env } });
+
+test("lab/jest: a CommonJS test requires lab/basic's files through the Jest transformer", { skip: jestInstalled !== true && jestInstalled }, () => {
+  const result = jestRun("jest.cjs.config.cjs");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /Tests:\s+1 passed, 1 total/);
+});
+
+test("lab/jest: CommonJS and ES module tests load lab/basic's files under --experimental-vm-modules", { skip: jestInstalled !== true && jestInstalled }, () => {
+  const result = jestRun("jest.esm.config.cjs", { NODE_OPTIONS: "--experimental-vm-modules" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /Tests:\s+2 passed, 2 total/);
+});
+
+test("lab/jest: Vitest imports lab/basic's files through the Vite plugin", { skip: jestInstalled !== true && jestInstalled }, () => {
+  const result = spawnSync(`${ROOT}lab/jest/node_modules/.bin/vitest`, ["run"], { cwd: `${ROOT}lab/jest`, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "" } });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Tests\s+1 passed \(1\)/);
+});

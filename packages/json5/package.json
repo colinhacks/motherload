@@ -18,7 +18,10 @@
     "./loader": "./src/loader.ts",
     "./register": "./src/register.ts",
     "./esbuild": "./src/esbuild.ts",
-    "./webpack-loader": "./src/webpack-loader.ts"
+    "./webpack": "./src/webpack.ts",
+    "./turbopack": "./src/turbopack.ts",
+    "./vite": "./src/vite.ts",
+    "./jest": "./src/jest.ts"
   },
   "typescript": {
     "contentMapper": {

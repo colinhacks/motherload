@@ -12,14 +12,14 @@ const nextConfig: NextConfig = {
     // Each data file becomes a module, for the server and the browser alike.
     rules: {
       "*.{toml,yaml,yml,jsonc,json5,csv,tsv,txt,md}": {
-        loaders: ["motherload/webpack-loader"],
+        loaders: ["motherload/turbopack"],
         as: "*.js",
       },
     },
   },
   // The same loader for `next dev --webpack` and `next build --webpack`.
   webpack(config) {
-    config.module.rules.push({ test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/, use: "motherload/webpack-loader" });
+    config.module.rules.push({ test: /\.(toml|ya?ml|jsonc|json5|[ct]sv|txt|md)$/, use: "motherload/webpack" });
     return config;
   },
 };

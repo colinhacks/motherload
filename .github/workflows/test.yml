@@ -23,9 +23,11 @@ jobs:
         with:
           nub-version: "0.9.6"
       - run: nub install --frozen-lockfile
-      # lab/nextjs has its own dependencies; without them its tests are skipped
+      # lab/nextjs and lab/jest have their own dependencies; without them their tests are skipped
       - run: nub install --frozen-lockfile
         working-directory: lab/nextjs
+      - run: nub install --frozen-lockfile
+        working-directory: lab/jest
       - run: nub run typecheck
       - run: nub run test
       # the packages as release.yml stages them, installed from tarballs outside the repository
