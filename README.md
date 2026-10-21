@@ -40,7 +40,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
 }
 ```
 
-Type-check with `--runExternalCode`; without it, `tsc` skips content mappers. Run the code with the preload:
+Type-check with `--runExternalCode`, without which `tsc` skips content mappers, and run the code with the preload:
 
 ```sh
 tsc --noEmit --runExternalCode
@@ -210,14 +210,21 @@ The body of the post.
 
 ```ts
 import post from "./post.md";
-// post: { readonly md: string; readonly frontmatter: { readonly title: "Hello"; readonly draft: false } }
+// post: {
+//   readonly md: string;
+//   readonly frontmatter: {
+//     readonly title: "Hello";
+//     readonly draft: false;
+//   };
+// }
 
-import { frontmatter } from "./post.md"; // one part; a bundle leaves out the body
+// One part alone: a bundle leaves out the body.
+import { frontmatter } from "./post.md";
 ```
 
 ### `.schema.jsonc`
 
-A JSON Schema becomes its type and a validator. The validator is compiled by ajv, a dependency of Motherload's, when the module is built, so the module imports nothing at run time. The suffix is `.schema.jsonc`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`; the file is read as JSON with comments, so comments and trailing commas are allowed.
+A JSON Schema becomes its type and a validator. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time.
 
 ```jsonc
 {
@@ -235,18 +242,24 @@ A JSON Schema becomes its type and a validator. The validator is compiled by ajv
 import user, { type Type as User } from "./user.schema.jsonc";
 // User: { name: string; role?: "admin" | "member" }
 
-const result = user.validate(input);   // every issue; never throws
-if (result.issues) result.issues;      // [{ message, path, keyword, params, schemaPath }, ...]
-else result.value;                     // User: input itself
+// Never throws: the value, or every issue.
+const result = user.validate(input);
+if (result.issues) {
+  result.issues; // [{ message, path, keyword, params, schemaPath }]
+} else {
+  result.value; // User: the input itself
+}
 
-user.is(input);                        // input is User; stops at the first failure
-user["~standard"].validate(input);     // Standard Schema v1: the same function as validate
-user["~standard"].jsonSchema;          // Standard JSON Schema v1
+user.is(input); // input is User; stops at the first failure
+
+// Standard Schema v1 and Standard JSON Schema v1
+user["~standard"].validate(input); // the same as validate
+user["~standard"].jsonSchema;
 ```
 
-An issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`.
-
-A `$ref` to another schema file, by a path relative to the file that holds it, is followed: `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.
+- **Issues:** an issue's `path` holds object keys as strings and array indexes as numbers, and ends with the key of a missing or unexpected property: `["members", 1, "name"]`, `["role"]`.
+- **References:** a `$ref` to another schema file, by a path relative to the file that holds it, is followed. `{ "$ref": "./address.schema.jsonc" }` is that file's `Type`, and `"./shared.schema.jsonc#/$defs/tag"` the type it declares for that definition, both imported from that file's module. The validator checks the other file's rules too.
+- **The suffix:** `.schema.jsonc`, not `.schema.json`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
 
 > [!NOTE]
 > A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.
