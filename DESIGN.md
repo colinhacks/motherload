@@ -51,7 +51,7 @@ Downloads and releases from the npm registry and downloads API on 2026-10-03. Th
 ## TOML dates
 
 - **An offset date-time is a `Date`** (`new Date(...)` in the module, `Date` in both types): it names an instant.
-- **A local date-time, local date or local time is its ISO text** (`"1979-05-27"`, `"1979-05-27T07:32:00.000"`, `"07:32:00.000"`), typed `string`: none names an instant, and a `Date` would invent a time zone. The text is smol-toml's `.toISOString()`, which adds milliseconds to a time (`tests/formats.test.ts`).
+- **A local date-time, local date or local time is its ISO text** (`"1979-05-27"`, `"1979-05-27T07:32:00.000"`, `"07:32:00.000"`), typed as that text, `"1979-05-27"`, as any string is (`lab/basic/main.ts`): none names an instant, and a `Date` would invent a time zone. The text is smol-toml's `.toISOString()`, which adds milliseconds to a time (`tests/formats.test.ts`).
 - Temporal (`Temporal.PlainDate` and the rest, which smol-toml can return) was the alternative; it needs Temporal wherever the module runs. It is in [PLAN.md](./PLAN.md#open).
 
 ## The YAML parser: yaml
@@ -159,7 +159,7 @@ The maintainer's decision of 2026-10-21: "I'm trying to decide whether to extrac
 
 ## Values a module carries
 
-The serializer (`packages/core/src/serialize.ts`) writes each parsed value as JavaScript and as two type texts. Beyond JSON: `NaN`, `Infinity`, `-Infinity` and `-0` (YAML `.inf`, JSON5 `Infinity`, TOML `nan`), `bigint` (`123n`), and `Date`. A `"__proto__"` key is written as a computed key, because `{"__proto__": x}` in an object literal sets the prototype (`tests/serialize.test.ts`). Literal types: `NaN` and the infinities are `number`, as TypeScript has no literal type for them. Anything else (a Map, a Set, bytes, `undefined`) is a diagnostic naming its path.
+The serializer (`packages/core/src/serialize.ts`) writes each parsed value as JavaScript and as the type `as const` would give it; the widened type the first version also wrote went with its widened default on 2026-10-06. Beyond JSON: `NaN`, `Infinity`, `-Infinity` and `-0` (YAML `.inf`, JSON5 `Infinity`, TOML `nan`), `bigint` (`123n`), and `Date`. A `"__proto__"` key is written as a computed key, because `{"__proto__": x}` in an object literal sets the prototype (`tests/serialize.test.ts`). Literal types: `NaN` and the infinities are `number`, as TypeScript has no literal type for them. Anything else (a Map, a Set, bytes, `undefined`) is a diagnostic naming its path.
 
 ## Diagnostics
 
