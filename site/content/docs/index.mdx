@@ -564,14 +564,6 @@ The schema's type is always exported as `Type`. The validator is compiled by [aj
 
 <Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
 
-### `.json`
-
-Plain `.json` stays TypeScript's own: a content mapper cannot claim it. Turn on `resolveJsonModule` to import it:
-
-```ts
-import pkg from "./package.json";
-```
-
 ### `.sql`
 
 `.sql` files are [Reylo](https://reylo.dev)'s: a content mapper that types each query from your live Postgres, MySQL or SQLite database.
