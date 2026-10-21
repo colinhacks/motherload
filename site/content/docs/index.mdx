@@ -77,11 +77,7 @@ Hover over an import to see its type. Each type comes from the file, in the type
 
 The type check and the editor run Motherload as a content mapper: TypeScript hands it each data file a project imports, and it returns the module's types. At run time, a preload or a bundler plugin turns the same file into a module.
 
-```text
-plans.toml  →  Motherload  →
-  { readonly free: { readonly price: 0; readonly seats: 1 };
-    readonly pro: { … } }
-```
+<HowItWorksDiagram />
 
 ## Setup
 
