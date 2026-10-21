@@ -70,7 +70,7 @@ Each was a lead from earlier research; each row says where it was confirmed. "Me
 
 ## What works
 
-Run `nub install`, then `nub run typecheck` and `nub run test` (74 tests). The suite type-checks [lab/basic](./lab/basic) through the content mapper with exact-type assertions and a failing control, checks diagnostics placed in broken files, runs `lab/basic` under the preload, and bundles it with the esbuild plugin into a file that imports nothing; it does the same for [lab/packages](./lab/packages) on three format packages alone, and checks that a Motherload loader defers to one claiming a longer suffix in Node, Bun and esbuild. `nub run build` writes the packages to `dist/`, and `nub run check-dist` installs them from tarballs outside the repository and runs both labs on them. [AGENTS.md](./AGENTS.md) lists the layout.
+Run `nub install`, then `nub run typecheck` and `nub run test` (76 tests). The suite type-checks [lab/basic](./lab/basic) through the content mapper with exact-type assertions and a failing control, checks diagnostics placed in broken files, runs `lab/basic` under the preload, and bundles it with the esbuild plugin into a file that imports nothing; it does the same for [lab/packages](./lab/packages) on three format packages alone, and checks that a Motherload loader defers to one claiming a longer suffix in Node, Bun and esbuild. `nub run build` writes the packages to `dist/`, and `nub run check-dist` installs them from tarballs outside the repository and runs both labs on them. [AGENTS.md](./AGENTS.md) lists the layout.
 
 ## Steps
 

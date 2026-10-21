@@ -45,6 +45,21 @@ function mapRefs(schema: Value, map: (ref: string) => string): Value {
   return copy;
 }
 
+/** Calls `visit` with `schema` and every schema inside it, keyword by keyword, as `mapRefs` walks them. */
+export function eachSchema(schema: Value, visit: (schema: Obj) => void): void {
+  if (!isObj(schema)) return;
+  visit(schema);
+  for (const key of ONE) eachSchema(schema[key]!, visit);
+  for (const key of LIST) {
+    const list = schema[key];
+    if (Array.isArray(list)) for (const item of list) eachSchema(item, visit);
+  }
+  for (const key of MAP) {
+    const group = schema[key];
+    if (isObj(group)) for (const item of Object.values(group)) if (!Array.isArray(item)) eachSchema(item, visit);
+  }
+}
+
 /** Every `$ref` in `schema`, in document order. */
 export function refsIn(schema: Value): string[] {
   const refs: string[] = [];

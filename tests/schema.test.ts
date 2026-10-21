@@ -197,6 +197,27 @@ test("each draft ajv validates compiles, draft-06 with the meta-schema ajv's def
   }
 });
 
+test("a schema with no $schema is draft-07, and a later draft's keyword, which ajv ignores there, is a problem at the keyword", () => {
+  const source = '{\n  "type": "array",\n  "prefixItems": [{ "type": "string" }],\n  "contains": { "const": 1 },\n  "minContains": 2\n}';
+  const typed = schemaTypes(source, PATH);
+  assert.deepEqual(
+    typed.problems.map((p) => [p.message, source.slice(p.start, p.start + p.length)]),
+    [
+      ['"prefixItems" is a JSON Schema 2020-12 keyword, which draft-07, the draft of a schema with no "$schema", ignores: declare "$schema": "https://json-schema.org/draft/2020-12/schema".', "prefixItems"],
+      ['"minContains" is a JSON Schema 2019-09 keyword, which draft-07, the draft of a schema with no "$schema", ignores: declare "$schema": "https://json-schema.org/draft/2019-09/schema".', "minContains"],
+    ],
+  );
+  // The type is what draft-07 validates: prefixItems makes no tuple.
+  assert.match(typed.types, /export type Type = unknown\[\];/);
+  assert.deepEqual(schemaCode(source, PATH).problems, typed.problems);
+  // Declared, the same keywords need no problem in 2020-12, and prefixItems still does in 2019-09.
+  const declared = (draft: string) => source.replace("{", `{\n  "$schema": "https://json-schema.org/draft/${draft}/schema",`);
+  assert.deepEqual(schemaTypes(declared("2020-12"), PATH).problems, []);
+  assert.deepEqual(schemaTypes(declared("2019-09"), PATH).problems.map((p) => p.message), ['"prefixItems" is a JSON Schema 2020-12 keyword, which this schema\'s draft, 2019-09, ignores: declare "$schema": "https://json-schema.org/draft/2020-12/schema".']);
+  // A schema with no $schema that uses only draft-07's keywords is fine, as before.
+  assert.deepEqual(schemaTypes(JSON.stringify({ type: "array", items: [{ type: "string" }] }), PATH).problems, []);
+});
+
 test("a format ajv-formats checks with a function, such as date-time or uri, is inlined: the module requires nothing", async () => {
   const { code, problems } = schemaCode(JSON.stringify({ type: "object", properties: { at: { type: "string", format: "date-time" }, url: { type: "string", format: "uri" } } }), PATH);
   assert.deepEqual(problems, []);

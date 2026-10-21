@@ -99,13 +99,22 @@ export interface SchemaFiles {
 /** A schema file whose pointers a reference can follow: the root's own, or another file's, whose names are imported. */
 type Document = { schema: Value; path: string | undefined; names: Map<string, string>; own: boolean };
 
+/** The drafts whose keywords differ for a type: draft-06 reads as draft-07. */
+export type Draft = "draft-07" | "2019-09" | "2020-12";
+
 /**
  * The root `Type` and one named declaration per definition, as module text. With `files`, a `$ref`
  * to another schema file is typed by that file's module: its `Type`, or the type it declares for
  * the definition the reference points to, imported under a name of this module's choosing; a
  * pointer to anything else there is inlined from the file. Without `files`, such a `$ref` is `unknown`.
+ * With `draft`, a keyword is read only in the drafts that have it, as ajv reads it: `prefixItems`
+ * in 2020-12 alone, a list of `items` and `additionalItems` before it, `unevaluatedProperties` from
+ * 2019-09; without, every keyword is read.
  */
-export function schemaDeclarations(root: Value, files?: SchemaFiles): string {
+export function schemaDeclarations(root: Value, files?: SchemaFiles, draft?: Draft): string {
+  const prefixItems = draft === undefined || draft === "2020-12";
+  const itemLists = draft === undefined || draft !== "2020-12";
+  const unevaluated = draft === undefined || draft !== "draft-07";
   const { names, definitions, taken } = definitionNames(root);
   const main: Document = { schema: root, path: files?.path, names, own: true };
   const documents = new Map<string, Document>();
@@ -187,7 +196,7 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles): string {
     // Keys outside `properties`: an index signature, unless `additionalProperties` (or, without it,
     // `unevaluatedProperties`) is false. Its type covers the named properties too, as TypeScript requires.
     const additional = schema["additionalProperties"];
-    const closed = additional === false || (additional === undefined && schema["unevaluatedProperties"] === false);
+    const closed = additional === false || (additional === undefined && unevaluated && schema["unevaluatedProperties"] === false);
     const extra = isObj(schema["patternProperties"]) ? Object.values(schema["patternProperties"]).map((pattern) => emit(pattern, inner)) : [];
     if (!closed) extra.push(additional === undefined || additional === true ? "unknown" : emit(additional, inner));
     if (extra.length) lines.push(`${inner}[key: string]: ${union([...extra, ...valueTypes])};`);
@@ -197,11 +206,12 @@ export function schemaDeclarations(root: Value, files?: SchemaFiles): string {
 
   function arrayType(schema: Obj, indent: string): string {
     // 2020-12 spells a tuple `prefixItems` and the rest `items`; drafts 06 to 2019-09 spell them
-    // `items` (an array) and `additionalItems`.
-    const prefix = schema["prefixItems"];
+    // `items` (an array) and `additionalItems`. Each is read only in the drafts that have it.
+    const prefix = prefixItems ? schema["prefixItems"] : undefined;
     const items = schema["items"];
-    const tuple = Array.isArray(prefix) ? prefix : Array.isArray(items) ? items : undefined;
-    const rest = Array.isArray(prefix) ? items : Array.isArray(items) ? schema["additionalItems"] : items;
+    const list = itemLists && Array.isArray(items);
+    const tuple = Array.isArray(prefix) ? prefix : list ? (items as Value[]) : undefined;
+    const rest = Array.isArray(prefix) ? items : list ? schema["additionalItems"] : items;
     const restType = rest === undefined || rest === true ? "unknown" : emit(rest, indent);
     if (!tuple) return arrayOf(restType);
     const min = typeof schema["minItems"] === "number" ? schema["minItems"] : 0;

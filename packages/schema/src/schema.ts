@@ -16,8 +16,8 @@ import { createRequire } from "node:module";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
-import { collect, forAjv, parseSchemaFile, type Files } from "./refs.ts";
-import { schemaDeclarations } from "./schema-types.ts";
+import { collect, eachSchema, forAjv, parseSchemaFile, type Files } from "./refs.ts";
+import { schemaDeclarations, type Draft } from "./schema-types.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
@@ -39,6 +39,47 @@ function ajvEntry(schema: Value): { entry: string } | { error: string } {
   if (declared.includes("2019-09")) return { entry: "ajv/dist/2019" };
   if (/draft-0[67]/.test(declared)) return { entry: "ajv" };
   return { error: `ajv validates JSON Schema drafts 06, 07, 2019-09 and 2020-12; this schema declares ${declared}.` };
+}
+
+/** The draft ajv compiles a schema in, by the entry point it is compiled with; draft-06 reads as draft-07. */
+const DRAFTS: Record<string, Draft> = { ajv: "draft-07", "ajv/dist/2019": "2019-09", "ajv/dist/2020": "2020-12" };
+
+const draftOf = (schema: Value): Draft | undefined => {
+  const entry = ajvEntry(schema);
+  return "error" in entry ? undefined : DRAFTS[entry.entry];
+};
+
+/**
+ * The keywords of a later draft that ajv ignores, without a word, in an earlier one (measured on
+ * 2026-10-20), each with the draft that has it. A schema that uses one in a draft without it would
+ * get a validator that checks less than it says, so each is a problem; the old drafts' keywords
+ * need none, since ajv refuses them in 2020-12 as an invalid schema.
+ */
+const LATER: Record<Draft, Record<string, "2019-09" | "2020-12">> = {
+  "draft-07": { prefixItems: "2020-12", $dynamicRef: "2020-12", unevaluatedProperties: "2019-09", unevaluatedItems: "2019-09", dependentRequired: "2019-09", dependentSchemas: "2019-09", minContains: "2019-09", maxContains: "2019-09", $recursiveRef: "2019-09" },
+  "2019-09": { prefixItems: "2020-12" },
+  "2020-12": {},
+};
+
+const DRAFT_URLS = { "2019-09": "https://json-schema.org/draft/2019-09/schema", "2020-12": "https://json-schema.org/draft/2020-12/schema" };
+
+/** Each later-draft keyword `schema` uses that its draft ignores, as a problem at the keyword's first key in the text. */
+function laterKeywords(schema: Value, source: string, draft: Draft | undefined): Problem[] {
+  if (!draft) return [];
+  const later = LATER[draft];
+  const found = new Set<string>();
+  eachSchema(schema, (s) => {
+    for (const keyword of Object.keys(later)) if (Object.hasOwn(s, keyword)) found.add(keyword);
+  });
+  const declared = typeof schema === "object" && schema !== null && !Array.isArray(schema) && typeof (schema as Record<string, Value>)["$schema"] === "string";
+  return [...found].map((keyword) => {
+    const has = later[keyword]!;
+    // The key quoted, or bare in JSON5, before its colon.
+    const match = new RegExp(`(["']?)${keyword.replace(/\$/g, "\\$")}\\1\\s*:`).exec(source);
+    const place = match ? { start: match.index + match[1]!.length, length: keyword.length } : undefined;
+    const which = declared ? `this schema's draft, ${draft},` : `draft-07, the draft of a schema with no "$schema",`;
+    return problem(`"${keyword}" is a JSON Schema ${has} keyword, which ${which} ignores: declare "$schema": "${DRAFT_URLS[has]}".`, place);
+  });
 }
 
 type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?: string): unknown; addMetaSchema(schema: unknown): unknown };
@@ -105,20 +146,21 @@ export function schemaTypes(source: string, path: string, typesFrom = "@motherlo
   const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
+  const draft = draftOf(schema);
   const files = filesOf(source, path, schema);
-  const problems: Problem[] = [...files.problems];
+  const problems: Problem[] = [...laterKeywords(schema, source, draft), ...files.problems];
   const loaded = loadAjv(path, schema, false);
   // A reference that cannot be followed is the problem; ajv would only add that it cannot resolve it.
   // A draft ajv does not validate is reported here too, where it was found only when the module was built.
   if ("error" in loaded) problems.push(problem(loaded.error));
-  else if (!problems.length) {
+  else if (!files.problems.length) {
     const compiled = compile(loaded.ajv, files, path);
     if ("problem" in compiled) problems.push(compiled.problem);
   }
   return {
     types: [
       `import type { Schema as __MotherloadSchema } from ${JSON.stringify(typesFrom)};`,
-      schemaDeclarations(schema, { path, read: (other) => files.schemas.get(other) }),
+      schemaDeclarations(schema, { path, read: (other) => files.schemas.get(other) }, draft),
       `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
       "export default schema;",
       "",
@@ -205,7 +247,8 @@ export function schemaCode(source: string, path: string): { code: string; proble
   const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return failed(parsed.problems);
   const files = filesOf(source, path, parsed.value);
-  if (files.problems.length) return failed(files.problems, files.watched);
+  const refused = [...laterKeywords(parsed.value, source, draftOf(parsed.value)), ...files.problems];
+  if (refused.length) return failed(refused, files.watched);
   const loaded = loadAjv(path, parsed.value, true);
   if ("error" in loaded) return failed([problem(loaded.error)], files.watched);
   const compiled = compile(loaded.ajv, files, path);

@@ -49,6 +49,16 @@ test("const, enum, combinators, and the keywords that only narrow", () => {
   assert.equal(emit({ type: ["string", "number"], nullable: false }), "export type Type = string | number;");
 });
 
+test("with a draft, a keyword is read only in the drafts that have it, as ajv reads it", () => {
+  const tuple = { type: "array", prefixItems: [{ type: "string" }], items: [{ type: "number" }], additionalItems: false };
+  assert.equal(schemaDeclarations(tuple as never, undefined, "2020-12"), "export type Type = [string?, ...unknown[]];");
+  assert.equal(schemaDeclarations(tuple as never, undefined, "2019-09"), "export type Type = [number?];");
+  assert.equal(schemaDeclarations(tuple as never, undefined, "draft-07"), "export type Type = [number?];");
+  const closed = { type: "object", properties: { a: { type: "string" } }, unevaluatedProperties: false };
+  assert.equal(schemaDeclarations(closed as never, undefined, "2019-09"), "export interface Type {\n  a?: string;\n}");
+  assert.equal(schemaDeclarations(closed as never, undefined, "draft-07"), "export interface Type {\n  a?: string;\n  [key: string]: unknown;\n}");
+});
+
 test("a oneOf of objects told apart by a `const` is a union TypeScript narrows", () => {
   assert.equal(
     emit({ oneOf: [{ type: "object", properties: { kind: { const: "circle" }, r: { type: "number" } }, required: ["kind", "r"], additionalProperties: false }, { type: "object", properties: { kind: { const: "square" }, side: { type: "number" } }, required: ["kind", "side"], additionalProperties: false }] }),

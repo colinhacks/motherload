@@ -557,7 +557,7 @@ user.schema;                         // the schema, as a literal type
 
 The schema's type is always exported as `Type`. The validator is compiled by [ajv](https://ajv.js.org) when the module is built, so the module imports nothing at run time, and the default export works with any library that accepts a [Standard Schema](https://standardschema.dev). Each entry of the schema's `$defs` is exported as a type of its own, named in PascalCase.
 
-- **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`.
+- **Drafts:** 06, 07, 2019-09 and 2020-12, chosen by `$schema`. A schema with no `$schema` is draft-07, and a keyword of a later draft in it, such as `prefixItems`, is an error, since draft-07 would ignore it.
 - **Formats:** checked, with [ajv-formats](https://ajv.js.org/packages/ajv-formats.html).
 - **References:** a `$ref` within the file is followed, and so is one to another schema file, by a path relative to this one: `./address.schema.jsonc` is that file's `Type`, and `./shared.schema.jsonc#/$defs/tag` the type it declares for `tag`, each imported from that file's module, and the validator checks the other file's rules too. A `$ref` to a URL is an error.
 - **The suffix:** `.schema.jsonc`, because TypeScript refuses a content mapper extension that ends in `.json`. The file is read as JSON with comments, so comments and trailing commas are allowed.
