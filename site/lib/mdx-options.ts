@@ -16,7 +16,7 @@ export async function mdxOptions(environment: Environment) {
   return docsMdxOptions(environment, {
     remarkPlugins: [remarkMapper],
     twoslash: motherloadTwoslash(),
-    langs: ['toml', 'yaml', 'json', 'jsonc', 'json5', 'dotenv', 'sh'],
+    langs: ['toml', 'yaml', 'json', 'jsonc', 'json5', 'dotenv', 'sh', 'sql'],
     // The page's "Lantern" palette (app/global.css): each GitHub theme colour, by role, as an
     // ash-and-amber or coal-and-amber one. Twoslash's popups render through the same options.
     colorReplacements: {

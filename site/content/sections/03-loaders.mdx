@@ -251,4 +251,41 @@ PORT=3000
 
 ### `.sql`
 
-To import type-safe SQL files, use Motherload's sister project, [Reylo](https://reylo.dev).
+To import type-safe SQL files, use Motherload's sister project, [Reylo](https://reylo.dev). It types each query's parameters and rows from your database:
+
+{/* Reylo's own opening example (reylo.dev). Its mapper needs a live database and the reylo
+    package, which this page's build has neither of, so the hidden module below stands in for
+    the one Reylo returns for get_author.sql on Postgres (reylo/site/lib/sql-modules.json): its
+    row type and `run`'s `Row | null` for a query that returns at most one row. Only `author`
+    shows a hover. */}
+
+```ts twoslash tab="main.ts"
+// @hover: author
+// @module: esnext
+// @target: esnext
+// @filename: postgres.d.ts
+declare module "postgres" {
+  export default function postgres(url: string): unknown;
+}
+// @filename: get_author.d.sql.ts
+declare const getAuthor: {
+  run(db: unknown, params: { id: number }): Promise<{ id: number; name: string; post_count: number } | null>;
+};
+export default getAuthor;
+// @filename: main.ts
+// ---cut---
+import postgres from "postgres";
+import getAuthor from "./get_author.sql";
+
+const db = postgres(process.env.DATABASE_URL!);
+
+const author = await getAuthor.run(db, { id: 1 });
+```
+
+```sql tab="get_author.sql"
+select u.id, u.name, count(p.id)::int as post_count
+from users u
+left join posts p on p.user_id = u.id
+where u.id = :id::int
+group by u.id
+```
