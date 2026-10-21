@@ -85,23 +85,6 @@ The first beta.
 
 </Shot>
 
-{/* A bare import of a .env file has nothing to hover, so this one reads a variable, as the
-    docs' .env section does. */}
-
-<Shot file=".env">
-
-```ts twoslash title="main.ts"
-import "./.env";
-
-const url = process.env.DATABASE_URL;
-```
-
-```sh title=".env"
-DATABASE_URL=postgres://localhost/app
-```
-
-</Shot>
-
 <Shot file="user.schema.jsonc">
 
 ```ts twoslash title="main.ts"
@@ -117,6 +100,23 @@ import user from "./user.schema.jsonc";
   },
   "required": ["name", "role"]
 }
+```
+
+</Shot>
+
+{/* A bare import of a .env file has nothing to hover, so this one reads a variable, as the
+    docs' .env section does. */}
+
+<Shot file=".env">
+
+```ts twoslash title="main.ts"
+import "./.env";
+
+const url = process.env.DATABASE_URL;
+```
+
+```sh title=".env"
+DATABASE_URL=postgres://localhost/app
 ```
 
 </Shot>

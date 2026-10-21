@@ -13,8 +13,8 @@ import team from "./team.yaml";
 import strings from "./strings.json5";
 import posts from "./posts.csv";
 import notes from "./notes.md";
-import "./.env";
 import user from "./user.schema.jsonc";
+import "./.env";
 ```
 
 ```toml tab="plans.toml"
@@ -56,10 +56,6 @@ tags: [beta]
 The first beta.
 ```
 
-```sh tab=".env"
-DATABASE_URL=postgres://localhost/app
-```
-
 ```jsonc tab="user.schema.jsonc"
 {
   "type": "object",
@@ -69,6 +65,10 @@ DATABASE_URL=postgres://localhost/app
   },
   "required": ["name", "role"]
 }
+```
+
+```sh tab=".env"
+DATABASE_URL=postgres://localhost/app
 ```
 
 Hover over an import to see its type. Each type comes from the file, in the type check and in the editor, and the same imports run under Node.js, Nub and esbuild.
