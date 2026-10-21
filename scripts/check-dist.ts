@@ -5,7 +5,7 @@
 // of lab/basic on `motherload`, and a copy of lab/packages on three format packages alone. Needs the
 // npm registry for TypeScript, esbuild and the parsers. Run `nub run build` first.
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -17,7 +17,8 @@ const run = (command: string, args: string[], cwd: string) => execFileSync(comma
 
 const dirs = readdirSync(dist).filter((d) => !d.startsWith("."));
 for (const dir of dirs) run("nub", ["pack", "--pack-destination", tarballs], join(dist, dir));
-const tarball = (dir: string) => `file:${join(tarballs, dir === "motherload" ? "motherload-0.0.0.tgz" : `motherload-${dir}-0.0.0.tgz`)}`;
+const version: string = JSON.parse(readFileSync(join(dist, "motherload", "package.json"), "utf8")).version;
+const tarball = (dir: string) => `file:${join(tarballs, dir === "motherload" ? `motherload-${version}.tgz` : `motherload-${dir}-${version}.tgz`)}`;
 // Every Motherload package a dependency names comes from its tarball, not the registry.
 const overrides = Object.fromEntries(dirs.filter((d) => d !== "motherload").map((d) => [`@motherload/${d}`, tarball(d)]));
 

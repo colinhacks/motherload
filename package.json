@@ -1,6 +1,6 @@
 {
   "name": "motherload",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md) as typed modules, and .schema.jsonc as a type and a validator. TypeScript 7.1 content mappers.",
   "license": "MIT",
@@ -30,6 +30,7 @@
   "scripts": {
     "build": "nub scripts/build.ts",
     "check-dist": "nub scripts/check-dist.ts",
+    "bump": "nub scripts/bump.ts",
     "typecheck": "tsc --noEmit && tsc -p lab/universal/app/tsconfig.json --noEmit --runExternalCode && tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode && tsc -p lab/packages/tsconfig.json --noEmit --runExternalCode",
     "test": "node --test 'tests/**/*.test.ts'"
   },

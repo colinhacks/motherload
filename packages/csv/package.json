@@ -1,6 +1,6 @@
 {
   "name": "@motherload/csv",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Import .csv and .tsv files as typed arrays of rows, read with csv-parse.",
   "license": "MIT",
@@ -29,7 +29,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.0.0",
+    "@motherload/core": "0.1.0",
     "csv-parse": "^7.0.3"
   }
 }

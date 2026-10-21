@@ -1,0 +1,30 @@
+name: test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Type-check, test and check the packages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: nubjs/setup-nub@c7b970ec04655a2f0a111cd436cc182a3b660e7a # v0.6.0
+        with:
+          nub-version: "0.9.6"
+      - run: nub install --frozen-lockfile
+      - run: nub run typecheck
+      - run: nub run test
+      # the packages as release.yml stages them, installed from tarballs outside the repository
+      - run: nub run build
+      - run: nub run check-dist

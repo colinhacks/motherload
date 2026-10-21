@@ -14,6 +14,8 @@ The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5
 | `src/` | `motherload`, every format: `src/plugin.ts` combines the nine loaders, `src/mapper.ts`, `src/register.ts` and `src/esbuild.ts` are its entry points, and `src/index.ts` re-exports the schema types |
 | `scripts/build.ts`, `tsconfig.build.json` | `nub run build`: every package compiled into `dist/<dir>`, with a manifest naming the compiled files and exact dependency versions, published with `npm publish dist/<dir>` |
 | `scripts/check-dist.ts` | `nub run check-dist`, after a build: each `dist/` directory packed, installed from the tarballs into copies of `lab/basic` and `lab/packages` outside the repository, then type-checked, preloaded and bundled there; needs the npm registry |
+| `.github/workflows/release.yml`, `.github/scripts/npm-stage-publish.sh` | The release, Zod's: dispatched by hand from `main`, it checks, builds and stages every package on npm through stage-only trusted publishing, waits for the maintainer's 2FA approval, then creates the GitHub release ([DESIGN.md](./DESIGN.md#releasing)); `.github/workflows/test.yml` runs the checks on every push |
+| `scripts/bump.ts`, `scripts/npm-first-publish.sh` | `nub run bump <version>`: the version written into every manifest. `npm-first-publish.sh`: run once by the maintainer, it put every package on npm as a 0.0.0 placeholder and configured its trusted publisher |
 | `tests/` | The node tests, including the end-to-end checks of `lab/basic` and `lab/packages`; `tests/fixtures/errors` is a project of broken files, and `tests/fixtures/declaration` a library that re-exports schema modules, built with `declaration` |
 | `lab/basic/` | A project that imports every format, type-checked through the content mapper, run under the preload, bundled with esbuild; `team.schema.jsonc` refers to `user.schema.jsonc` and to `shared/place.schema.jsonc`, which nothing else imports, and `event.schema.jsonc` is a discriminated union that `main.ts` narrows |
 | `lab/packages/` | A project on `@motherload/toml`, `@motherload/jsonc` and `@motherload/schema` alone, the JSONC package's hook and plugin first, so a schema stays a schema beside `.jsonc` |
@@ -36,6 +38,8 @@ Prefer `nub` over `node`, `bun`, `npm`, `npx`, `pnpm` and `yarn`: run files with
 ## Git
 
 Work lands on `main` directly, with no branch or pull request. When a task is done and `nub run typecheck` and `nub run test` pass, commit it to `main` and push it to `origin` without asking. The push may also carry commits another session left unpushed on `main`; push them with it. Several sessions can work in this checkout at once, so stage only the files the task changed.
+
+A release is never cut by a push: run `nub run bump <version>`, commit and push it, then `gh workflow run release.yml -R colinhacks/motherload`, approve the run's `npm` deployment, and ask the maintainer to run `stager` in a terminal, which approves every staged version under one authenticator code and resumes the run ([DESIGN.md](./DESIGN.md#releasing)).
 
 ## Writing conventions
 

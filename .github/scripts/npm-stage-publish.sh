@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Stage one package directory on npm: `npm stage publish` through OIDC trusted publishing, from Zod's
+# release (colinhacks/zod, .github/scripts/npm-stage-publish.sh).
+#
+# CI can only STAGE. The trusted publisher on every Motherload package is stage-only, so a version
+# reaches the registry only once the maintainer approves it with 2FA, a proof of presence that no
+# token, and no stolen push credential, can supply.
+#
+# Idempotent, because a release can be dispatched again for a version an earlier run staged: a
+# version the registry already serves is skipped, and a version already sitting in the staged queue
+# makes `npm stage publish` refuse, which counts as success here; the registry check in the
+# workflow's `finish` job is what decides whether the version arrived. That refusal's exact wording
+# is matched loosely, since Motherload's first release is where it gets observed; anything else is
+# fatal.
+set -euo pipefail
+
+dir="${1:?usage: npm-stage-publish.sh <package-dir> [npm stage publish flags...]}"
+shift
+version="${VERSION:?VERSION must name the version being staged}"
+
+# A path, not a bare specifier: `require('dist/core/package.json')` would be a lookup in node_modules.
+name="$(nub --node -p "require(require('node:path').resolve('$dir', 'package.json')).name")"
+found="$(nub --node -p "require(require('node:path').resolve('$dir', 'package.json')).version")"
+[ "$found" = "$version" ] || { echo "::error::$dir/package.json is $name@$found, not $version"; exit 1; }
+# registry.npmjs.org wants the scope separator percent-encoded: @motherload/core -> @motherload%2fcore.
+encoded="${name/\//%2f}"
+
+if curl -sf "https://registry.npmjs.org/$encoded/$version" > /dev/null; then
+  echo "$name@$version is already on the registry"
+  exit 0
+fi
+
+echo "staging $name@$version"
+out="$(mktemp)"
+trap 'rm -f "$out"' EXIT
+# verbose, because npm reports a failed OIDC token exchange only at that level and otherwise falls through to a bare E401
+if (cd "$dir" && npm stage publish --loglevel verbose "$@") > "$out" 2>&1; then
+  cat "$out"
+  exit 0
+fi
+cat "$out"
+if grep -qiE 'already (been )?staged|staged version|E409|EPUBLISHCONFLICT|previously published' "$out"; then
+  echo "$name@$version is already staged; the finish job's registry check decides the rest"
+  exit 0
+fi
+echo "::error::staging $name@$version failed"
+exit 1

@@ -1,0 +1,229 @@
+# .github/workflows/release.yml
+
+name: Release on npm
+on:
+  # Dispatch only, as Zod's release is (colinhacks/zod, .github/workflows/release.yml). A `workflow_dispatch` needs a GitHub session or token carrying write access; a stolen git push credential carries neither, so it cannot start a release by landing a commit or cutting a tag, the shape of the 2026-09-21 nubjs/nub compromise, where a stolen push credential cut a tag and 18 packages published unattended. A version bump on main is therefore inert: the maintainer runs `gh workflow run release.yml -R colinhacks/motherload`, approves the `npm` environment, and then approves the staged versions on npm with 2FA.
+  #
+  # One run, three release jobs. `stage` puts every package's version in npm's staged queue. `approval` is a job on the `release-approval` environment, whose required reviewer is the maintainer: GitHub holds the run there, with no runner, for up to 30 days. The npm approval is the gate; the environment approval only resumes the run, and `finish` checks the registry before it tags or releases anything. `stager` does both, approving on npm and then resuming the run.
+  workflow_dispatch:
+
+# one release at a time, held across the approval wait, so a second dispatch queues instead of staging next to a held run; never cancelled, since a run mid-`npm stage publish` must finish
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Type-check, test and check the packages
+    steps:
+      # A step, not a job-level `if:`: a skipped job is silent, and the run would go green having released nothing while looking like it had. This job gates the release, so failing here stops it.
+      - name: Refuse to release from any ref but main
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::release.yml runs from main only, got $GITHUB_REF"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: nubjs/setup-nub@c7b970ec04655a2f0a111cd436cc182a3b660e7a # v0.6.0
+        with:
+          nub-version: "0.9.6"
+      - run: nub install --frozen-lockfile
+      - run: nub run typecheck
+      - run: nub run test
+      - run: nub run build
+      - run: nub run check-dist
+
+  stage:
+    needs: test
+    runs-on: ubuntu-latest
+    # a required reviewer approves every run, and the environment only deploys main; each package's npm trusted publisher is bound to this workflow and this environment, so no other branch or workflow can even stage. The environment is the first of two gates; the second is the 2FA approval of each staged version, which this job cannot perform.
+    environment: npm
+    # this job only builds and stages; the wait for the approval is the `approval` job, which holds no runner
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      names: ${{ steps.version.outputs.names }}
+      # every package is served already (a re-dispatch after the approval), so there is nothing to wait for and `approval` is skipped
+      served: ${{ steps.served.outputs.served }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Nub
+        uses: nubjs/setup-nub@c7b970ec04655a2f0a111cd436cc182a3b660e7a # v0.6.0
+        with:
+          nub-version: "0.9.6"
+          registry-url: https://registry.npmjs.org/
+
+      # `npm stage publish` landed in npm 11.15, later than the npm bundled with the Node the action provisions may be. setup-nub fronts that Node's bin dir on PATH, so the global install lands in the same prefix the `npm` below resolves from; the echo proves which one.
+      - name: Install an npm CLI that can stage
+        run: | # zizmor: ignore[adhoc-packages] the npm CLI itself, pinned to the major that carries `npm stage`
+          npm install -g npm@11
+          v="$(npm --version)"
+          # `sort -V | head -1` yields the smaller of the two; it has to be the floor.
+          [ "$(printf '%s\n11.15.0\n' "$v" | sort -V | head -1)" = "11.15.0" ] \
+            || { echo "::error::npm $v cannot stage (need >= 11.15)"; exit 1; }
+          echo "npm $v at $(command -v npm)"
+
+      # what ships is what this job built and checked, from the run's own commit
+      - run: nub install --frozen-lockfile
+      - run: nub run build
+      - run: nub run check-dist
+
+      # @motherload/core first and motherload last, so the staged queue, which stager approves oldest first, reads in dependency order
+      - name: Resolve the version and the packages
+        id: version
+        run: |
+          version="$(nub --node -p "require('./package.json').version")"
+          dirs="core"
+          for path in dist/*/; do
+            dir="$(basename "$path")"
+            if [ "$dir" != core ] && [ "$dir" != motherload ]; then dirs="$dirs $dir"; fi
+          done
+          dirs="$dirs motherload"
+          names=""
+          for dir in $dirs; do names="$names $(nub --node -p "require('./dist/$dir/package.json').name")"; done
+          {
+            echo "version=$version"
+            echo "dirs=$dirs"
+            echo "names=${names# }"
+          } >> "$GITHUB_OUTPUT"
+          echo "releasing$names at $version"
+
+      # This job cannot publish. Every trusted publisher is stage-only, so all it can do is put a version in npm's staged queue, where it is not installable and its number is reserved; the maintainer then approves it with 2FA. A credential that reaches this workflow can therefore fill a queue and nothing else. All eleven are staged before the wait, so one approval session covers them, under a single one-time password.
+      - name: Stage every package on npm
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DIRS: ${{ steps.version.outputs.dirs }}
+        run: |
+          for dir in $DIRS; do
+            bash .github/scripts/npm-stage-publish.sh "dist/$dir" --provenance --access public
+          done
+
+      - name: Check whether npm serves every package
+        id: served
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NAMES: ${{ steps.version.outputs.names }}
+        run: |
+          served=true
+          for name in $NAMES; do
+            curl -sf "https://registry.npmjs.org/${name/\//%2f}/$VERSION" > /dev/null || served=false
+          done
+          echo "served=$served" >> "$GITHUB_OUTPUT"
+          if [ "$served" = true ]; then echo "every package is served at $VERSION; no approval to wait for"; fi
+
+      - name: Say how to approve
+        if: steps.served.outputs.served != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NAMES: ${{ steps.version.outputs.names }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # shellcheck disable=SC2016  # the backticks below are markdown for the step summary, not command substitution
+          {
+            echo "## Staged on npm, waiting for approval"
+            echo
+            for name in $NAMES; do echo "- \`$name@$VERSION\`"; done
+            echo
+            echo 'None of these versions is installable until the maintainer approves it with 2FA. This run is now held on the `release-approval` environment, with no runner, for up to 30 days. It resumes when that deployment is approved, and `finish` then waits for npm to serve every version before it tags and releases.'
+            echo
+            echo '```'
+            echo "stager                                                # in a terminal: a, Enter, then ONE authenticator code approves every version and resumes this run"
+            echo "stager reject 'motherload@$VERSION' '@motherload/*@$VERSION'   # drop the staged versions and fail this run"
+            echo "stager await 'motherload@$VERSION' '@motherload/*@$VERSION'    # block until npm serves every version"
+            echo '```'
+            echo
+            echo "Without stager: approve each version on npmjs.com (Staged Packages) or with \`npm stage approve <id>\` (\`npm stage list <package>\` reads the ids), then approve the pending \`release-approval\` deployment on $RUN_URL."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  approval:
+    # held by the environment's required reviewer, not by a runner: GitHub keeps the run waiting for up to 30 days, with no six-hour cap, until the deployment is approved. It is a resume signal only; a version nobody approved on npm still stops `finish` at the registry check.
+    needs: stage
+    if: needs.stage.outputs.served != 'true'
+    runs-on: ubuntu-latest
+    environment: release-approval
+    permissions: {}
+    steps:
+      - env:
+          VERSION: ${{ needs.stage.outputs.version }}
+        run: echo "resuming; finish checks that npm serves every package at $VERSION"
+
+  finish:
+    needs: [stage, approval]
+    # `approval` is skipped when npm already serves every version, and `finish` still runs then to create whatever an earlier run did not; the explicit condition drops the implicit `success()`, so `stage` is checked by name
+    if: ${{ !cancelled() && needs.stage.result == 'success' && (needs.approval.result == 'success' || (needs.approval.result == 'skipped' && needs.stage.outputs.served == 'true')) }}
+    runs-on: ubuntu-latest
+    # 6h is GitHub's hard cap for a hosted runner; the wait takes 340 minutes of it and the steps after it need a few
+    timeout-minutes: 360
+    permissions:
+      contents: write
+    steps:
+      # THE HUMAN GATE. The run resumes on the environment approval, which says nothing about npm, so the tag and the GitHub release wait here until the registry serves every version; nothing public ever describes a version npm did not ship. The loop also absorbs the automated review npm runs once a version is approved, which held Zod's 4.5.0 for 16 minutes and 4.6.0 for 116; neither is an upper bound. If the approval comes later, re-run this job.
+      - name: Wait for npm to serve every package
+        env:
+          VERSION: ${{ needs.stage.outputs.version }}
+          NAMES: ${{ needs.stage.outputs.names }}
+        run: |
+          deadline=$(( $(date +%s) + 340 * 60 ))
+          for name in $NAMES; do
+            i=0
+            until curl -sf "https://registry.npmjs.org/${name/\//%2f}/$VERSION" > /dev/null; do
+              if [ "$(date +%s)" -ge "$deadline" ]; then
+                echo "::error::$name@$VERSION is still not served after 340 minutes; if it was never approved on npm, approve it with 2FA (stager), then re-run this job"
+                exit 1
+              fi
+              i=$((i + 1))
+              if [ $((i % 15)) -eq 0 ]; then echo "$name@$VERSION is not served yet ($i minutes)"; fi
+              sleep 60
+            done
+            echo "$name@$VERSION is live"
+          done
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # the run's commit rather than `github.ref`: main may have moved on while the run was held. Notes go through env and a file so a commit subject can't break out of the command.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.stage.outputs.version }}
+          NAMES: ${{ needs.stage.outputs.names }}
+        run: |
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "v$VERSION is already released"
+            exit 0
+          fi
+          prev="$(git describe --tags --abbrev=0 "$GITHUB_SHA^" 2>/dev/null || true)"
+          {
+            echo "Docs: https://motherload.dev"
+            echo
+            echo "## Packages"
+            echo
+            for name in $NAMES; do echo "- [\`$name@$VERSION\`](https://www.npmjs.com/package/$name/v/$VERSION)"; done
+            echo
+            if [ -n "$prev" ]; then
+              echo "## Commits since $prev"
+              echo
+              git log --format='- %h %s' "$prev..$GITHUB_SHA"
+            else
+              echo "The first release of Motherload."
+            fi
+          } > "$RUNNER_TEMP/release_notes.md"
+          # the job token cannot write a ref once main has moved past this commit with a workflow change, which a run held for days makes likely
+          gh release create "v$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/release_notes.md" \
+            || { echo "::error::could not create v$VERSION at $GITHUB_SHA with the job token; create it with your own (gh release create v$VERSION -R $GITHUB_REPOSITORY --target $GITHUB_SHA --title v$VERSION --notes-file <notes>), then re-run this job"; exit 1; }

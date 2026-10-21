@@ -1,6 +1,6 @@
 {
   "name": "@motherload/schema",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Import a JSON Schema in a .schema.jsonc file as its TypeScript type and a validator compiled with ajv.",
   "license": "MIT",
@@ -30,9 +30,9 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.0.0",
-    "@motherload/jsonc": "0.0.0",
-    "@motherload/json5": "0.0.0",
+    "@motherload/core": "0.1.0",
+    "@motherload/jsonc": "0.1.0",
+    "@motherload/json5": "0.1.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1"
   }
