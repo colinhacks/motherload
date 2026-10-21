@@ -10,8 +10,7 @@
   },
   "contentMappers": [
     { "package": "@motherload/toml", "extensions": [".toml"] },
-    { "package": "@motherload/jsonc", "extensions": [".jsonc"] },
-    { "package": "@motherload/schema", "extensions": [".schema.jsonc"] }
+    { "package": "@motherload/jsonc", "extensions": [".jsonc"] }
   ],
   "include": ["main.ts"]
 }

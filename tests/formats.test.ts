@@ -19,8 +19,9 @@ const value = (parsed: ReturnType<typeof parseTomlFile>) => {
 };
 
 test("formats are chosen by the longest suffix", () => {
-  assert.equal(formatOf("/a/user.schema.jsonc"), "schema");
-  assert.equal(formatOf("/a/user.schema.json5"), "schema");
+  // Motherload reads no schema: a `.schema.jsonc` or `.schema.json5` file is data, unless another loader claims the longer suffix.
+  assert.equal(formatOf("/a/user.schema.jsonc"), "jsonc");
+  assert.equal(formatOf("/a/user.schema.json5"), "json5");
   assert.equal(formatOf("/a/b.toml"), "toml");
   assert.equal(formatOf("/a/b.yml"), "yaml");
   assert.equal(formatOf("/a/b.json5"), "json5");

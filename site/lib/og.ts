@@ -2,4 +2,4 @@
 export const ogSize = { width: 1200, height: 630 };
 
 export const ogAlt =
-  'Motherload: import data files into TypeScript, fully typed. A main.ts imports plans.toml, team.yaml, strings.json5, posts.csv, notes.md, user.schema.jsonc and .env.';
+  'Motherload: import data files into TypeScript, fully typed. A main.ts imports plans.toml, team.yaml, strings.json5, posts.csv, notes.md and .env.';

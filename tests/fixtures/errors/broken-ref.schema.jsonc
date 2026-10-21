@@ -1,5 +1,0 @@
-// A $ref to a schema file that is not there.
-{
-  "type": "object",
-  "properties": { "a": { "$ref": "./missing.schema.jsonc" } }
-}

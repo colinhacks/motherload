@@ -8,7 +8,7 @@ export type Problem = { message: string; start: number; length: number; code: nu
 export type Parsed = { ok: true; value: Value } | { ok: false; problems: Problem[] };
 
 // Diagnostic codes, shown as `motherload<code>` by the type check.
-export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3, schema: 4 } as const;
+export const CODES = { syntax: 1, unsupported: 2, unknownFormat: 3 } as const;
 
 /** A byte order mark, which a CSV or Markdown file may start with. */
 export const BOM = "﻿";

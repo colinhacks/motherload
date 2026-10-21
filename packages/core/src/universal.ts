@@ -3,8 +3,9 @@
 // function, which may be asynchronous because only the content mapper calls it; the mapper adapter
 // converts positions to the UTF-8 bytes it declares in `initialize`; and a loader names the
 // extensions it reads, so that of two Motherload packages in one host the one that claims the
-// longer suffix of a file loads it, as TypeScript routes it (`user.schema.jsonc` to
-// `@motherload/schema`, not `@motherload/jsonc`), whatever order the host was given them in.
+// longer suffix of a file loads it, as TypeScript routes it, whatever order the host was given them
+// in. The two global keys, `Symbol.for("motherload.registered")` and `Symbol.for("motherload.plugin")`,
+// are the protocol: dotschema joins it through them to claim `.schema.jsonc` from `@motherload/jsonc`.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Problem } from "./problems.ts";
@@ -18,7 +19,7 @@ export interface LoaderPlugin {
   filter: RegExp;
   /**
    * JavaScript for runtimes and bundlers. Synchronous, because Node's `registerHooks` is.
-   * `watchFiles` are the other files the code was made from (a schema's `$ref`s), which a bundler
+   * `watchFiles` are the other files the code was made from, if any, which a bundler
    * watches so that a change to one rebuilds the module.
    */
   load(source: string, path: string): { code: string; problems: Problem[]; watchFiles?: string[] };

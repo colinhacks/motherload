@@ -1,5 +1,0 @@
-{
-  "compilerOptions": { "target": "esnext", "module": "nodenext", "lib": ["esnext"], "types": [], "strict": true, "declaration": true, "emitDeclarationOnly": true, "skipLibCheck": true, "rootDir": "../../.." },
-  "contentMappers": [{ "package": "motherload", "extensions": [".schema.jsonc"] }],
-  "include": ["main.ts"]
-}

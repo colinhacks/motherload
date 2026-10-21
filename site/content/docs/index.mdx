@@ -1,9 +1,9 @@
 ---
 title: Motherload
-description: Import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or .env file and get a typed module. Import a JSON Schema and get its type and a validator.
+description: Import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or .env file and get a typed module.
 ---
 
-Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file, or a JSON Schema, and get a typed module.
+Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file and get a typed module.
 
 It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.
 
@@ -13,7 +13,6 @@ import team from "./team.yaml";
 import strings from "./strings.json5";
 import posts from "./posts.csv";
 import notes from "./notes.md";
-import user from "./user.schema.jsonc";
 import "./.env";
 ```
 
@@ -54,17 +53,6 @@ title: Release notes
 tags: [beta]
 ---
 The first beta.
-```
-
-```jsonc tab="user.schema.jsonc"
-{
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "role": { "enum": ["admin", "member"] }
-  },
-  "required": ["name", "role"]
-}
 ```
 
 ```sh tab=".env"

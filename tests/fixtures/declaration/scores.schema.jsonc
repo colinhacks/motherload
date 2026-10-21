@@ -1,8 +1,0 @@
-// Required keys that `properties` does not list: `total` is an additional property, `x-max` matches a pattern.
-{
-  "type": "object",
-  "properties": { "name": { "type": "string" } },
-  "patternProperties": { "^x-": { "type": "integer" } },
-  "additionalProperties": { "type": "number" },
-  "required": ["name", "total", "x-max"],
-}

@@ -1,9 +1,0 @@
-// An $id below the root: ajv resolves the $ref inside it against that $id, to the number.
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$defs": {
-    "x": { "type": "string" },
-    "inner": { "$id": "https://example.com/inner", "$defs": { "x": { "type": "number" } }, "allOf": [{ "$ref": "#/$defs/x" }] },
-  },
-  "allOf": [{ "$ref": "#/$defs/inner" }],
-}

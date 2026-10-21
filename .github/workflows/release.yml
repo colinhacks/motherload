@@ -98,7 +98,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "releasing$names at $version"
 
-      # This job cannot publish. Every trusted publisher is stage-only, so all it can do is put a version in npm's staged queue, where it is not installable and its number is reserved; the maintainer then approves it with 2FA. A credential that reaches this workflow can therefore fill a queue and nothing else. All eleven are staged before the wait, so one approval session covers them, under a single one-time password.
+      # This job cannot publish. Every trusted publisher is stage-only, so all it can do is put a version in npm's staged queue, where it is not installable and its number is reserved; the maintainer then approves it with 2FA. A credential that reaches this workflow can therefore fill a queue and nothing else. All ten are staged before the wait, so one approval session covers them, under a single one-time password.
       - name: Stage every package on npm
         env:
           VERSION: ${{ steps.version.outputs.version }}

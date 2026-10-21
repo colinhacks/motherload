@@ -183,78 +183,6 @@ import { frontmatter } from "./post.md";
 //       ^?
 ```
 
-### `.schema.jsonc`
-
-A `.schema.jsonc` file is a JSON Schema. Importing it gives a validator for the schema, compiled by [ajv](https://ajv.js.org) when the module is built, and the type the schema describes:
-
-```ts twoslash tab="main.ts"
-declare const input: unknown;
-// ---cut---
-import user from "./user.schema.jsonc";
-
-const result = user.validate(input);
-if (result.issues) {
-  console.log(result.issues);
-} else {
-  const ada = result.value;
-}
-```
-
-```jsonc tab="user.schema.jsonc"
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "name": { "type": "string", "minLength": 1 },
-    "email": { "type": "string", "format": "email" },
-    "role": { "enum": ["admin", "member"] }
-  },
-  "required": ["name", "role"],
-  "additionalProperties": false
-}
-```
-
-The `.is()` method checks a value and narrows it:
-
-```ts twoslash title="main.ts"
-declare const input: unknown;
-// ---cut---
-import user from "./user.schema.jsonc";
-
-if (user.is(input)) {
-  input.role;
-  //    ^?
-}
-```
-
-The type is the export `Type`:
-
-```ts twoslash title="main.ts"
-// @errors: 2322
-import type { Type as User } from "./user.schema.jsonc";
-
-const ada: User = { name: "Ada", role: "admin" };
-const bob: User = { name: "Bob", role: "owner" };
-```
-
-A `$ref` can point to another schema file, by a path relative to this one:
-
-```jsonc title="team.schema.jsonc"
-{
-  "type": "object",
-  "properties": {
-    "members": {
-      "type": "array",
-      "items": { "$ref": "./user.schema.jsonc" }
-    }
-  }
-}
-```
-
-The `$schema` keyword picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
-
-<Callout>A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.</Callout>
-
 ### `.env`
 
 Importing a `.env` file sets its variables on `process.env` when the module runs, with no dotenv and no `--env-file`, and types each of them as a `string`:
@@ -294,6 +222,10 @@ const url = new URL(process.env.DATABSE_URL);
 A variable the environment already sets keeps its value. A bundle holds none of the file's values: it reads the file from the working directory when it runs, and loads nothing if the file is absent.
 
 </Details>
+
+### `.schema.jsonc`
+
+To import a JSON Schema file as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).
 
 ### `.sql`
 

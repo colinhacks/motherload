@@ -1,6 +1,5 @@
 // A `.json5` file's module: its data, typed as `as const` would type it, read with json5, the
-// JSON5 project's own parser. `@motherload/schema` reads a `.schema.json5` file with
-// `parseJson5File`.
+// JSON5 project's own parser.
 import JSON5 from "json5";
 import { carry, fail, moduleLoader, offsetOf, valueModule, type Parsed } from "@motherload/core";
 

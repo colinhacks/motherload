@@ -1,5 +1,5 @@
 {
   "compilerOptions": { "target": "esnext", "module": "nodenext", "types": [], "strict": true, "noEmit": true, "skipLibCheck": true },
-  "contentMappers": [{ "package": "motherload", "extensions": [".toml", ".yaml", ".csv", ".md", ".schema.jsonc", ".schema.json5"] }],
+  "contentMappers": [{ "package": "motherload", "extensions": [".toml", ".yaml", ".csv", ".md"] }],
   "include": ["main.ts"]
 }

@@ -1,6 +1,6 @@
 // A `.jsonc` file's module: its data, typed as `as const` would type it. JSON with comments, and
 // trailing commas allowed, read with Microsoft's jsonc-parser (DESIGN.md, "The JSONC parser:
-// jsonc-parser"). `@motherload/schema` reads a `.schema.jsonc` file with `parseJsoncFile`.
+// jsonc-parser").
 import { parseTree, printParseErrorCode, type Node, type ParseError } from "jsonc-parser";
 import { carry, CODES, moduleLoader, valueModule, type Parsed } from "@motherload/core";
 

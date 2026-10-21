@@ -8,14 +8,15 @@ import { build } from "esbuild";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { standalone, toBunPlugin, toEsbuildPlugin, toNodeHooks, type LoaderPlugin } from "../packages/core/src/index.ts";
 import { loader as jsonc } from "../packages/jsonc/src/loader.ts";
-import { loader as schema } from "../packages/schema/src/loader.ts";
+import { loader as json5 } from "../packages/json5/src/loader.ts";
 import { loaders, plugin } from "../src/plugin.ts";
 import { ROOT } from "./helpers.ts";
 
-const FORMATS = ["toml", "yaml", "json5", "jsonc", "env", "csv", "txt", "md", "schema"];
+const FORMATS = ["toml", "yaml", "json5", "jsonc", "env", "csv", "txt", "md"];
+type NodeHooks = ReturnType<typeof toNodeHooks>;
 const root = JSON.parse(readFileSync(`${ROOT}package.json`, "utf8"));
 const manifest = (name: string) => JSON.parse(readFileSync(`${ROOT}packages/${name}/package.json`, "utf8"));
 
@@ -50,35 +51,83 @@ test("motherload reads every format package's extensions", () => {
 
 const dir = mkdtempSync(join(tmpdir(), "motherload-packages-"));
 writeFileSync(join(dir, "user.schema.jsonc"), '{ "type": "string" }\n');
+writeFileSync(join(dir, "user.schema.json5"), "{ type: 'string' }\n");
 writeFileSync(join(dir, "app.jsonc"), '{ "a": 1 }\n');
+writeFileSync(join(dir, "app.json5"), "{ a: 1 }\n");
 const JSONC = standalone(jsonc);
-const SCHEMA = standalone(schema);
-const next = () => ({ format: "next", source: "", shortCircuit: true }) as any;
-const nodeLoad = (p: LoaderPlugin, registered: LoaderPlugin[], file: string) => toNodeHooks(p, registered).load!(pathToFileURL(join(dir, file)).href, {} as any, next) as any;
+const JSON5 = standalone(json5);
 
-test("Node: the JSONC package's hook leaves a schema file to the schema package's, whichever was registered first", () => {
-  for (const registered of [[JSONC, SCHEMA], [SCHEMA, JSONC]]) {
-    assert.equal(nodeLoad(JSONC, registered, "user.schema.jsonc").format, "next");
-    assert.match(nodeLoad(SCHEMA, registered, "user.schema.jsonc").source, /vendor: "motherload"/);
-    assert.match(nodeLoad(JSONC, registered, "app.jsonc").source, /const data = \{"a": 1\};/);
+// A loader of another package that claims a longer suffix, as dotschema claims `.schema.jsonc` and
+// `.schema.json5`. It is written here with nothing from @motherload/core, as a package with its own
+// copy of the contract would be: it joins Motherload's loaders through the two global keys alone,
+// the process-wide set of registered loaders and the key an esbuild plugin object carries its loader under.
+const STAND_IN: LoaderPlugin = {
+  name: "stand-in",
+  extensions: [".schema.jsonc", ".schema.json5"],
+  filter: /\.schema\.json[c5]$/,
+  load: () => ({ code: 'export default "stand-in";\n', problems: [] }),
+  types: () => ({ types: "declare const data: string;\nexport default data;\n", problems: [] }),
+};
+const registered = (globalThis as Record<symbol, unknown>)[Symbol.for("motherload.registered")] as Set<LoaderPlugin>;
+const standInHooks: NodeHooks = {
+  load: (url, context, nextLoad) => (STAND_IN.filter.test(url) ? { format: "module", source: STAND_IN.load("", fileURLToPath(url)).code, shortCircuit: true } : nextLoad(url, context)),
+};
+const standInEsbuild = {
+  name: "stand-in",
+  [Symbol.for("motherload.plugin")]: STAND_IN,
+  setup(build: { onLoad(options: { filter: RegExp }, callback: () => { contents: string; loader: "js" }): void }) {
+    build.onLoad({ filter: STAND_IN.filter }, () => ({ contents: STAND_IN.load("", "").code, loader: "js" }));
+  },
+};
+
+/** Node's chain of load hooks, the one registered last first, each one's next the one before it. */
+function chain(hooks: NodeHooks[], url: string): { format: string; source: string } {
+  const at = (i: number): any => (i < 0 ? { format: "end", source: "" } : hooks[i]!.load!(url, {} as any, () => at(i - 1)));
+  return at(hooks.length - 1);
+}
+
+test("Node: the JSONC and JSON5 packages' hooks leave a longer suffix to the loader registered for it, in either order", () => {
+  registered.add(JSONC).add(JSON5).add(STAND_IN);
+  try {
+    const ours = [toNodeHooks(JSONC), toNodeHooks(JSON5)];
+    for (const hooks of [[...ours, standInHooks], [standInHooks, ...ours]]) {
+      const load = (file: string) => chain(hooks, pathToFileURL(join(dir, file)).href).source;
+      assert.equal(load("user.schema.jsonc"), 'export default "stand-in";\n');
+      assert.equal(load("user.schema.json5"), 'export default "stand-in";\n');
+      assert.match(load("app.jsonc"), /const data = \{"a": 1\};/);
+      assert.match(load("app.json5"), /const data = \{"a": 1\};/);
+    }
+  } finally {
+    registered.clear();
   }
-  // Alone, the JSONC package reads a schema file as data, as TypeScript routes it with no schema entry.
-  assert.match(nodeLoad(JSONC, [JSONC], "user.schema.jsonc").source, /const data = \{"type": "string"\};/);
+  // With nothing registered for the longer suffix, a schema file is JSONC or JSON5 data, as TypeScript routes it with no entry for that suffix.
+  assert.match(chain([toNodeHooks(JSONC, [JSONC])], pathToFileURL(join(dir, "user.schema.jsonc")).href).source, /const data = \{"type": "string"\};/);
+  assert.match(chain([toNodeHooks(JSON5, [JSON5])], pathToFileURL(join(dir, "user.schema.json5")).href).source, /const data = \{"type": "string"\};/);
 });
 
-test("Bun: a schema file the JSONC package's plugin is asked for is loaded with the schema package", () => {
-  const loads: ((args: { path: string }) => { contents: string })[] = [];
-  toBunPlugin(JSONC, [JSONC, SCHEMA]).setup({ onLoad: (_options, callback) => void loads.push(callback) });
-  assert.match(loads[0]!({ path: join(dir, "user.schema.jsonc") }).contents, /vendor: "motherload"/);
-  assert.match(loads[0]!({ path: join(dir, "app.jsonc") }).contents, /const data = \{"a": 1\};/);
+test("Bun: a file the JSONC or JSON5 package's plugin is asked for is loaded with the loader that claims its longer suffix", () => {
+  registered.add(STAND_IN);
+  try {
+    for (const ours of [JSONC, JSON5]) {
+      const loads: ((args: { path: string }) => { contents: string })[] = [];
+      toBunPlugin(ours).setup({ onLoad: (_options, callback) => void loads.push(callback) });
+      const ext = ours === JSONC ? "jsonc" : "json5";
+      assert.equal(loads[0]!({ path: join(dir, `user.schema.${ext}`) }).contents, 'export default "stand-in";\n');
+      assert.match(loads[0]!({ path: join(dir, `app.${ext}`) }).contents, /const data = \{"a": 1\};/);
+    }
+  } finally {
+    registered.clear();
+  }
 });
 
-test("esbuild: the schema plugin loads a schema file, before or after the JSONC plugin", async () => {
-  writeFileSync(join(dir, "main.ts"), 'import user from "./user.schema.jsonc"; import app from "./app.jsonc"; console.log(user.is("x"), user.is(1), app.a);');
-  for (const plugins of [[toEsbuildPlugin(JSONC), toEsbuildPlugin(SCHEMA)], [toEsbuildPlugin(SCHEMA), toEsbuildPlugin(JSONC)]]) {
-    const out = await build({ entryPoints: [join(dir, "main.ts")], bundle: true, write: false, format: "esm", plugins, logLevel: "silent" });
+test("esbuild: the JSONC and JSON5 plugins leave a longer suffix to the plugin that claims it, before or after them", async () => {
+  writeFileSync(join(dir, "main.ts"), 'import a from "./user.schema.jsonc"; import b from "./user.schema.json5"; import c from "./app.jsonc"; import d from "./app.json5"; console.log(a, b, c.a, d.a);');
+  const ours = [toEsbuildPlugin(JSONC), toEsbuildPlugin(JSON5)];
+  for (const plugins of [[...ours, standInEsbuild], [standInEsbuild, ...ours]]) {
+    const out = await build({ entryPoints: [join(dir, "main.ts")], bundle: true, write: false, format: "esm", plugins: plugins as any, logLevel: "silent" });
     const text = out.outputFiles[0]!.text;
-    assert.match(text, /vendor: "motherload"/);
+    assert.equal(text.match(/"stand-in"/g)?.length, 2);
+    assert.doesNotMatch(text, /"string"/);
     assert.match(text, /\{ "a": 1 \}|a: 1/);
   }
 });

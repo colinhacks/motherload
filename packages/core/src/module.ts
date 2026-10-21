@@ -42,7 +42,7 @@ const list = (items: readonly string[]) => (items.length < 2 ? items.join("") : 
 
 /**
  * One loader for several formats, each path going to the format that claims the longest suffix of
- * it (`user.schema.jsonc` is a schema, `app.jsonc` is data). TypeScript routes every extension of a
+ * it (`.env.toml` is TOML, not a `.env` file). TypeScript routes every extension of a
  * tsconfig entry to its mapper, including one the package does not read, which is a diagnostic
  * naming what it does read. `product` names the package in that message: "Motherload", or
  * "@motherload/toml".

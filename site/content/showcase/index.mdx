@@ -85,25 +85,6 @@ The first beta.
 
 </Shot>
 
-<Shot file="user.schema.jsonc">
-
-```ts twoslash title="main.ts"
-import user from "./user.schema.jsonc";
-```
-
-```jsonc title="user.schema.jsonc"
-{
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "role": { "enum": ["admin", "member"] }
-  },
-  "required": ["name", "role"]
-}
-```
-
-</Shot>
-
 {/* A bare import of a .env file has nothing to hover, so this one reads a variable, as the
     docs' .env section does. */}
 

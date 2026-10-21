@@ -15,7 +15,6 @@ import posts from "./posts.csv";
 import scores from "./scores.tsv";
 import notes from "./notes.txt";
 import post from "./post.md";
-import user from "./user.schema.jsonc";
 import "./.env";
 ```
 
@@ -80,17 +79,6 @@ tags: [data, types]
 # Hello
 
 The body of the post.
-```
-
-```jsonc title="user.schema.jsonc"
-{
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "role": { "enum": ["admin", "member"] }
-  },
-  "required": ["name", "role"]
-}
 ```
 
 ```sh title=".env"

@@ -14,7 +14,7 @@
 
 <br/>
 
-Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file, or a JSON Schema, and get a typed module.
+Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file and get a typed module.
 
 It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.
 
@@ -33,7 +33,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
       "package": "motherload",
       "extensions": [
         ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env",
-        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc"
+        ".csv", ".tsv", ".txt", ".md"
       ]
     }
   ]
@@ -54,7 +54,7 @@ Each tool has its setup in [the docs](https://motherload.dev):
 - [esbuild](https://motherload.dev/#plugins): `plugins: [motherload()]` from `motherload/esbuild`
 - [VS Code, Cursor and Zed](https://motherload.dev/#editors): the TypeScript 7.1 language server, with content mappers on
 
-Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [Loaders à la carte](https://motherload.dev/#loaders-a-la-carte).
+Each format is also a package of its own, `@motherload/toml`, `@motherload/yaml` and so on, for a project that reads only some of them: see [Loaders à la carte](https://motherload.dev/#loaders-a-la-carte).
 
 ## Loaders
 
@@ -246,66 +246,7 @@ import { frontmatter } from "./post.md";
 
 ### `.schema.jsonc`
 
-A `.schema.jsonc` file is a JSON Schema. Importing it gives a validator for the schema, compiled by [ajv](https://ajv.js.org) when the module is built, and the type the schema describes:
-
-```jsonc
-{
-  "type": "object",
-  "properties": {
-    "name": { "type": "string" },
-    "role": { "enum": ["admin", "member"] }
-  },
-  "required": ["name"],
-  "additionalProperties": false
-}
-```
-
-```ts
-import user from "./user.schema.jsonc";
-
-const result = user.validate(input);
-if (result.issues) {
-  console.log(result.issues);
-} else {
-  result.value; // { name: string; role?: "admin" | "member" }
-}
-```
-
-The `.is()` method checks a value and narrows it:
-
-```ts
-if (user.is(input)) {
-  input.role; // "admin" | "member" | undefined
-}
-```
-
-The type is the export `Type`:
-
-```ts
-import type { Type as User } from "./user.schema.jsonc";
-
-const ada: User = { name: "Ada", role: "admin" };
-const bob: User = { name: "Bob", role: "owner" }; // type error
-```
-
-A `$ref` can point to another schema file, by a path relative to this one:
-
-```jsonc
-{
-  "type": "object",
-  "properties": {
-    "members": {
-      "type": "array",
-      "items": { "$ref": "./user.schema.jsonc" }
-    }
-  }
-}
-```
-
-The `$schema` keyword picks the draft: 06, 07, 2019-09 or 2020-12, and draft-07 when there is none. The module is also a [Standard Schema](https://standardschema.dev), so any library that accepts one accepts it.
-
-> [!NOTE]
-> A schema can also be written in JSON5, as a `.schema.json5` file: add `.schema.json5` to the `extensions` list.
+To import a JSON Schema file as its type and a validator, use [dotschema](https://www.npmjs.com/package/dotschema).
 
 ## Errors
 

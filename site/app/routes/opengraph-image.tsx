@@ -49,7 +49,6 @@ const hero: Token[][] = [
   imp('strings', 'strings.json5'),
   imp('posts', 'posts.csv'),
   imp('notes', 'notes.md'),
-  imp('user', 'user.schema.jsonc'),
   [['import', 'keyword'], [' "./.env"', 'string'], [';', 'plain']],
 ];
 

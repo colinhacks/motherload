@@ -9,10 +9,9 @@ title: "Setup"
 ```text
 Set up Motherload in this project. Motherload lets TypeScript
 import data files as typed modules (.toml, .yaml, .json5, .jsonc,
-.env, .csv, .tsv, .txt and .md), and a JSON Schema in a
-.schema.jsonc file as its type and a validator. Its docs are one
-page, https://motherload.dev: follow the section linked at each
-step. A working project that imports every format, with its
+.env, .csv, .tsv, .txt and .md). Its docs are one page,
+https://motherload.dev: follow the section linked at each step.
+A working project that imports every format, with its
 tsconfig.json and main.ts:
 https://github.com/colinhacks/motherload/tree/main/lab/basic
 It runs from the repository's own build: install from npm.
@@ -62,7 +61,7 @@ Add Motherload to `tsconfig.json`, with the extensions it should own.
       "package": "motherload", // [!code ++]
       "extensions": [ // [!code ++]
         ".toml", ".yaml", ".yml", ".json5", ".jsonc", ".env", // [!code ++]
-        ".csv", ".tsv", ".txt", ".md", ".schema.jsonc" // [!code ++]
+        ".csv", ".tsv", ".txt", ".md" // [!code ++]
       ] // [!code ++]
     } // [!code ++]
   ] // [!code ++]
@@ -230,7 +229,6 @@ The `motherload` package is every format together. Each format is also a package
 | `@motherload/csv` | `.csv`, `.tsv` |
 | `@motherload/txt` | `.txt` |
 | `@motherload/md` | `.md` |
-| `@motherload/schema` | `.schema.jsonc` |
 
 A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers` and its preload or its esbuild plugin. A project that reads YAML and TOML:
 

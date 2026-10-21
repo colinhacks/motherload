@@ -2,7 +2,7 @@
   "name": "motherload",
   "version": "0.0.1",
   "private": true,
-  "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md) as typed modules, and .schema.jsonc as a type and a validator. TypeScript 7.1 content mappers.",
+  "description": "Import data files (.toml, .yaml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md) as typed modules. TypeScript 7.1 content mappers.",
   "license": "MIT",
   "author": "Colin McDonnell",
   "repository": {
@@ -14,7 +14,6 @@
     "node": ">=24"
   },
   "exports": {
-    ".": "./src/index.ts",
     "./register": "./src/register.ts",
     "./esbuild": "./src/esbuild.ts"
   },
@@ -41,12 +40,9 @@
     "@motherload/json5": "link:packages/json5",
     "@motherload/jsonc": "link:packages/jsonc",
     "@motherload/md": "link:packages/md",
-    "@motherload/schema": "link:packages/schema",
     "@motherload/toml": "link:packages/toml",
     "@motherload/txt": "link:packages/txt",
     "@motherload/yaml": "link:packages/yaml",
-    "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
     "csv-parse": "^7.0.3",
     "json5": "^2.2.3",
     "jsonc-parser": "^3.3.1",

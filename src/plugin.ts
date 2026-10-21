@@ -1,6 +1,5 @@
 // motherload as one loader: every format's package behind one mapper, one preload and one
-// plugin, each path going to the format that claims its longest suffix (`user.schema.jsonc` is a
-// schema and `app.jsonc` is data).
+// plugin, each path going to the format that claims its longest suffix.
 import { combine } from "@motherload/core";
 import { loader as toml } from "@motherload/toml/loader";
 import { loader as yaml } from "@motherload/yaml/loader";
@@ -10,9 +9,8 @@ import { loader as env } from "@motherload/env/loader";
 import { loader as csv } from "@motherload/csv/loader";
 import { loader as txt } from "@motherload/txt/loader";
 import { loader as md } from "@motherload/md/loader";
-import { schemaLoader } from "@motherload/schema/loader";
 
-/** Each format's loader, in the order Motherload's messages name their extensions. A schema's types import `Schema` from `motherload`, the package the project installed. */
-export const loaders = [toml, yaml, json5, jsonc, env, csv, txt, md, schemaLoader("motherload")];
+/** Each format's loader, in the order Motherload's messages name their extensions. */
+export const loaders = [toml, yaml, json5, jsonc, env, csv, txt, md];
 
 export const plugin = combine("motherload", "Motherload", loaders);
