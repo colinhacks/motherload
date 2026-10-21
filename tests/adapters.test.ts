@@ -5,9 +5,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { FILTER } from "../src/formats.ts";
 import { plugin } from "../src/plugin.ts";
-import { toEsbuildPlugin, toNodeHooks, utf8Range } from "../src/universal.ts";
+import { toEsbuildPlugin, toNodeHooks, utf8Range } from "../packages/core/src/universal.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "motherload-adapters-"));
 writeFileSync(join(dir, "app.toml"), 'name = "x"\n');
@@ -41,7 +40,7 @@ test("`?raw` is typed by client.d.ts and served by the Node hook and esbuild for
   const hooks = toNodeHooks(plugin);
   const next = () => ({ format: "next", source: "", shortCircuit: true }) as any;
   for (const ext of EXTENSIONS) {
-    assert.ok(FILTER.test(`every${ext}`), ext);
+    assert.ok(plugin.filter.test(`every${ext}`), ext);
     assert.ok(client.includes(`declare module "*${ext}?raw"`), ext);
     writeFileSync(join(dir, `every${ext}`), `the text of ${ext}\n`);
     const raw = hooks.load!(`${pathToFileURL(join(dir, `every${ext}`)).href}?raw`, {} as any, next) as any;

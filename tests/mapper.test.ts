@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { ROOT } from "./helpers.ts";
 
-/** Talks to the mapper process over its JSON-RPC framing, as tsc does. */
-function client() {
-  const child = spawn(process.execPath, ["src/mapper.ts"], { cwd: ROOT, stdio: ["pipe", "pipe", "inherit"] });
+/** Talks to a package's mapper process over its JSON-RPC framing, as tsc does: `motherload`'s, or a format package's in `packages/`. */
+function client(cwd = ROOT) {
+  const child = spawn(process.execPath, ["src/mapper.ts"], { cwd, stdio: ["pipe", "pipe", "inherit"] });
   let buffer = Buffer.alloc(0);
   const waiting = new Map<number, (value: any) => void>();
   child.stdout.on("data", (chunk: Buffer) => {
@@ -48,6 +48,21 @@ test("the mapper answers the protocol, reports options and places errors in UTF-
     assert.equal(bad.result.diagnostics[0].start, Buffer.byteLength(content.slice(0, content.indexOf("nope"))));
     const unknown = await mapper.call("transform", { fileName: `${ROOT}x.ini`, content: "", projectHandle: "p" });
     assert.match(unknown.result.diagnostics[0].messageText, /Motherload reads/);
+  } finally {
+    mapper.close();
+  }
+});
+
+test("a format package's own mapper reads its format and names it for any other extension", async () => {
+  const mapper = client(`${ROOT}packages/toml`);
+  try {
+    const init = await mapper.call("initialize", { protocolVersion: 1 });
+    assert.equal(init.result.diagnosticSource, "motherload");
+    await mapper.call("openProject", { configFileName: `${ROOT}tsconfig.json`, projectHandle: "p", compilerOptions: {} });
+    const ok = await mapper.call("transform", { fileName: `${ROOT}x.toml`, content: "a = 1\n", projectHandle: "p" });
+    assert.match(ok.result.text, /declare const data: \{ readonly a: 1 \};/);
+    const other = await mapper.call("transform", { fileName: `${ROOT}x.yaml`, content: "a: 1\n", projectHandle: "p" });
+    assert.equal(other.result.diagnostics[0].messageText, `@motherload/toml reads .toml files; ${ROOT}x.yaml is none of them. Remove its extension from @motherload/toml's contentMappers entry.`);
   } finally {
     mapper.close();
   }

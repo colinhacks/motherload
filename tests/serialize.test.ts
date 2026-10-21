@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { literal, toJs, assertValue, UnsupportedValue } from "../src/serialize.ts";
+import { literal, toJs, assertValue, UnsupportedValue } from "../packages/core/src/serialize.ts";
 import { evaluate } from "./helpers.ts";
 
 test("toJs round-trips every value a module carries", async () => {

@@ -30,7 +30,7 @@ The maintainer's, on 2026-10-08 and 2026-10-09:
 - **Motherload becomes a family of packages** released together at one version: a package per format under `@motherload` (`toml`, `yaml`, `json5`, `jsonc`, `env`, `csv`, `txt`, `md`, `schema`), each with its own mapper, preload, esbuild plugin and parser; `motherload`, the package of all of them, with one of each; and `@motherload/core`, the code they share, published as their dependency. Every dependency is at an exact version ([DESIGN.md](./DESIGN.md#packaging)).
 - **`.schema.json` (`.schema.jsonc` and `.schema.json5` since 2026-10-20) stays in Motherload,** as `@motherload/schema`, with ajv and ajv-formats as its dependencies and the validator still compiled when the module is built.
 - **The per-format `dot<ext>` names stay reserved;** the `@motherload` scope replaces them.
-- **A schema's types come from an emitter of Motherload's own** (`src/schema-types.ts`), not json-schema-to-typescript (15.9 MB with prettier) or json-schema-to-ts (the type computed again in every type check), so typing a schema needs nothing installed ([DESIGN.md](./DESIGN.md#the-schema-loader-types)).
+- **A schema's types come from an emitter of Motherload's own** (`packages/schema/src/schema-types.ts`), not json-schema-to-typescript (15.9 MB with prettier) or json-schema-to-ts (the type computed again in every type check), so typing a schema needs nothing installed ([DESIGN.md](./DESIGN.md#the-schema-loader-types)).
 
 The maintainer's, on 2026-10-19 and 2026-10-20:
 
@@ -70,16 +70,16 @@ Each was a lead from earlier research; each row says where it was confirmed. "Me
 
 ## What works
 
-Run `nub install`, then `nub run typecheck` and `nub run test` (58 tests). The suite type-checks [lab/basic](./lab/basic) through the content mapper with exact-type assertions and a failing control, checks diagnostics placed in broken files, runs `lab/basic` under the preload, and bundles it with the esbuild plugin into a file that imports nothing. [AGENTS.md](./AGENTS.md) lists the layout.
+Run `nub install`, then `nub run typecheck` and `nub run test` (68 tests). The suite type-checks [lab/basic](./lab/basic) through the content mapper with exact-type assertions and a failing control, checks diagnostics placed in broken files, runs `lab/basic` under the preload, and bundles it with the esbuild plugin into a file that imports nothing; it does the same for [lab/packages](./lab/packages) on three format packages alone, and checks that a Motherload loader defers to one claiming a longer suffix in Node, Bun and esbuild. `nub run build` writes the packages to `dist/`, and `nub run check-dist` installs them from tarballs outside the repository and runs both labs on them. [AGENTS.md](./AGENTS.md) lists the layout.
 
 ## Steps
 
 1. **The template, the package and the plan** (done on 2026-10-03).
-2. **The mapper core from the template** (done on 2026-10-03): the contract in `src/universal.ts` and the server in `src/rpc.ts`, with the changes listed in [DESIGN.md](./DESIGN.md#the-starting-point-the-loader-template).
+2. **The mapper core from the template** (done on 2026-10-03): the contract in `src/universal.ts` and the server in `src/rpc.ts`, in `packages/core/src/` since 2026-10-20, with the changes listed in [DESIGN.md](./DESIGN.md#the-starting-point-the-loader-template).
 3. **Each format** (done on 2026-10-03): TOML, YAML, JSON5, JSONC and `.env`, each with a parser chosen in DESIGN.md. CSV, TSV, text and Markdown with frontmatter added on 2026-10-06 ([DESIGN.md](./DESIGN.md#the-csv-and-tsv-module)).
 4. **The schema loader** (done on 2026-10-03): a validator compiled by ajv when the module is built, ajv an optional peer until 2026-10-20 and since then a dependency; the types from json-schema-to-typescript, an optional peer too until 2026-10-09, and since then from Motherload's own emitter. Next: a `$ref` to another file, which the maintainer requires ([Open](#open)).
 5. **Bundler plugins and the preload:** the preload (`motherload/register`) and esbuild (`motherload/esbuild`) are done. Next: Vite, Rollup and Rolldown through the template's unplugin adapter, webpack, Rspack and Turbopack through its webpack-loader adapter, Bun run for real, and a Jest transformer as dotsql has (a preload does not reach Jest's test code, [DESIGN.md](./DESIGN.md#what-runs-where)). Each needs a lab project that runs it.
-6. **The package family and a build to `dist/`** for publishing: the split into `@motherload/core`, nine format packages and `motherload` ([DESIGN.md](./DESIGN.md#packaging)), and compiled JavaScript and declarations for each, because today `exports` and the mapper's `exec` point at the TypeScript sources, which Node runs directly, as dotsql's repository does.
+6. **The package family and a build to `dist/`** (done on 2026-10-20, the maintainer's answer that day: "Build them, then document them in Setup"): `@motherload/core`, nine format packages in [packages/](./packages) and `motherload` combining them ([DESIGN.md](./DESIGN.md#packaging)); `nub run build` compiles each to JavaScript and declarations in `dist/<dir>`, since the repository's manifests point at the TypeScript sources, which Node runs directly, as dotsql's repository does. The docs page's Setup documents the packages under "One format at a time".
 7. **Docs and a launch:** a README for users, a docs site (a first draft of one page is in [site/](./site), for the maintainer to review), the first release from `"private": true` to published.
 
 ## Open

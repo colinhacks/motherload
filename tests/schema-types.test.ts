@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { schemaDeclarations } from "../src/schema-types.ts";
+import { schemaDeclarations } from "../packages/schema/src/schema-types.ts";
 import { run, TSC } from "./helpers.ts";
 
 const emit = (schema: unknown) => schemaDeclarations(schema as never);

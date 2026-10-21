@@ -63,3 +63,29 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   assert.ok(ran.out.includes(TABLES), ran.out);
   assert.ok(ran.out.includes(POINTS), ran.out);
 });
+
+// lab/packages: three formats, each from its own package, with the JSONC package's hook and plugin
+// ahead of the schema package's for a file that ends in both suffixes.
+const PACKAGES = '{"name":"packages","raw":"# A TOML file read by @motherload/toml alone.","fontSize":14,"ada":{"name":"Ada","role":"admin"},"valid":true,"invalid":false}';
+
+test("lab/packages type-checks through three format packages' mappers", () => {
+  const { status, out } = run(TSC, ["-p", "lab/packages/tsconfig.json", "--noEmit", "--runExternalCode"]);
+  assert.equal(out, "");
+  assert.equal(status, 0);
+});
+
+test("lab/packages runs under the three packages' preloads", () => {
+  const { status, out } = run(process.execPath, ["--import", "@motherload/schema/register", "--import", "@motherload/jsonc/register", "--import", "@motherload/toml/register", "main.ts"], `${ROOT}lab/packages`);
+  assert.equal(status, 0, out);
+  assert.equal(out.trim(), PACKAGES);
+});
+
+test("lab/packages bundles with the three packages' esbuild plugins and runs with nothing installed", () => {
+  rmSync(`${ROOT}lab/packages/dist`, { recursive: true, force: true });
+  const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/packages`);
+  assert.equal(built.status, 0, built.out);
+  assert.match(built.out, /errors=0 inputs=5 node_modules=0/);
+  const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/packages`);
+  assert.equal(ran.status, 0, ran.out);
+  assert.equal(ran.out.trim(), PACKAGES);
+});

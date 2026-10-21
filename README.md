@@ -52,10 +52,12 @@ node --import motherload/register main.ts
 
 Each tool has its setup in the docs:
 
-- [Node.js](site/content/docs/index.mdx#runtimes): `--import motherload/register`
-- [Nub](site/content/docs/index.mdx#runtimes): `"preload": ["motherload/register"]` in `nub.jsonc`
-- [esbuild](site/content/docs/index.mdx#bundlers): `plugins: [motherload()]` from `motherload/esbuild`
+- [Node.js](site/content/docs/index.mdx#node): `--import motherload/register`
+- [Nub](site/content/docs/index.mdx#plugins): `"preload": ["motherload/register"]` in `nub.jsonc`
+- [esbuild](site/content/docs/index.mdx#plugins): `plugins: [motherload()]` from `motherload/esbuild`
 - [VS Code, Cursor and Zed](site/content/docs/index.mdx#editors): the TypeScript 7.1 language server, with content mappers on
+
+Each format is also a package of its own, `@motherload/toml`, `@motherload/schema` and so on, for a project that reads only some of them: see [One format at a time](site/content/docs/index.mdx#one-format-at-a-time).
 
 ## Loaders
 
@@ -255,4 +257,4 @@ users.csv:3:1 - error motherload1: This row has 3 fields; the header has 2.
 
 ## Repository
 
-[PLAN.md](./PLAN.md) is where Motherload is going, [DESIGN.md](./DESIGN.md) records each decision and its evidence, and [AGENTS.md](./AGENTS.md) describes the layout and the checks. [lab/basic](./lab/basic) imports every format.
+[PLAN.md](./PLAN.md) is where Motherload is going, [DESIGN.md](./DESIGN.md) records each decision and its evidence, and [AGENTS.md](./AGENTS.md) describes the layout and the checks. `motherload` is this directory; `@motherload/core` and the package of each format are in [packages/](./packages). [lab/basic](./lab/basic) imports every format, and [lab/packages](./lab/packages) three format packages alone.

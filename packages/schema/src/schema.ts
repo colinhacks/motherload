@@ -12,10 +12,10 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
-import { parseJson5File, parseJsoncFile, CODES, type Parsed, type Problem } from "./formats.ts";
-import { literal, toJs, type Value } from "./serialize.ts";
+import { parseJson5File } from "@motherload/json5/loader";
+import { parseJsoncFile } from "@motherload/jsonc/loader";
+import { CODES, literal, toJs, type Parsed, type Problem, type Value } from "@motherload/core";
 import { schemaDeclarations } from "./schema-types.ts";
-import type { ModuleText } from "./data.ts";
 
 const FAILED_TYPES = ["declare const schema: any;", "export default schema;", "export type Type = any;", ""].join("\n");
 
@@ -65,7 +65,12 @@ function loadAjv(path: string, schema: Value, standalone: boolean): { ajv: Ajv; 
 
 // ---- types --------------------------------------------------------------------------------------
 
-export function schemaTypes(source: string, path: string): { types: string; problems: Problem[] } {
+/**
+ * The module's types. They import the `Schema` type from `typesFrom`, the package the project
+ * installed and the type check resolves from the schema's directory: `@motherload/schema`, or
+ * `motherload`, which carries the same types.
+ */
+export function schemaTypes(source: string, path: string, typesFrom = "@motherload/schema"): { types: string; problems: Problem[] } {
   const parsed = parseSchemaFile(source, path);
   if (!parsed.ok) return { types: FAILED_TYPES, problems: parsed.problems };
   const schema = parsed.value;
@@ -80,7 +85,7 @@ export function schemaTypes(source: string, path: string): { types: string; prob
   }
   return {
     types: [
-      `import type { Schema as __MotherloadSchema } from "motherload";`,
+      `import type { Schema as __MotherloadSchema } from ${JSON.stringify(typesFrom)};`,
       schemaDeclarations(schema),
       `declare const schema: __MotherloadSchema<Type, ${literal(schema)}>;`,
       "export default schema;",

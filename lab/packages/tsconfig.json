@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "lib": ["esnext"],
+    "types": ["node", "@motherload/toml/client"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "contentMappers": [
+    { "package": "@motherload/toml", "extensions": [".toml"] },
+    { "package": "@motherload/jsonc", "extensions": [".jsonc"] },
+    { "package": "@motherload/schema", "extensions": [".schema.jsonc"] }
+  ],
+  "include": ["main.ts"]
+}

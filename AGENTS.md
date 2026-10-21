@@ -8,27 +8,26 @@ The Motherload package types data-file imports (`.toml`, `.yaml`/`.yml`, `.json5
 
 | Path | What it is |
 | --- | --- |
-| `src/formats.ts` | One parser per format, each returning a value or problems placed in the text |
-| `src/serialize.ts` | A parsed value as JavaScript, as a widened type and as a literal type |
-| `src/data.ts`, `src/schema.ts` | The module a data file, a `.env` file and a schema file (`.schema.jsonc`, `.schema.json5`) become |
-| `src/schema-types.ts` | A JSON Schema as TypeScript declarations: Motherload's own emitter |
-| `src/plugin.ts` | The loader: each path to its format |
-| `src/universal.ts`, `src/rpc.ts` | The loader contract, its adapters (Node hooks, Bun, esbuild, the content mapper) and the JSON-RPC server, from the template |
-| `src/mapper.ts`, `src/register.ts`, `src/esbuild.ts` | The entry points: the content mapper process, the preload, the esbuild plugin |
-| `src/index.ts` | The types generated modules refer to (`Schema`, Standard Schema v1) |
-| `src/client.d.ts` | The ambient types of `?raw` imports, which a project lists in tsconfig's `types` as `motherload/client` |
-| `tests/` | The node tests, including the end-to-end checks of `lab/basic`; `tests/fixtures/errors` is a project of broken files |
+| `packages/core/` | `@motherload/core`, the code every package shares: the loader contract and its adapters (Node hooks, Bun, esbuild, the content mapper) with the longest-suffix deference between Motherload loaders in one host (`src/universal.ts`), the JSON-RPC server (`src/rpc.ts`), both from the template; a parsed value as JavaScript, a widened type and a literal type (`src/serialize.ts`); problems placed in the text (`src/problems.ts`); the module a parsed value becomes, and `combine`, several loaders as one (`src/module.ts`) |
+| `packages/<format>/` | One package per format (`toml`, `yaml`, `json5`, `jsonc`, `env`, `csv` for `.csv` and `.tsv`, `txt`, `md`): `src/loader.ts` is its parser and its `LoaderPlugin`; `src/mapper.ts`, `src/register.ts` and `src/esbuild.ts` its entry points; `client.d.ts` its `?raw` types. `md` reads frontmatter with `@motherload/yaml`'s parser |
+| `packages/schema/` | `@motherload/schema`: the schema module, its validator from ajv (`src/schema.ts`), its types from Motherload's own emitter (`src/schema-types.ts`), the loader, which takes the package the types import `Schema` from (`src/loader.ts`), and the `Schema` and Standard Schema v1 types (`src/index.ts`); it reads `.schema.jsonc` and `.schema.json5` with the JSONC and JSON5 packages' parsers |
+| `src/` | `motherload`, every format: `src/plugin.ts` combines the nine loaders, `src/mapper.ts`, `src/register.ts` and `src/esbuild.ts` are its entry points, `src/index.ts` re-exports the schema types, and `src/client.d.ts` holds the `?raw` types a project lists in tsconfig's `types` as `motherload/client` |
+| `scripts/build.ts`, `tsconfig.build.json` | `nub run build`: every package compiled into `dist/<dir>`, with a manifest naming the compiled files and exact dependency versions, published with `npm publish dist/<dir>` |
+| `scripts/check-dist.ts` | `nub run check-dist`, after a build: each `dist/` directory packed, installed from the tarballs into copies of `lab/basic` and `lab/packages` outside the repository, then type-checked, preloaded and bundled there; needs the npm registry |
+| `tests/` | The node tests, including the end-to-end checks of `lab/basic` and `lab/packages`; `tests/fixtures/errors` is a project of broken files |
 | `lab/basic/` | A project that imports every format, type-checked through the content mapper, run under the preload, bundled with esbuild |
+| `lab/packages/` | A project on `@motherload/toml`, `@motherload/jsonc` and `@motherload/schema` alone, the JSONC package's hook and plugin first, so a schema stays a schema beside `.jsonc` |
 | `lab/universal/`, `docs/universal-plugin.md` | The loader template and its research note, copied from dotsql; kept as they were |
 | `site/` | The docs site, one page (`site/content/docs/index.mdx`), on the dotsql site's stack (Next.js, Fumadocs, Twoslash) with the table of contents on the left; a project of its own, with its own lockfile. Its type hovers come from Motherload's mapper, run on the page's own example files at build time (`site/lib/remark-mapper.ts`). `/showcase` (`site/app/showcase/page.tsx`, `site/content/showcase/index.mdx`) is an unlisted page for screenshots: each of the hero's imports twice, as a split block, `main.ts` beside its file, and as code tabs, each in a frame that wraps it; a block resizes from its edges, a split block's divider moves, and each block's layout is kept in localStorage (`site/components/showcase.tsx`); nothing links to it and it is marked `noindex`. Its design is docs-kit, the core it shares with Reylo's docs site (`~/Documents/docs-kit`, its own repository), copied into `site/docs-kit/` and linked as `docs-kit`: change the design there and sync (`node ~/Documents/docs-kit/src/sync.mjs site`), never in the copy; `site/app/global.css` holds only the palette, the glow and the showcase |
 
-The root `package.json` links `motherload` to the repository root (`link:.`), because a mapper package does not resolve through self-reference, and links the template's `universal-toml` and `universal-toml-2` the same way.
+The root `package.json` links `motherload` to the repository root (`link:.`), because a mapper package does not resolve through self-reference, links each `packages/<name>` as `@motherload/<name>`, and links the template's `universal-toml` and `universal-toml-2` the same way. It also lists every package's parser, from which the linked sources resolve them, so one `nub install` at the root serves them all; there is no workspace. Every `package.json` in the repository is private and points at TypeScript sources; only `dist/` is published.
 
 ## JavaScript: nub
 
 Prefer `nub` over `node`, `bun`, `npm`, `npx`, `pnpm` and `yarn`: run files with `nub <file>`, package scripts with `nub run <script>`, local CLIs with `nubx <tool>`, installs with `nub install` and `nub add`. The lockfile (`pnpm-lock.yaml`) is respected both ways. Use `nub --node <file>` for strict, unaugmented Node; nub's own loaders for `.toml`, `.yaml`, `.json5` and `.jsonc` are off there, which is what a check of Motherload's preload wants.
 
-- Running `nub run typecheck` type-checks the sources and runs the content mapper on `lab/universal/app` and `lab/basic` (`tsc --runExternalCode`).
+- Running `nub run typecheck` type-checks the sources and runs the content mappers on `lab/universal/app`, `lab/basic` and `lab/packages` (`tsc --runExternalCode`).
+- Running `nub run build` writes `dist/`, and `nub run check-dist` then installs it outside the repository and runs it.
 - Running `nub run test` runs `tests/**/*.test.ts` with `node --test`.
 - Running `nub run dev` in `site/` serves the docs site on port 3312; `nub run build` there fails when a page example stops type-checking.
 - Setting `TS_CONTENT_MAPPER_DEBUG=1` on `nubx tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode` prints the JSON-RPC traffic.

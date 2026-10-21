@@ -4,7 +4,7 @@
 // stays finite. Keywords that only narrow a value TypeScript cannot narrow (`minLength`, `format`,
 // `pattern`, `multipleOf`, ...) are left out; one the emitter does not cover (`not`,
 // `if`/`then`/`else`, a `$ref` it cannot resolve) widens that part of the type to `unknown`.
-import { literal, propertyName, type Value } from "./serialize.ts";
+import { literal, propertyName, type Value } from "@motherload/core";
 
 type Obj = { readonly [key: string]: Value };
 

@@ -3,8 +3,24 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dataModule } from "../src/data.ts";
+import { loader as toml } from "../packages/toml/src/loader.ts";
+import { loader as yaml } from "../packages/yaml/src/loader.ts";
+import { loader as env } from "../packages/env/src/loader.ts";
+import { loader as csv } from "../packages/csv/src/loader.ts";
+import { loader as txt } from "../packages/txt/src/loader.ts";
+import { loader as md } from "../packages/md/src/loader.ts";
+import type { LoaderPlugin } from "../packages/core/src/universal.ts";
 import { evaluate } from "./helpers.ts";
+
+const LOADERS: Record<string, LoaderPlugin> = { toml, yaml, env, csv, tsv: csv, txt, md };
+
+/** A data file's module, both texts, from its format's package. Every data format types synchronously. */
+function dataModule(format: string, source: string, path: string) {
+  const loader = LOADERS[format]!;
+  const { code } = loader.load(source, path);
+  const { types, problems } = loader.types(source, path) as { types: string; problems: { message: string; start: number; length: number; code: number }[] };
+  return { code, types, problems };
+}
 
 test("a data module exports the data, typed as `as const` would type it", async () => {
   const source = 'name = "demo"\nport = 8080\n';

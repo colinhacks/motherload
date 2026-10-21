@@ -1,6 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { formatOf, parseCsvFile, parseEnvFile, parseJson5File, parseJsoncFile, parseMarkdownFile, parseTomlFile, parseTsvFile, parseYamlFile } from "../src/formats.ts";
+import { parseTomlFile } from "../packages/toml/src/loader.ts";
+import { parseYamlFile } from "../packages/yaml/src/loader.ts";
+import { parseJson5File } from "../packages/json5/src/loader.ts";
+import { parseJsoncFile } from "../packages/jsonc/src/loader.ts";
+import { parseEnvFile } from "../packages/env/src/loader.ts";
+import { parseCsvFile, parseTsvFile } from "../packages/csv/src/loader.ts";
+import { parseMarkdownFile } from "../packages/md/src/loader.ts";
+import { ownerOf } from "../packages/core/src/universal.ts";
+import { loaders } from "../src/plugin.ts";
+
+/** The format of a path: the short name of the package whose loader claims it, as Motherload routes it. */
+const formatOf = (path: string) => ownerOf(loaders, path)?.name.replace("@motherload/", "");
 
 const value = (parsed: ReturnType<typeof parseTomlFile>) => {
   if (!parsed.ok) assert.fail(JSON.stringify(parsed.problems));
@@ -18,12 +29,14 @@ test("formats are chosen by the longest suffix", () => {
   assert.equal(formatOf("/a/.env.local"), "env");
   assert.equal(formatOf("/a/prod.env"), "env");
   assert.equal(formatOf("/a/users.csv"), "csv");
-  assert.equal(formatOf("/a/scores.tsv"), "tsv");
+  assert.equal(formatOf("/a/scores.tsv"), "csv");
   assert.equal(formatOf("/a/notes.txt"), "txt");
   assert.equal(formatOf("/a/post.md"), "md");
   assert.equal(formatOf("/a/page.mdx"), undefined);
   assert.equal(formatOf("/a/b.json"), undefined);
   assert.equal(formatOf("/a/b.ini"), undefined);
+  // A `.env.<name>` file is claimed by name only, so a longer suffix another format reads wins.
+  assert.equal(formatOf("/a/.env.toml"), "toml");
 });
 
 test("TOML: offset date-times are Dates, local ones their ISO text, large integers bigints", () => {

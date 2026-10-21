@@ -91,7 +91,7 @@ npm install -D motherload
 npm install -D typescript@next
 ```
 
-The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`.
+The package needs Node 24 or later. An application that runs under the preload instead of a bundle loads Motherload at run time, so it lists `motherload` in `dependencies`. Each format is also a package of its own, for a project that reads only some of them: see [One format at a time](#one-format-at-a-time).
 
 ### TypeScript
 
@@ -260,6 +260,63 @@ Use `build`: esbuild runs plugins in `build` only, and `buildSync` throws.
 
 </Accordion>
 </Accordions>
+
+### One format at a time
+
+`motherload` is every format together. Each format is also a package of its own, which installs only that format's parser: a project that reads only TOML installs `@motherload/toml`, `@motherload/core` and smol-toml.
+
+| Package | Extensions |
+| --- | --- |
+| `@motherload/toml` | `.toml` |
+| `@motherload/yaml` | `.yaml`, `.yml` |
+| `@motherload/json5` | `.json5` |
+| `@motherload/jsonc` | `.jsonc` |
+| `@motherload/env` | `.env` |
+| `@motherload/csv` | `.csv`, `.tsv` |
+| `@motherload/txt` | `.txt` |
+| `@motherload/md` | `.md` |
+| `@motherload/schema` | `.schema.jsonc` |
+
+A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers`, its `client` in `types`, and its preload or its esbuild plugin. A project that reads YAML and TOML:
+
+```sh
+npm install -D @motherload/yaml @motherload/toml
+```
+
+```jsonc title="tsconfig.json"
+{
+  "compilerOptions": {
+    "types": ["@motherload/yaml/client", "@motherload/toml/client"] // [!code ++]
+  },
+  "contentMappers": [ // [!code ++]
+    { "package": "@motherload/yaml", "extensions": [".yaml", ".yml"] }, // [!code ++]
+    { "package": "@motherload/toml", "extensions": [".toml"] } // [!code ++]
+  ] // [!code ++]
+}
+```
+
+```sh tab="Node"
+node --import @motherload/yaml/register --import @motherload/toml/register main.ts
+```
+
+```js tab="esbuild"
+import * as esbuild from "esbuild";
+import yaml from "@motherload/yaml/esbuild";
+import toml from "@motherload/toml/esbuild";
+
+await esbuild.build({
+  entryPoints: ["main.ts"],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  plugins: [yaml(), toml()],
+  outfile: "dist/main.mjs",
+});
+```
+
+- **One package per extension.** Two packages that claim one extension fail the type check, so list `motherload` or a format's package for each extension, never both.
+- **A process per package.** TypeScript runs one content mapper process per package, so two format packages are two processes; `motherload` serves every format from one.
+- **A schema stays a schema beside `.jsonc`.** With `@motherload/jsonc` and `@motherload/schema` both listed, TypeScript gives `user.schema.jsonc` to the entry with the longer suffix, and the preloads and plugins do the same, in any order.
 
 ## Loaders
 

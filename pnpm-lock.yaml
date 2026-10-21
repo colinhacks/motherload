@@ -8,6 +8,36 @@ importers:
 
   .:
     dependencies:
+      '@motherload/core':
+        specifier: link:packages/core
+        version: link:packages/core
+      '@motherload/csv':
+        specifier: link:packages/csv
+        version: link:packages/csv
+      '@motherload/env':
+        specifier: link:packages/env
+        version: link:packages/env
+      '@motherload/json5':
+        specifier: link:packages/json5
+        version: link:packages/json5
+      '@motherload/jsonc':
+        specifier: link:packages/jsonc
+        version: link:packages/jsonc
+      '@motherload/md':
+        specifier: link:packages/md
+        version: link:packages/md
+      '@motherload/schema':
+        specifier: link:packages/schema
+        version: link:packages/schema
+      '@motherload/toml':
+        specifier: link:packages/toml
+        version: link:packages/toml
+      '@motherload/txt':
+        specifier: link:packages/txt
+        version: link:packages/txt
+      '@motherload/yaml':
+        specifier: link:packages/yaml
+        version: link:packages/yaml
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

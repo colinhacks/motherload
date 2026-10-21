@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CODES } from "../src/formats.ts";
-import { schemaCode, schemaTypes } from "../src/schema.ts";
+import { CODES } from "../packages/core/src/problems.ts";
+import { schemaCode, schemaTypes } from "../packages/schema/src/schema.ts";
 import { evaluate, ROOT } from "./helpers.ts";
 
 const PATH = join(ROOT, "tests/fixtures/user.schema.jsonc");

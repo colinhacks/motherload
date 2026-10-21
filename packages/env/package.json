@@ -1,0 +1,37 @@
+{
+  "name": "@motherload/env",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Import a .env file to load its variables into process.env and type them there.",
+  "license": "MIT",
+  "author": "Colin McDonnell",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/colinhacks/motherload.git",
+    "directory": "packages/env"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    "./loader": "./src/loader.ts",
+    "./register": "./src/register.ts",
+    "./esbuild": "./src/esbuild.ts",
+    "./client": {
+      "types": "./client.d.ts"
+    }
+  },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "src/mapper.ts"
+      ],
+      "compilerOptions": []
+    }
+  },
+  "dependencies": {
+    "@motherload/core": "0.0.0"
+  }
+}

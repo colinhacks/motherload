@@ -1,30 +1,18 @@
-// motherload as one loader: each path goes to its format by its suffix (the longest first, so
-// `user.schema.jsonc` is a schema and `app.yaml` is data).
-import { CODES, FILTER, formatOf, type Problem } from "./formats.ts";
-import { dataModule } from "./data.ts";
-import { schemaCode, schemaTypes } from "./schema.ts";
-import type { LoaderPlugin } from "./universal.ts";
+// motherload as one loader: every format's package behind one mapper, one preload and one
+// plugin, each path going to the format that claims its longest suffix (`user.schema.jsonc` is a
+// schema and `app.jsonc` is data).
+import { combine } from "@motherload/core";
+import { loader as toml } from "@motherload/toml/loader";
+import { loader as yaml } from "@motherload/yaml/loader";
+import { loader as json5 } from "@motherload/json5/loader";
+import { loader as jsonc } from "@motherload/jsonc/loader";
+import { loader as env } from "@motherload/env/loader";
+import { loader as csv } from "@motherload/csv/loader";
+import { loader as txt } from "@motherload/txt/loader";
+import { loader as md } from "@motherload/md/loader";
+import { schemaLoader } from "@motherload/schema/loader";
 
-const READS = ".toml, .yaml, .yml, .json5, .jsonc, .env, .csv, .tsv, .txt, .md, .schema.jsonc and .schema.json5";
+/** Each format's loader, in the order Motherload's messages name their extensions. A schema's types import `Schema` from `motherload`, the package the project installed. */
+export const loaders = [toml, yaml, json5, jsonc, env, csv, txt, md, schemaLoader("motherload")];
 
-const unknownFormat = (path: string): Problem => ({ message: `Motherload reads ${READS} files; ${path} is none of them. Remove its extension from Motherload's contentMappers entry.`, start: 0, length: 1, code: CODES.unknownFormat });
-
-export const plugin: LoaderPlugin = {
-  name: "motherload",
-  filter: FILTER,
-  load(source, path) {
-    const format = formatOf(path);
-    if (!format) return { code: "export default undefined;\n", problems: [unknownFormat(path)] };
-    if (format === "schema") return schemaCode(source, path);
-    const { code, problems } = dataModule(format, source, path);
-    return { code, problems };
-  },
-  async types(source, path) {
-    const format = formatOf(path);
-    // TypeScript routes every extension of the tsconfig entry here, including any motherload does not read.
-    if (!format) return { types: "declare const data: any;\nexport default data;\n", problems: [unknownFormat(path)] };
-    if (format === "schema") return schemaTypes(source, path);
-    const { types, problems } = dataModule(format, source, path);
-    return { types, problems };
-  },
-};
+export const plugin = combine("motherload", "Motherload", loaders);

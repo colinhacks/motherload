@@ -31,10 +31,22 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc -p lab/universal/app/tsconfig.json --noEmit --runExternalCode && tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode",
+    "build": "nub scripts/build.ts",
+    "check-dist": "nub scripts/check-dist.ts",
+    "typecheck": "tsc --noEmit && tsc -p lab/universal/app/tsconfig.json --noEmit --runExternalCode && tsc -p lab/basic/tsconfig.json --noEmit --runExternalCode && tsc -p lab/packages/tsconfig.json --noEmit --runExternalCode",
     "test": "node --test 'tests/**/*.test.ts'"
   },
   "dependencies": {
+    "@motherload/core": "link:packages/core",
+    "@motherload/csv": "link:packages/csv",
+    "@motherload/env": "link:packages/env",
+    "@motherload/json5": "link:packages/json5",
+    "@motherload/jsonc": "link:packages/jsonc",
+    "@motherload/md": "link:packages/md",
+    "@motherload/schema": "link:packages/schema",
+    "@motherload/toml": "link:packages/toml",
+    "@motherload/txt": "link:packages/txt",
+    "@motherload/yaml": "link:packages/yaml",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "csv-parse": "^7.0.3",

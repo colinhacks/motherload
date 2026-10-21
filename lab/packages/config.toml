@@ -1,0 +1,3 @@
+# A TOML file read by @motherload/toml alone.
+name = "packages"
+port = 8080

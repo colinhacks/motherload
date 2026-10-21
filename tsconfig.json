@@ -13,6 +13,6 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tests", "lab/universal/plugin"],
+  "include": ["src", "packages/*/src", "scripts", "tests", "lab/universal/plugin"],
   "exclude": ["tests/fixtures"]
 }
