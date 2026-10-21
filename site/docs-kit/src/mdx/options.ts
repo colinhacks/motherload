@@ -8,7 +8,7 @@ type Langs = NonNullable<RehypeCodeOptions['langs']>;
 type RemarkPlugins = Extract<DefaultMDXOptions['remarkPlugins'], unknown[]>;
 
 export type DocsMdxOptions = {
-  /** The site's remark plugins, run after `remarkSections`. */
+  /** The site's remark plugins, run after `remarkSections` and `remarkQueryBlocks`. */
   remarkPlugins?: RemarkPlugins;
   /** Twoslash on `ts twoslash` blocks (./twoslash.ts); `false` turns it off. */
   twoslash?: DocsTwoslashOptions | false;
@@ -22,8 +22,9 @@ export type DocsMdxOptions = {
 };
 
 /**
- * The MDX options of a docs page: Fumadocs' defaults plus each section's Markdown on its heading
- * (./remark-sections.ts), the site's remark plugins, Twoslash with its cache and the `@hover`
+ * The MDX options of a docs page: Fumadocs' defaults plus each section's Markdown on its heading,
+ * written again after Twoslash with what each query shows (./remark-sections.ts), the site's remark
+ * plugins, Twoslash with its cache and the `@hover`
  * directive (./twoslash.ts), the hanging indent of wrapped code lines (./hanging-indent.ts), and
  * each distinct Twoslash popup built once (./recma-shared-popups.ts).
  *
@@ -35,14 +36,15 @@ export type DocsMdxOptions = {
 export async function docsMdxOptions(environment: Environment, options: DocsMdxOptions = {}) {
   const { applyMdxPreset } = await import('fumadocs-mdx/config');
   const { rehypeCodeDefaultOptions } = await import('fumadocs-core/mdx-plugins');
-  const { remarkSections } = await import('./remark-sections.ts');
+  const { rehypeSections, remarkQueryBlocks, remarkSections } = await import('./remark-sections.ts');
   const { recmaSharedPopups } = await import('./recma-shared-popups.ts');
   const { hangingIndent } = await import('./hanging-indent.ts');
   const langs: Langs = ['js', 'jsx', 'ts', 'tsx'];
   for (const lang of options.langs ?? []) if (!langs.includes(lang)) langs.push(lang);
   const twoslash = options.twoslash === false ? [] : [(await import('./twoslash.ts')).docsTwoslash(options.twoslash)];
   return applyMdxPreset({
-    remarkPlugins: [remarkSections, ...(options.remarkPlugins ?? [])],
+    remarkPlugins: [remarkSections, ...(twoslash.length ? [remarkQueryBlocks] : []), ...(options.remarkPlugins ?? [])],
+    rehypePlugins: [rehypeSections],
     recmaPlugins: [recmaSharedPopups],
     rehypeCodeOptions: {
       ...rehypeCodeDefaultOptions,

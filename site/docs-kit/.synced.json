@@ -1,9 +1,9 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "0b58abc",
+  "commit": "6c04e78",
   "files": {
     "package.json": "76f8d44da08785898565422d0d53c698acf23b84357ecf9cc814befd7f910905",
-    "README.md": "4af8f13c30a6d5e58a95998ba056afed9f83f3392d8e56d3b3da11211e0ee0fe",
+    "README.md": "4a8118c76c803e6bf260661fd2cb7cf126cbf54a498d09dc93bdd3563a2693d0",
     "src/components/accordion.tsx": "67bbfd69ffcb8d984d39364197309eecc8d3a75c57b06ec8faecf707f33e73ae",
     "src/components/agent-prompt.tsx": "742210664acc0786994b1640d96bb2430a99aa69b82c89157d312c641bf66422",
     "src/components/callout.tsx": "a2206348adc587a519c59618f9aa5991ad579b3274f11f189ca162b0aef4139e",
@@ -20,11 +20,11 @@
     "src/components/shell.tsx": "3c74698dc039177bf14af31dc5ca2b2d833b1cd80a8fac5f3ac57cab6a30eba0",
     "src/components/variant-tabs.tsx": "ddc05f5cb9b57c64e24ae195d203a3348091fd591cc86af465f6fbff6f29a074",
     "src/mdx/hanging-indent.ts": "8a6c1d306dbe02467b7ac7820a4507bc907ac6c714e65f2c3f60de36aedd22cc",
-    "src/mdx/index.ts": "1de01765cabcc65c2e2aa8c334649d1cd705756d93908d51eec6015c98d23caa",
-    "src/mdx/options.ts": "090b36011ecc74f81209049952c25a5ec12d5365a3faa279b122d62ae1347fd2",
+    "src/mdx/index.ts": "005df474e727a38d7f6fd57b5ab4582d9bc401a8346c2152de963be9a6dc77f0",
+    "src/mdx/options.ts": "e89ef307045e8e47ff4ff485b1ead3e57b9543dc34a7a09fbe3a791a1acb2930",
     "src/mdx/recma-shared-popups.ts": "b12d67312b9875a469adba9ed4ca77b788f8f7958c0119451a9b4e16638ae427",
-    "src/mdx/remark-sections.ts": "df7b639d91eef0aaf6aaa0a858edaae20157da59f2c66796bb4349bfa35519b9",
-    "src/mdx/twoslash.ts": "35833951145c3614c7ac1df72f9379b5f77ce5a4a8a85afb86d69f5dd729a532",
+    "src/mdx/remark-sections.ts": "b74e170719bd36e951b174720b09b4560bb4c4460dbbceba531454cf5f9e549b",
+    "src/mdx/twoslash.ts": "1c1236cabb64d7d05bf005a5a2d864b89f12d34a271bb94de55ca9a7fbd395b1",
     "src/style.css": "d5fee10573dc914ac9c0b0e5dac8759479ae761f09752ecf3a4ff059757eaa74",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626",
     "src/vite.ts": "e8f8a6a49951ec991b24872d664efdd46cbb2121802d14279e0ea917f3f6763e"

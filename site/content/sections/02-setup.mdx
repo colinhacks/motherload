@@ -35,8 +35,10 @@ Both run from the repository's own build: install from npm.
    Rspack, Rollup, Rolldown, esbuild) and as a dependency in one
    that runs under the preload: https://motherload.dev/#setup
 2. Add Motherload to tsconfig.json as a content mapper, listing
-   the extensions the project imports, and add a typecheck script
-   that runs tsc --noEmit --runExternalCode:
+   the extensions the project imports (all of them when it
+   imports none yet, and on Next.js all but .env), and add a
+   typecheck script that runs tsc --noEmit --runExternalCode,
+   after next typegen on Next.js:
    https://motherload.dev/#typescript
 3. Make the imports load wherever the project runs code, with
    Node's --import (https://motherload.dev/#node) or the plugin
@@ -193,7 +195,7 @@ Everywhere else, a plugin turns each data file into a module: Nub loads Motherlo
 <Accordions type="multiple">
 <Accordion title="Next.js" id="setup-nextjs">
 
-Add the loader to Turbopack's rules. Next.js loads `.env` files itself, so the rule leaves them out:
+Add the loader to Turbopack's rules. Next.js loads `.env` files itself, so the rule and `tsconfig.json` leave them out:
 
 ```ts title="next.config.ts"
 import type { NextConfig } from "next";

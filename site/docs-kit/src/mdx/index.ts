@@ -4,6 +4,6 @@
 // tsconfig sets `allowImportingTsExtensions` for its type check to accept them.
 export { docsMdxOptions, type DocsMdxOptions } from './options.ts';
 export { docsTwoslash, mountPackage, twoslashOptions, type DocsTwoslashOptions, type MountedPackage } from './twoslash.ts';
-export { pageMarkdown, remarkSections, toAgentMarkdown } from './remark-sections.ts';
+export { blockId, pageMarkdown, rehypeSections, remarkQueryBlocks, remarkSections, toAgentMarkdown } from './remark-sections.ts';
 export { recmaSharedPopups } from './recma-shared-popups.ts';
 export { hangingIndent } from './hanging-indent.ts';

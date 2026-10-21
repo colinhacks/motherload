@@ -4,6 +4,7 @@ import path from 'node:path';
 import { defaultHoverInfoProcessor } from '@shikijs/twoslash';
 import { transformerTwoslash } from 'fumadocs-twoslash';
 import { createFileSystemTypesCache } from 'fumadocs-twoslash/cache-fs';
+import { recordQueries } from './remark-sections.ts';
 
 /**
  * A package to mount into every Twoslash block as `node_modules/<name>`, read from its own source:
@@ -77,6 +78,10 @@ function hoverNames(code: string): { code: string; names?: Set<string> } {
   return { code: code.replace(hoverLine, ''), names };
 }
 
+/** A block's name for the page's Markdown and the variant a copy of it shows (above). */
+const blockLine = /^\/\/ @docs-block: (\w+)\n/m;
+const variantLine = /^\/\/ @variant: (.*)\n/m;
+
 /** The lockfile of the site, which names the versions of everything a block's result depends on. */
 function lockfile(site: string): string {
   for (const name of ['pnpm-lock.yaml', 'package-lock.json', 'bun.lock', 'yarn.lock']) {
@@ -101,14 +106,15 @@ export function docsTwoslash(options: DocsTwoslashOptions = {}) {
   const limit = options.docsLimit ?? 400;
   const site = process.cwd();
   const key = createHash('sha256').update(JSON.stringify(twoslash)).update(lockfile(site)).digest('hex').slice(0, 12);
+  const processHoverInfo = (info: string) => {
+    const text = defaultHoverInfoProcessor(info);
+    return options.processHoverInfo ? options.processHoverInfo(text) : text;
+  };
   const transformer = transformerTwoslash({
     twoslashOptions: twoslash,
     typesCache: createFileSystemTypesCache({ cwd: site, dir: `node_modules/.cache/docs-kit/twoslash/${key}` }),
     rendererRich: {
-      processHoverInfo: (info) => {
-        const text = defaultHoverInfoProcessor(info);
-        return options.processHoverInfo ? options.processHoverInfo(text) : text;
-      },
+      processHoverInfo,
       // A popup is about the page's own types: Node's documentation of process.env runs to a screen.
       processHoverDocs: (docs) => (docs.length > limit ? '' : docs),
     },
@@ -118,11 +124,19 @@ export function docsTwoslash(options: DocsTwoslashOptions = {}) {
   // and stays correct whatever the line says. The narrowing comes before Shiki splits the tokens at
   // each node and the renderer wraps them: the transformer keeps the result it renders on
   // `this.meta.twoslash`, the same object its later hooks read.
+  //
+  // The block's name, `// @docs-block:` (`remarkQueryBlocks` in ./remark-sections.ts), and its
+  // variant, `// @variant:`, which a site writes into each copy of a block it shows once per variant,
+  // come out before Twoslash runs too, and what each query shows is recorded under them, as the popup
+  // shows it, for the page's Markdown.
   const preprocess = transformer.preprocess!;
   transformer.preprocess = function (source, shikiOptions) {
-    const { code, names } = hoverNames(source);
+    const id = source.match(blockLine)?.[1];
+    const variant = source.match(variantLine)?.[1]?.trim() ?? '';
+    const { code, names } = hoverNames(source.replace(blockLine, '').replace(variantLine, ''));
     const result = preprocess.call(this, code, shikiOptions);
     const meta = this.meta.twoslash;
+    if (id && meta) recordQueries(id, variant, meta.nodes.flatMap((node) => (node.type === 'query' ? [processHoverInfo(node.text)] : [])));
     if (names && meta) meta.nodes = meta.nodes.filter((node) => node.type !== 'hover' || names.has(node.target));
     return result;
   };
