@@ -244,11 +244,10 @@ DATABASE_URL=postgres://localhost/app
 PORT=3000
 ```
 
-A name the file does not set keeps the type `@types/node` gives every variable, `string | undefined`, so a misspelled one is an error wherever a string is needed.
-
-A variable the environment already sets keeps its value. No value from the file is in the module or in a bundle. A bundle reads the file from the working directory when it runs, and loads nothing if the file is absent.
-
-The `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.env`. A file such as `.env.local` ends in `.local`, which the entry does not reach.
+- **Other names:** a name the file does not set keeps the type `@types/node` gives every variable, `string | undefined`, so a misspelled one is an error wherever a string is needed.
+- **The environment wins:** a variable the environment already sets keeps its value.
+- **Bundles:** no value from the file is in the module or in a bundle. A bundle reads the file from the working directory when it runs, and loads nothing if the file is absent.
+- **File names:** the `.env` entry reaches a file named `.env` or ending in `.env`, such as `prod.env`, but not `.env.local`, which ends in `.local`.
 
 ### `.sql`
 
