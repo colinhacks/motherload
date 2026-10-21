@@ -18,10 +18,7 @@
     ".": "./src/index.ts",
     "./loader": "./src/loader.ts",
     "./register": "./src/register.ts",
-    "./esbuild": "./src/esbuild.ts",
-    "./client": {
-      "types": "./client.d.ts"
-    }
+    "./esbuild": "./src/esbuild.ts"
   },
   "typescript": {
     "contentMapper": {

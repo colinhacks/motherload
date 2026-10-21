@@ -28,9 +28,6 @@ Add Motherload to `tsconfig.json`, with the extensions it should own:
 
 ```jsonc
 {
-  "compilerOptions": {
-    "types": ["motherload/client"] // types `?raw` imports
-  },
   "contentMappers": [
     {
       "package": "motherload",
@@ -61,7 +58,7 @@ Each format is also a package of its own, `@motherload/toml`, `@motherload/schem
 
 ## Loaders
 
-Each file is parsed when the module is built, so a bundle holds the data and no parser. The default export is the data, typed as `as const` would type it. Add `?raw` to any import for the file's text.
+Each file is parsed when the module is built, so a bundle holds the data and no parser. The default export is the data, typed as `as const` would type it.
 
 ### `.toml`
 

@@ -13,17 +13,16 @@ export function motherloadTwoslash(): DocsTwoslashOptions {
   // The build runs in site/; the Motherload package is the repository root above it.
   const repo = path.resolve(process.cwd(), '..');
   return {
-    // client.d.ts types `?raw` imports; the compiler options below list it, as a project's tsconfig does.
     // motherload's types re-export @motherload/schema's, so both are mounted.
     packages: [
-      { name: 'motherload', root: repo, entries: ['src/index.ts', 'src/client.d.ts'] },
+      { name: 'motherload', root: repo, entries: ['src/index.ts'] },
       { name: '@motherload/schema', root: path.join(repo, 'packages/schema'), entries: ['src/index.ts'] },
     ],
     compilerOptions: {
       // `./config.toml` resolves to the hidden `config.d.toml.ts`.
       allowArbitraryExtensions: true,
-      // `process.env` in the .env example, and `?raw` imports.
-      types: ['node', 'motherload/client'],
+      // `process.env` in the .env example.
+      types: ['node'],
       strict: true,
     },
   };

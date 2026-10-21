@@ -3,7 +3,7 @@
     "target": "esnext",
     "module": "nodenext",
     "lib": ["esnext"],
-    "types": ["node", "motherload/client"],
+    "types": ["node"],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,

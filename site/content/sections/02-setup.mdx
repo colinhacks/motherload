@@ -23,9 +23,8 @@ It runs from the repository's own build: install from npm.
    format's package instead:
    https://motherload.dev/#one-format-at-a-time
 2. Add Motherload to tsconfig.json as a content mapper, listing
-   the extensions the project imports, add motherload/client to
-   its types, and add a typecheck script that runs
-   tsc --noEmit --runExternalCode:
+   the extensions the project imports, and add a typecheck script
+   that runs tsc --noEmit --runExternalCode:
    https://motherload.dev/#typescript
 3. Make the imports load wherever the project runs code, with
    Node's --import (https://motherload.dev/#node) or the preload
@@ -54,13 +53,10 @@ The package needs Node 24 or later. An application that runs under the preload i
 
 ### TypeScript
 
-Add Motherload to `tsconfig.json`, with the extensions it should own. The `types` entry types `?raw` imports.
+Add Motherload to `tsconfig.json`, with the extensions it should own.
 
 ```jsonc title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["motherload/client"] // [!code ++]
-  },
   "contentMappers": [ // [!code ++]
     { // [!code ++]
       "package": "motherload", // [!code ++]
@@ -236,7 +232,7 @@ Use `build`: esbuild runs plugins in `build` only, and `buildSync` throws.
 | `@motherload/md` | `.md` |
 | `@motherload/schema` | `.schema.jsonc` |
 
-A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers`, its `client` in `types`, and its preload or its esbuild plugin. A project that reads YAML and TOML:
+A format's package is set up as `motherload` is, under its own name: an entry in `contentMappers` and its preload or its esbuild plugin. A project that reads YAML and TOML:
 
 ```sh
 npm install -D @motherload/yaml @motherload/toml
@@ -244,9 +240,6 @@ npm install -D @motherload/yaml @motherload/toml
 
 ```jsonc title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["@motherload/yaml/client", "@motherload/toml/client"] // [!code ++]
-  },
   "contentMappers": [ // [!code ++]
     { "package": "@motherload/yaml", "extensions": [".yaml", ".yml"] }, // [!code ++]
     { "package": "@motherload/toml", "extensions": [".toml"] } // [!code ++]

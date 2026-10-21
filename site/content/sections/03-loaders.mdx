@@ -15,13 +15,6 @@ const pro = plans.pro;
 //    ^?
 ```
 
-Add `?raw` to an import for the file's text:
-
-```ts twoslash title="main.ts"
-import text from "./plans.toml?raw";
-//     ^?
-```
-
 ### `.toml`
 
 Motherload reads TOML 1.1 with [smol-toml](https://github.com/squirrelchat/smol-toml). TOML has four kinds of date. Only an offset date-time names an instant, so only that one becomes a `Date`:

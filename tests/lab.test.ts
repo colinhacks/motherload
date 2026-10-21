@@ -33,11 +33,11 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.doesNotMatch(out, /TS1192/);
 });
 
-const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","raw":"# A TOML file with each kind of value.","tags":2';
+const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';
 // lab/basic/.env, loaded into process.env when `import "./.env"` runs.
 const GREETING = '"greeting":"hello world"';
-// lab/basic/users.csv, scores.tsv, notes.txt and post.md: strings as written ("02134" keeps its zero), a quoted field with a comma, the frontmatter and the body apart, and `?raw` the whole file.
-const TABLES = '"zip":"02134","grace":"Hopper, Grace","score":"37","notes":"Notes from the lab.","title":"Hello, Motherload","body":"# Hello","postRaw":"---"';
+// lab/basic/users.csv, scores.tsv, notes.txt and post.md: strings as written ("02134" keeps its zero), a quoted field with a comma, and the frontmatter and the body apart.
+const TABLES = '"zip":"02134","grace":"Hopper, Grace","score":"37","notes":"Notes from the lab.","title":"Hello, Motherload","body":"# Hello"';
 // lab/basic/point.schema.json5: an integer, and a label of at most 0x10 characters.
 const POINTS = '"points":[true,false,false]';
 // lab/basic/team.schema.jsonc: valid, then failing user.schema.jsonc's and shared/place.schema.jsonc's rules through its $refs.
@@ -65,7 +65,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/basic`);
   assert.equal(built.status, 0, built.out);
   // team.schema.jsonc is one input: the schemas it refers to are compiled into its validator.
-  assert.match(built.out, /errors=0 inputs=17 node_modules=0/);
+  assert.match(built.out, /errors=0 inputs=15 node_modules=0/);
   // The bundle reads .env when it runs; no value from the file is in it.
   assert.doesNotMatch(readFileSync(`${ROOT}lab/basic/dist/main.mjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
   const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/basic`);
@@ -81,7 +81,7 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
 
 // lab/packages: three formats, each from its own package, with the JSONC package's hook and plugin
 // ahead of the schema package's for a file that ends in both suffixes.
-const PACKAGES = '{"name":"packages","raw":"# A TOML file read by @motherload/toml alone.","fontSize":14,"ada":{"name":"Ada","role":"admin"},"valid":true,"invalid":false}';
+const PACKAGES = '{"name":"packages","fontSize":14,"ada":{"name":"Ada","role":"admin"},"valid":true,"invalid":false}';
 
 test("lab/packages type-checks through three format packages' mappers", () => {
   const { status, out } = run(TSC, ["-p", "lab/packages/tsconfig.json", "--noEmit", "--runExternalCode"]);
@@ -99,7 +99,7 @@ test("lab/packages bundles with the three packages' esbuild plugins and runs wit
   rmSync(`${ROOT}lab/packages/dist`, { recursive: true, force: true });
   const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/packages`);
   assert.equal(built.status, 0, built.out);
-  assert.match(built.out, /errors=0 inputs=5 node_modules=0/);
+  assert.match(built.out, /errors=0 inputs=4 node_modules=0/);
   const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/packages`);
   assert.equal(ran.status, 0, ran.out);
   assert.equal(ran.out.trim(), PACKAGES);

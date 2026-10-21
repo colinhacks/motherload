@@ -59,9 +59,6 @@ const outranked = (plugin: LoaderPlugin, path: string, others: Iterable<LoaderPl
 /** The Motherload plugins registered in this process: Node's and Bun's hooks are process-wide. */
 const REGISTERED: Set<LoaderPlugin> = ((globalThis as Record<symbol, unknown>)[Symbol.for("motherload.registered")] ??= new Set()) as Set<LoaderPlugin>;
 
-/** A `?raw` import of a file the plugin reads: its text, as Vite's `?raw` gives it, typed by client.d.ts. */
-const rawModule = (path: string) => `export default ${JSON.stringify(readFileSync(path, "utf8"))};\n`;
-
 /** What a load error says: the plugin, the file and every problem. */
 const loadError = (plugin: LoaderPlugin, path: string, problems: Problem[]) => `${plugin.name}: ${path}: ${problems.map((p) => p.message).join("; ")}`;
 
@@ -83,8 +80,7 @@ export function toNodeHooks(plugin: LoaderPlugin, registered: Iterable<LoaderPlu
       const { search, hash } = new URL(url);
       const path = fileURLToPath(url.replace(/[?#].*$/, ""));
       if (!plugin.filter.test(path) || outranked(plugin, path, registered)) return nextLoad(url, context);
-      if (search === "?raw" && !hash) return { format: "module", source: rawModule(path), shortCircuit: true };
-      // Any other query or hash asks for something this plugin does not make: leave it to the next hook.
+      // A query or hash asks for something this plugin does not make: leave it to the next hook.
       if (search || hash) return nextLoad(url, context);
       return { format: "module", source: runtimeModule(plugin, path), shortCircuit: true };
     },
@@ -124,7 +120,7 @@ type EsbuildBuild = {
   initialOptions?: { plugins?: readonly unknown[] };
   onLoad(
     options: { filter: RegExp; namespace?: string },
-    callback: (args: { path: string; suffix?: string }) => { contents: string; loader: "js" | "text"; watchFiles?: string[] } | { errors: { text: string }[]; watchFiles?: string[] } | undefined,
+    callback: (args: { path: string; suffix?: string }) => { contents: string; loader: "js"; watchFiles?: string[] } | { errors: { text: string }[]; watchFiles?: string[] } | undefined,
   ): void;
 };
 
@@ -137,12 +133,11 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
     [PLUGIN]: plugin,
     setup(build) {
       const siblings = (build.initialOptions?.plugins ?? []).flatMap((p) => ((p as Record<symbol, unknown>)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
-      // esbuild resolves `./app.toml?raw` to app.toml and keeps `?raw` in `suffix`; as in the Node
-      // hook, `?raw` is the text and any other suffix is left to other plugins, as is a file
-      // another Motherload plugin in the build claims more strongly.
+      // esbuild resolves `./app.toml?url` to app.toml and keeps `?url` in `suffix`; as in the Node
+      // hook, a suffix is left to other plugins, as is a file another Motherload plugin in the
+      // build claims more strongly.
       build.onLoad({ filter: plugin.filter, namespace: "file" }, (args) => {
         if (outranked(plugin, args.path, siblings)) return undefined;
-        if (args.suffix === "?raw") return { contents: readFileSync(args.path, "utf8"), loader: "text" };
         if (args.suffix) return undefined;
         // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
         const result = plugin.load(readFileSync(args.path, "utf8"), args.path);

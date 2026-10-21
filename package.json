@@ -15,9 +15,6 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./client": {
-      "types": "./src/client.d.ts"
-    },
     "./register": "./src/register.ts",
     "./esbuild": "./src/esbuild.ts"
   },

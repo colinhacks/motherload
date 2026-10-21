@@ -4,7 +4,6 @@
 // or bundled by its esbuild plugin. user.schema.jsonc also ends in .jsonc and is the schema
 // package's all the same, as TypeScript routes it, though the JSONC package's hook runs first.
 import config from "./config.toml";
-import configRaw from "./config.toml?raw";
 import settings from "./settings.jsonc";
 import user, { type Type as User } from "./user.schema.jsonc";
 
@@ -13,9 +12,8 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 const expect = <T extends true>() => {};
 
 expect<Equal<typeof config, { readonly name: "packages"; readonly port: 8080 }>>();
-expect<Equal<typeof configRaw, string>>();
 expect<Equal<typeof settings, { readonly "editor.fontSize": 14 }>>();
 expect<Equal<Pick<User, keyof User>, { name: string; role?: "admin" | "member" }>>();
 
 const ada: User = user.parse({ name: "Ada", role: "admin" });
-console.log(JSON.stringify({ name: config.name, raw: configRaw.split("\n")[0], fontSize: settings["editor.fontSize"], ada, valid: user.is({ name: "Grace" }), invalid: user.is({ name: "" }) }));
+console.log(JSON.stringify({ name: config.name, fontSize: settings["editor.fontSize"], ada, valid: user.is({ name: "Grace" }), invalid: user.is({ name: "" }) }));

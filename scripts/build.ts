@@ -1,6 +1,6 @@
 // Builds every publishable package into dist/, one directory each, published with
 // `npm publish dist/<dir>` (DESIGN.md, "Packaging"): dist/motherload, dist/core and one per format.
-// Each holds its sources compiled to JavaScript with their declarations, its `?raw` types, a README
+// Each holds its sources compiled to JavaScript with their declarations, a README
 // and a package.json whose exports and content mapper name the compiled files, because Node strips
 // no types under node_modules. Every dependency is at an exact version: a Motherload package at the
 // release's version, any other at the version installed here. The repository's own package.json
@@ -52,12 +52,10 @@ function readme(pkg: Record<string, any>): string {
   return `# ${pkg.name}\n\n${pkg.description}\n\nOne of [Motherload](https://motherload.dev)'s packages: a TypeScript 7.1 content mapper, a preload and an esbuild plugin for this format alone. [\`motherload\`](https://www.npmjs.com/package/motherload) reads every format.\n\nSetup: https://motherload.dev/#one-format-at-a-time\n`;
 }
 
-function emit(dir: string, from: string, pkg: Record<string, any>, dependencies: Record<string, string>, readmeText: string, clientFrom?: string) {
+function emit(dir: string, from: string, pkg: Record<string, any>, dependencies: Record<string, string>, readmeText: string) {
   const to = join(dist, dir);
   mkdirSync(to, { recursive: true });
   cpSync(join(tsc, from), join(to, "src"), { recursive: true });
-  const client = pkg.exports["./client"]?.types as string | undefined;
-  if (client && clientFrom) cpSync(clientFrom, join(to, client));
   const built = publishable(pkg, dependencies);
   writeFileSync(join(to, "package.json"), JSON.stringify(built, null, 2) + "\n");
   writeFileSync(join(to, "README.md"), readmeText);
@@ -76,13 +74,13 @@ for (const dir of PACKAGES) {
   const dependencies = Object.fromEntries(
     Object.entries((pkg.dependencies ?? {}) as Record<string, string>).map(([dep, range]) => [dep, dep.startsWith("@motherload/") ? version : installed(dep, range, pkg.name)]),
   );
-  emit(dir, join("packages", dir, "src"), pkg, dependencies, readme(pkg), join(root, "packages", dir, "client.d.ts"));
+  emit(dir, join("packages", dir, "src"), pkg, dependencies, readme(pkg));
 }
 
 // motherload: the format packages behind one mapper, one preload and one plugin. It imports
 // nothing but them; the parsers the root package.json also lists are there for their sources.
 const combined = Object.fromEntries(PACKAGES.map((dir) => [`@motherload/${dir}`, version]));
 for (const name of Object.keys(combined)) if (rootPkg.dependencies[name] !== `link:packages/${name.slice("@motherload/".length)}`) throw new Error(`package.json: ${name} is not linked from packages/`);
-emit("motherload", "src", rootPkg, combined, readFileSync(join(root, "README.md"), "utf8"), join(root, "src/client.d.ts"));
+emit("motherload", "src", rootPkg, combined, readFileSync(join(root, "README.md"), "utf8"));
 
 rmSync(tsc, { recursive: true, force: true });

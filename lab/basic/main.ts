@@ -1,7 +1,6 @@
 // Every import below is typed by motherload's content mapper (`tsc --runExternalCode`) and loaded
 // by its preload (`node --import motherload/register main.ts`) or its esbuild plugin.
 import config from "./config.toml";
-import configRaw from "./config.toml?raw";
 import app from "./app.yaml";
 import multi from "./multi.yaml";
 import settings from "./settings.jsonc";
@@ -18,7 +17,6 @@ import scores from "./scores.tsv";
 import notes from "./notes.txt";
 import post, { frontmatter } from "./post.md";
 import * as postModule from "./post.md";
-import postRaw from "./post.md?raw";
 
 // Exact equality of two types, not mere assignability.
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
@@ -28,8 +26,6 @@ const expect = <T extends true>() => {};
 // TypeScript's, is widened by resolveJsonModule.
 expect<Equal<typeof plain, { port: number }>>();
 expect<Equal<typeof config, { readonly name: "demo"; readonly port: 8080; readonly ratio: 0.5; readonly debug: true; readonly tags: readonly ["a", "b"]; readonly mixed: readonly [1, "two"]; readonly big: 9007199254740993n; readonly started: Date; readonly day: "1979-05-27"; readonly server: { readonly host: "localhost" } }>>();
-// `?raw` is the file's text, typed by motherload/client (tsconfig `types`).
-expect<Equal<typeof configRaw, string>>();
 
 expect<Equal<typeof app.production, { readonly retries: 3; readonly timeout: 1.5; readonly host: "example.com" }>>();
 expect<Equal<typeof app.yes_is_a_string, "yes">>();
@@ -50,7 +46,6 @@ expect<Equal<typeof notes, string>>();
 expect<Equal<typeof post, { readonly md: string; readonly frontmatter: { readonly title: "Hello, Motherload"; readonly draft: false; readonly tags: readonly ["data", "types"] } }>>();
 expect<Equal<typeof frontmatter, typeof post.frontmatter>>();
 expect<Equal<keyof typeof postModule, "default" | "md" | "frontmatter">>();
-expect<Equal<typeof postRaw, string>>();
 
 expect<Equal<User, { name: string; email?: string; role: "admin" | "member"; tags?: string[] }>>();
 expect<Equal<ReturnType<typeof user.parse>, User>>();
@@ -104,7 +99,6 @@ console.log(
     big: String(config.big),
     started: config.started.toISOString(),
     day: config.day,
-    raw: configRaw.split("\n")[0],
     tags: config.tags.length,
     production: app.production,
     multi: multi.length,
@@ -117,7 +111,6 @@ console.log(
     notes: notes.split("\n")[0],
     title: frontmatter.title,
     body: post.md.split("\n")[0],
-    postRaw: postRaw.split("\n")[0],
     valid: valid.name,
     invalid,
     standardIssues: "issues" in standard ? standard.issues?.length : 0,
