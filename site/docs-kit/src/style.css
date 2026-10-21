@@ -810,15 +810,21 @@ code {
   color: var(--color-fd-headings);
 }
 
-/* On a phone, a table of four columns fits the text column in a smaller face and
-   tighter cells, instead of scrolling sideways. */
+/* On a phone, a table of four columns or more fits the text column in a smaller face and
+   tighter cells, instead of scrolling sideways; a narrower one keeps the prose's size. */
 @media (max-width: 639px) {
-  #nd-page .prose table {
+  html #nd-page .prose table:has(tr > :nth-child(4)) {
     font-size: 0.8125rem;
   }
 
-  #nd-page .prose :is(th, td) {
+  #nd-page .prose table:has(tr > :nth-child(4)) :is(th, td) {
     padding-inline: 0.25rem;
+  }
+
+  /* A long value in a cell, `2026-10-20T10:00:00.123456`, breaks where it must rather than run
+     past the cell's edge; each piece is still a chip. */
+  #nd-page .prose td code {
+    overflow-wrap: anywhere;
   }
 
 }
@@ -1269,22 +1275,22 @@ html:not(.dark) .shiki span[style*='--shiki-light:#D73A49' i] {
    beside 16.5px prose), padded in ems so it scales with the text around it; chosen on 2026-10-20
    from seven treatments mocked for the maintainer (the accent's wash, crisp or faint; grey, with a
    hairline or without; plain mono; accent text; an outline): the grey chip reads best on both
-   themes and leaves the accent to links. In a table cell it is plain mono in the headings'
-   colour, so a column of types reads as a list rather than a column of chips. */
+   themes and leaves the accent to links. A table cell's code is the same chip, at the same size as
+   the prose's: it was plain mono a size smaller, in cells a size smaller again, 11.3px beside 18px
+   prose in Reylo's Data types tables, and the maintainer, 2026-10-21: "I think it's weird that it
+   should be inline code, but it doesn't show up with any kind of background or anything. It also
+   gets quite small. Markedly smaller than the rest of the copy on the whole page." */
 html #nd-page .prose :where(code):not(:where(pre code, [class~='not-prose'], [class~='not-prose'] *)) {
   background-color: color-mix(in oklab, var(--dk-code-tint) var(--dk-wash-code), transparent);
   font-size: 0.9em;
   padding: 0.15em 0.35em;
   border-radius: 0.3125rem;
+  /* A chip that wraps, as `double precision` does in a phone's table cell, is a chip on each line,
+     with its padding and corners, rather than one cut in two. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
-html #nd-page .prose :is(td, th) {
-  font-size: 0.9375em;
-}
-
-html #nd-page .prose :is(td, th) code {
-  background: none !important;
-  padding: 0 !important;
-  font-size: 0.92em;
-  color: var(--color-fd-headings);
+html #nd-page .prose table {
+  font-size: 1rem;
 }

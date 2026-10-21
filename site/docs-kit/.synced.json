@@ -1,6 +1,6 @@
 {
   "from": "/Users/colin/Documents/docs-kit",
-  "commit": "3597fa5",
+  "commit": "231c3e0",
   "files": {
     "package.json": "76f8d44da08785898565422d0d53c698acf23b84357ecf9cc814befd7f910905",
     "README.md": "d47d812a3acf494f4b34e05c68d8b11b55975c4dc8cb1d088789bdb5f9a174d4",
@@ -14,11 +14,11 @@
     "src/components/copy-icons.tsx": "67bc795f0dd537b927156afc8f9a43d4c1384ff1b352960da416b808db2321c6",
     "src/components/details.tsx": "3192e3c99d35c56195f3fc35242e06633177b65264a812af7cd3ba561a8ae433",
     "src/components/document.tsx": "5690b0d241419124fe08a1b83641976770874f8f5cafbac787971815be72c50a",
-    "src/components/head-scripts.ts": "b61d8b649c2c2072a8ac729be76f23dabea6142c9d5927ee85ebcaa36b620a84",
+    "src/components/head-scripts.ts": "59dd4b0fe6123187dd38a2c6565690718d69681fba2af926ea9c4fca3e962f93",
     "src/components/heading.tsx": "0833910394302ad9e651206f1ec7aed4724b070da30dbdfe50b78d027bfff75a",
     "src/components/index.ts": "18ee4ab4742a1e5dd10f0e5f13eacbc0aa0e293aca710abcf313eac87f0a092c",
     "src/components/mdx.tsx": "ec16b70f93441d883b1e3ba7cc9096bb731aa9322393bf949ecb142a01999085",
-    "src/components/prepaint.tsx": "c51099f537a1b52dd96c4ddc5e51f3334cf4deb28a6bc51f4b18beb6eaf88ae3",
+    "src/components/prepaint.tsx": "0fbcf25ed06d8dbca719872a1cb88827679d7cb4d4b7f7e934622948043c7855",
     "src/components/shell.tsx": "3c74698dc039177bf14af31dc5ca2b2d833b1cd80a8fac5f3ac57cab6a30eba0",
     "src/components/variant-tabs.tsx": "ddc05f5cb9b57c64e24ae195d203a3348091fd591cc86af465f6fbff6f29a074",
     "src/mdx/hanging-indent.ts": "8a6c1d306dbe02467b7ac7820a4507bc907ac6c714e65f2c3f60de36aedd22cc",
@@ -27,7 +27,7 @@
     "src/mdx/recma-shared-popups.ts": "b12d67312b9875a469adba9ed4ca77b788f8f7958c0119451a9b4e16638ae427",
     "src/mdx/remark-sections.ts": "b74e170719bd36e951b174720b09b4560bb4c4460dbbceba531454cf5f9e549b",
     "src/mdx/twoslash.ts": "1c1236cabb64d7d05bf005a5a2d864b89f12d34a271bb94de55ca9a7fbd395b1",
-    "src/style.css": "60611652ca99adfadfccd323594399f5a6c8d0b2a88300b4fed782eb3f9a0efe",
+    "src/style.css": "bd44c0ebb2d451b7a74611e4cf0cbf22d8c986c6c44a44fd0df9516b5f338dab",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626",
     "src/vite.ts": "e8f8a6a49951ec991b24872d664efdd46cbb2121802d14279e0ea917f3f6763e"
   }

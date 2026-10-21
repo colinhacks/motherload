@@ -14,12 +14,25 @@ import { useLayoutEffect, useRef, type ComponentProps } from 'react';
  * 3. `usePrepaintReady` marks the root `data-tabs-ready` in a layout effect, after Fumadocs' own
  *    layout effect has applied the saved value and before the browser paints, so from then on
  *    React's `data-state` decides and a click is never overridden by the saved value.
+ * A tab pressed before its group hydrates is shown by the head script at once, and a group with
+ * no saved choice hands the press to React in that same layout effect.
  */
 
 export function usePrepaintReady<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   useLayoutEffect(() => {
-    ref.current?.setAttribute('data-tabs-ready', '');
+    const root = ref.current;
+    if (!root) return;
+    root.setAttribute('data-tabs-ready', '');
+    // A tab of a group with no saved choice, pressed before the group hydrated, which the head
+    // script has been showing (TABS_PREPAINT_SCRIPT): React takes the press now, right after this
+    // commit and before the browser paints, so the group does not flick back to its default.
+    const pending = (window as { __dkTabsPending?: Map<Element, string> }).__dkTabsPending;
+    const id = pending?.get(root);
+    if (id) {
+      pending!.delete(root);
+      queueMicrotask(() => document.getElementById(id)?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })));
+    }
   }, []);
   return ref;
 }
