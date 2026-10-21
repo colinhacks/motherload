@@ -34,30 +34,37 @@ cfg="$work/npmrc"
 last="$work/last"
 touch "$cfg"
 chmod 600 "$cfg"
+# Every npm command below reads and writes its login there. Through the environment, not --userconfig:
+# `npm trust` accepts only its own flags, and reads `--userconfig <path>` as a stray positional argument.
+export NPM_CONFIG_USERCONFIG="$cfg"
 cleanup() {
   if grep -q '_authToken' "$cfg" 2>/dev/null; then
-    npm logout --userconfig "$cfg" > /dev/null 2>&1 && echo "logged out of npm" || echo "npm logout failed; revoke this machine's newest token at https://www.npmjs.com/settings/~/tokens"
+    npm logout > /dev/null 2>&1 && echo "logged out of npm" || echo "npm logout failed; revoke this machine's newest token at https://www.npmjs.com/settings/~/tokens"
   fi
   rm -rf "$work"
 }
 trap cleanup EXIT
 
 echo "Sign in to npm in the browser (the login lasts for this run only):"
-npm login --auth-type=web --userconfig "$cfg"
-user="$(npm whoami --userconfig "$cfg")"
+npm login --auth-type=web
+user="$(npm whoami)"
 echo "signed in as $user"
 
 code=""
+refused=0
 # Runs an npm command that needs the account's 2FA with the last code given, its output in $last. When npm
-# refuses the code, it asks for the next one and runs the command again; a refused code is never sent twice.
+# refuses the code, it asks for the next one and runs the command again; a refused code is never sent twice,
+# and three refusals in a row stop the script rather than risk npm's rate limit on codes.
 npm2fa() {
   while :; do
     if [ -z "$code" ]; then
       read -rsp "One-time code from the authenticator for $user: " code < /dev/tty
       echo
     fi
-    if npm "$@" --userconfig "$cfg" --otp="$code" < /dev/null > "$last" 2>&1; then return 0; fi
+    if npm "$@" --otp="$code" < /dev/null > "$last" 2>&1; then refused=0; return 0; fi
     if grep -qiE 'EOTP|one-time pass' "$last"; then
+      refused=$((refused + 1))
+      [ "$refused" -lt 3 ] || { cat "$last"; echo "npm refused three codes in a row; stopping."; exit 1; }
       echo "npm refused that code (expired); enter the next one."
       code=""
       continue
