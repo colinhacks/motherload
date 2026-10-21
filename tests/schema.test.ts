@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { CODES } from "../packages/core/src/problems.ts";
 import { schemaCode, schemaTypes } from "../packages/schema/src/schema.ts";
-import { evaluate, ROOT } from "./helpers.ts";
+import { evaluate, ROOT, run } from "./helpers.ts";
 
 const PATH = join(ROOT, "tests/fixtures/user.schema.jsonc");
 const SCHEMA = JSON.stringify({
@@ -567,6 +567,89 @@ test("a format ajv-formats checks with a function, such as date-time or uri, is 
   assert.equal(s.is({ at: "2026-10-20T22:14:00Z", url: "https://example.com/a" }), true);
   assert.equal(s.is({ at: "yesterday" }), false);
   assert.equal(s.is({ url: "not a uri" }), false);
+});
+
+test("every format ajv-formats defines, and its formatMinimum, formatMaximum and exclusive keywords, give ajv-formats' own verdicts and errors", async () => {
+  // Motherload registers ajv-formats' table and writes its limit keywords with its own ajv (loadAjv);
+  // the reference is ajv-formats' plugin, run by the same ajv, which compiles with new Function.
+  const { createRequire } = await import("node:module");
+  const require = createRequire(join(ROOT, "packages/schema/src/schema.ts"));
+  const Ajv = require("ajv").default;
+  const addFormats = require("ajv-formats");
+  const names: string[] = require("ajv-formats/dist/formats").formatNames;
+  const schema = {
+    type: "object",
+    properties: {
+      ...Object.fromEntries(names.map((name) => [name, { format: name }])),
+      day: { type: "string", format: "date", formatMinimum: "2020-01-01", formatExclusiveMaximum: "2030-01-01" },
+      at: { type: "string", format: "date-time", formatMaximum: "2026-10-20T00:00:00Z" },
+      clock: { type: "string", format: "time", formatExclusiveMinimum: "08:00:00Z" },
+    },
+  };
+  const reference = addFormats(new Ajv({ allErrors: true, strict: false, logger: false })).compile(schema);
+  const { code, problems } = schemaCode(JSON.stringify(schema), PATH);
+  assert.deepEqual(problems, []);
+  assert.doesNotMatch(code, /"_items"/);
+  const { default: s } = await evaluate(code);
+  const values = [
+    { date: "2024-02-29", time: "12:30:00Z", "date-time": "2026-10-20T12:00:00Z", uri: "https://x.dev", regex: "^a+$", byte: "aGVsbG8=", int32: 5, int64: 1, float: 1.5, double: 2 },
+    { date: "2023-02-29", time: "12:30:00", "date-time": "2026-02-30T00:00:00Z", uri: "rel", regex: "(", byte: "abc", int32: 2147483648, int64: 1.5, "iso-time": "25:00:00", "iso-date-time": "x", duration: "P", email: "nope", ipv4: "256.1.1.1" },
+    { day: "2025-06-01", at: "2026-10-19T23:59:59Z", clock: "09:00:00Z" },
+    { day: "2019-12-31", at: "2026-10-20T00:00:01Z", clock: "08:00:00Z" },
+    { day: "2030-01-01" },
+    { day: "not a date" },
+  ];
+  for (const value of values) {
+    const expected = reference(value) ? [] : reference.errors.map((e: any) => [e.keyword, e.instancePath, e.message]);
+    assert.deepEqual((s.validate(value).issues ?? []).map((i: any) => [i.keyword, i.path.length ? "/" + i.path.join("/") : "", i.message]), expected, JSON.stringify(value));
+    assert.equal(s.is(value), expected.length === 0);
+  }
+});
+
+test("a string in the schema that reads like a require call stays the schema's: the validator compares it as written and inlines nothing for it", async () => {
+  // ajv writes the schema's strings with JSON.stringify, which leaves ' unescaped; only a
+  // double-quoted require in its standalone code is a call (STANDALONE_REQUIRE).
+  const schema = {
+    type: "object",
+    properties: {
+      note: { const: "load require('ajv/dist/runtime/equal') now" },
+      "require('ajv')": { type: "string" },
+      builtin: { const: "a require('fs') b" },
+      relative: { enum: ["a require('./refs.js') b"] },
+      quoted: { const: 'a require("ajv") b' },
+    },
+  };
+  const { code, problems } = schemaCode(JSON.stringify(schema), PATH);
+  assert.deepEqual(problems, []);
+  assert.doesNotMatch(code, /__require\(\d+\) /);
+  assert.doesNotMatch(code, /class Ajv/);
+  const { default: s } = await evaluate(code);
+  const valid = { note: "load require('ajv/dist/runtime/equal') now", "require('ajv')": "x", builtin: "a require('fs') b", relative: "a require('./refs.js') b", quoted: 'a require("ajv") b' };
+  assert.deepEqual(s.validate(valid), { value: valid });
+  assert.equal(s.is(valid), true);
+  assert.deepEqual(s.validate({ "require('ajv')": 5 }).issues.map((i: any) => i.path), [["require('ajv')"]]);
+  assert.deepEqual(s.validate({ note: "other" }).issues.map((i: any) => [i.path, i.keyword]), [[["note"], "const"]]);
+  // The string the validator compares, as the schema wrote it.
+  assert.match(code, /"load require\('ajv\/dist\/runtime\/equal'\) now" !== /);
+});
+
+test("in a process that disallows code generation from strings, a schema's problem says so, in the build and the type check alike", () => {
+  // ajv compiles every validator with new Function, the one Motherload writes out as code too.
+  const script = [
+    `import { schemaCode, schemaTypes } from ${JSON.stringify(join(ROOT, "packages/schema/src/schema.ts"))};`,
+    `const draft07 = ${JSON.stringify(JSON.stringify({ type: "string", minLength: 1 }))};`,
+    `const draft2020 = ${JSON.stringify(SCHEMA)};`,
+    `for (const source of [draft07, draft2020]) for (const build of [schemaCode, schemaTypes]) console.log(JSON.stringify(build(source, ${JSON.stringify(PATH)}).problems.map((p) => p.message)));`,
+  ].join("\n");
+  const { status, out } = run(process.execPath, ["--disallow-code-generation-from-strings", "--input-type=module", "-e", script]);
+  assert.equal(status, 0, out);
+  const lines = out.trim().split("\n").map((line) => JSON.parse(line));
+  assert.equal(lines.length, 4);
+  for (const messages of lines) {
+    assert.equal(messages.length, 1);
+    assert.match(messages[0], /^Building user\.schema\.jsonc's validator runs ajv, which compiles it with new Function, and this process disallows code generation from strings \(--disallow-code-generation-from-strings/);
+    assert.doesNotMatch(messages[0], /not valid/);
+  }
 });
 
 test("a schema outside any project that installs ajv still validates: ajv is Motherload's own dependency", async () => {

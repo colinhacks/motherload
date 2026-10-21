@@ -14,7 +14,7 @@
 // schema file is followed (refs.ts): the types import that file's module, and the validator is
 // compiled from every file the schema reaches.
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { createRequire, isBuiltin } from "node:module";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CODES, literal, toJs, type Problem, type Value } from "@motherload/core";
@@ -68,11 +68,60 @@ const IGNORED: Record<Draft, readonly string[]> = {
   "2020-12": ["$async", "nullable", "id", "$recursiveRef", "$recursiveAnchor", "dependencies"],
 };
 
-type Ajv = { compile(schema: unknown): unknown; addSchema(schema: unknown, key?: string): unknown; addMetaSchema(schema: unknown): unknown };
+type Ajv = {
+  compile(schema: unknown): unknown;
+  addSchema(schema: unknown, key?: string): unknown;
+  addMetaSchema(schema: unknown): unknown;
+  addFormat(name: string, format: unknown): unknown;
+  addKeyword(definition: object): unknown;
+  opts: { code: { formats?: unknown } };
+};
+
+/** ajv's code generator (`ajv/dist/compile/codegen`): only code made by the same copy of ajv is code to it. */
+type Codegen = { _: (strings: TemplateStringsArray, ...args: unknown[]) => unknown; str: (strings: TemplateStringsArray, ...args: unknown[]) => unknown; operators: Record<"GT" | "GTE" | "LT" | "LTE", unknown>; getProperty(key: string): unknown };
+
+/** ajv compiles every validator with `new Function`, the one it writes out as standalone code too, which a process may disallow. */
+const disallowedCodegen = (error: unknown) => error instanceof EvalError || /code generation from strings/i.test(String((error as Error)?.message));
+const codegenProblem = (path: string) =>
+  `Building ${basename(path)}'s validator runs ajv, which compiles it with new Function, and this process disallows code generation from strings (--disallow-code-generation-from-strings, on the command line or in NODE_OPTIONS). Build the module in a process without that flag: a program bundled with esbuild then validates where the flag is set, since the bundle's validator needs no new Function.`;
+
+/**
+ * ajv-formats' formatMaximum, formatMinimum, formatExclusiveMaximum and formatExclusiveMinimum
+ * (its dist/limit.js, MIT), written with this module's ajv: ajv-formats' own requires its `ajv`,
+ * which can be another copy (`loadAjv`). Without `$data`, which Motherload does not enable.
+ */
+function formatLimits({ _, str, operators, getProperty }: Codegen): object {
+  const KEYWORDS: Record<string, [string, unknown]> = { formatMaximum: ["<=", operators.GT], formatMinimum: [">=", operators.LT], formatExclusiveMaximum: ["<", operators.GTE], formatExclusiveMinimum: [">", operators.LTE] };
+  type Cxt = { gen: { scopeValue(prefix: string, value: object): unknown }; data: unknown; schemaCode: unknown; keyword: string; it: { schema: Record<string, unknown>; opts: { validateFormats?: boolean; code: { formats?: unknown } }; self: { formats: Record<string, unknown> } }; fail$data(condition: unknown): void };
+  return {
+    keyword: Object.keys(KEYWORDS),
+    type: "string",
+    schemaType: "string",
+    dependencies: ["format"],
+    error: {
+      message: ({ keyword, schemaCode }: Cxt) => str`should be ${KEYWORDS[keyword]![0]} ${schemaCode}`,
+      params: ({ keyword, schemaCode }: Cxt) => _`{comparison: ${KEYWORDS[keyword]![0]}, limit: ${schemaCode}}`,
+    },
+    code(cxt: Cxt) {
+      const { gen, data, schemaCode, keyword, it } = cxt;
+      if (it.opts.validateFormats === false) return;
+      const format = it.schema["format"];
+      const def = typeof format === "string" ? it.self.formats[format] : undefined;
+      if (typeof format !== "string" || !def || def === true) return;
+      if (typeof def !== "object" || def instanceof RegExp || typeof (def as { compare?: unknown }).compare !== "function") throw new Error(`"${keyword}": format "${format}" does not define "compare" function`);
+      const fmt = gen.scopeValue("formats", { key: format, ref: def, code: it.opts.code.formats ? _`${it.opts.code.formats}${getProperty(format)}` : undefined });
+      cxt.fail$data(_`${fmt}.compare(${data}, ${schemaCode}) ${KEYWORDS[keyword]![1]} 0`);
+    },
+  };
+}
 
 /**
  * ajv and ajv-formats, Motherload's own dependencies, looked up from this module: under pnpm a
- * package's dependencies resolve from the package only, not from the project's directory.
+ * package's dependencies resolve from the package only, not from the project's directory. One copy
+ * of ajv compiles and writes every format's code: ajv-formats' plugin writes it with the copy its
+ * own `require("ajv")` finds, which under npm beside ajv 6 (eslint's) is a second copy of ajv 8,
+ * whose code this copy wrote out as JSON, so every format checked by a function threw (measured
+ * 2026-10-20). So its format table is registered here, and its limit keywords are `formatLimits`.
  */
 function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = true, discriminator = false): { ajv: Ajv; require: NodeJS.Require } | { error: string } {
   const require = createRequire(import.meta.url);
@@ -99,12 +148,24 @@ function loadAjv(path: string, schema: Value, standalone: boolean, allErrors = t
   const ajv = new AjvClass({ allErrors, strict: false, logger: false, ownProperties: true, multipleOfPrecision: 7, ...(discriminator ? { discriminator: true } : {}), ...(standalone ? { code: { source: true } } : {}) });
   // ajv's default class knows draft-07's meta-schema alone; draft-06's is added for a schema, or a
   // file it refers to, that declares it (ajv's documentation, "JSON Schema draft-06").
-  if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
   try {
-    const formats = require("ajv-formats");
-    (formats.default ?? formats)(ajv);
+    if (entry.entry === "ajv") ajv.addMetaSchema(require("ajv/dist/refs/json-schema-draft-06.json"));
+  } catch (error) {
+    if (disallowedCodegen(error)) return { error: codegenProblem(path) };
+    throw error;
+  }
+  let formats: { fullFormats: Record<string, unknown>; formatNames: string[] } | undefined;
+  try {
+    formats = require("ajv-formats/dist/formats");
   } catch {
     // Without ajv-formats, `format` is an annotation, which is what the spec makes it by default.
+  }
+  if (formats) {
+    const codegen: Codegen = require("ajv/dist/compile/codegen");
+    // What ajv-formats' plugin does, with this copy's codegen: the standalone code requires the table.
+    ajv.opts.code.formats = codegen._`require("ajv-formats/dist/formats").fullFormats`;
+    for (const name of formats.formatNames) ajv.addFormat(name, formats.fullFormats[name]);
+    ajv.addKeyword(formatLimits(codegen));
   }
   return { ajv, require };
 }
@@ -130,13 +191,13 @@ function compile(ajv: Ajv, files: Files, path: string): { validate: unknown } | 
     try {
       ajv.addSchema(other.schema, other.id);
     } catch (error) {
-      return { problem: problem(`${basename(other.path)} is not a valid schema: ${(error as Error).message}`, files.places.get(other.path)) };
+      return { problem: problem(disallowedCodegen(error) ? codegenProblem(path) : `${basename(other.path)} is not a valid schema: ${(error as Error).message}`, files.places.get(other.path)) };
     }
   }
   try {
     return { validate: ajv.compile(root) };
   } catch (error) {
-    return { problem: problem(`The schema is not valid: ${(error as Error).message}`) };
+    return { problem: problem(disallowedCodegen(error) ? codegenProblem(path) : `The schema is not valid: ${(error as Error).message}`) };
   }
 }
 
@@ -278,6 +339,15 @@ export function schemaTypes(source: string, path: string, typesFrom = "@motherlo
 const REQUIRE = /(?<!['"\w.$])require\(\s*(["'])([^"']+)\1\s*\)/g;
 
 /**
+ * The requires in ajv's standalone code, which ajv writes with double quotes (each helper's `.code`,
+ * `require("ajv/dist/runtime/equal").default`). That code holds the schema's own strings, written
+ * with JSON.stringify, which escapes `"` and not `'`: REQUIRE took `"load require('ajv') now"` in a
+ * `const` for a call, rewrote the string the validator compares, and inlined ajv (measured
+ * 2026-10-20). A `"` in such a string is always `\"`, so a double-quoted require is code.
+ */
+const STANDALONE_REQUIRE = /(?<![\w.$\\])require\((")([^"\\]+)"\)/g;
+
+/**
  * Inlines CommonJS modules: each standalone validator and every module they require, transitively,
  * as functions in one ES module, so the generated module imports nothing at run time. The
  * validators share one table of modules, so a helper both require (ucs2length, fast-deep-equal,
@@ -286,14 +356,18 @@ const REQUIRE = /(?<!['"\w.$])require\(\s*(["'])([^"']+)\1\s*\)/g;
 function inline(entries: ReadonlyArray<{ name: string; source: string }>, entryFile: string): string {
   const ids = new Map<string, number>();
   const bodies: string[] = [];
-  const rewrite = (source: string, from: string) =>
-    source.replace(REQUIRE, (call, _quote, specifier: string) => {
-      let file: string;
+  // In a helper's own source (fast-uri writes `require('./lib/utils')`), a require that does not
+  // resolve is left as written, for a guarded optional one; in the standalone code it is a problem,
+  // thrown to `schemaCode`, never a bare `require` the module would fail on when it runs.
+  const rewrite = (source: string, from: string, standalone = false) =>
+    source.replace(standalone ? STANDALONE_REQUIRE : REQUIRE, (call, _quote, specifier: string) => {
+      let file: string | undefined;
       try {
         file = createRequire(from).resolve(specifier);
       } catch {
-        return call;
+        if (!standalone) return call;
       }
+      if (!file || isBuiltin(file)) throw new Error(`${standalone ? "ajv's standalone code" : basename(from)} requires ${specifier}, which ${file ? "is a Node.js built-in" : `does not resolve from ${basename(from)}`}, so it cannot be inlined.`);
       return `__require(${add(file)})`;
     });
   const add = (file: string): number => {
@@ -309,7 +383,7 @@ function inline(entries: ReadonlyArray<{ name: string; source: string }>, entryF
   const validators = entries.map(({ name, source }) => [
     `const ${name} = (() => {`,
     "  const module = { exports: {} }, exports = module.exports;",
-    rewrite(source, entryFile),
+    rewrite(source, entryFile, true),
     "  return module.exports.default ?? module.exports;",
     "})();",
   ]);
@@ -440,8 +514,14 @@ export function schemaCode(source: string, path: string, { discriminators = true
   // The standalone code requires ajv's run-time helpers and ajv-formats' format functions
   // (`date-time`, `uri`), both dependencies of this package, so they resolve from this module:
   // from ajv's own directory ajv-formats does not resolve, and was left a bare `require`.
+  let inlined: string;
+  try {
+    inlined = inline(standalones, fileURLToPath(import.meta.url));
+  } catch (error) {
+    return failed([problem((error as Error).message)], files.watched);
+  }
   return {
-    code: [inline(standalones, fileURLToPath(import.meta.url)), `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, `const __confirm = ${needsConfirmation(files)};`, VALIDATOR, ""].join("\n"),
+    code: [inlined, `const __schema = ${toJs(parsed.value)};`, `const __jsonSchemas = ${toJs(jsonSchemas(files, path, draftOf(parsed.value) ?? "draft-07"))};`, `const __confirm = ${needsConfirmation(files)};`, VALIDATOR, ""].join("\n"),
     problems: [],
     watchFiles: files.watched,
   };
