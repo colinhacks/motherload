@@ -5,7 +5,7 @@ description: Import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or .env
 
 Motherload is a set of TypeScript loaders for data formats: import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or `.env` file, or a JSON Schema, and get a typed module.
 
-<p className="dk-lede">It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.</p>
+It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/typescript-go/pull/4712) (introduced typescript@7.1). These are like plugins for TypeScript, and it lets Motherload provide _full static types_ for the imported data, in a way that natively integrates with `tsc`.
 
 ```ts twoslash tab="main.ts"
 import plans from "./plans.toml";
@@ -80,6 +80,42 @@ The type check and the editor run Motherload as a content mapper: TypeScript han
 <HowItWorksDiagram />
 
 ## Setup
+
+<AgentPrompt>
+
+```text
+Set up Motherload in this project. Motherload lets TypeScript
+import data files as typed modules (.toml, .yaml, .json5, .jsonc,
+.env, .csv, .tsv, .txt and .md), and a JSON Schema in a
+.schema.jsonc file as its type and a validator. Its docs are one
+page, https://motherload.dev: follow the section linked at each
+step. A working project that imports every format, with its
+tsconfig.json and main.ts:
+https://github.com/colinhacks/motherload/tree/main/lab/basic
+It runs from the repository's own build: install from npm.
+
+1. Check the requirements and install motherload and TypeScript
+   7.1 (typescript@next): https://motherload.dev/#install
+   A project that reads only some formats can install each
+   format's package instead:
+   https://motherload.dev/#one-format-at-a-time
+2. Add Motherload to tsconfig.json as a content mapper, listing
+   the extensions the project imports, add motherload/client to
+   its types, and add a typecheck script that runs
+   tsc --noEmit --runExternalCode:
+   https://motherload.dev/#typescript
+3. Make the imports load wherever the project runs code, with
+   Node's --import (https://motherload.dev/#node) or the preload
+   or plugin for Nub or esbuild (https://motherload.dev/#plugins).
+4. Set up the editor the project uses:
+   https://motherload.dev/#editors
+5. Import a data file and use its values. What each format's
+   module holds: https://motherload.dev/#loaders
+6. Run the typecheck script. Invalid data in a file is a type
+   error at its line and column: https://motherload.dev/#errors
+```
+
+</AgentPrompt>
 
 Install Motherload, add it to `tsconfig.json`, then add it to each tool that loads your code.
 

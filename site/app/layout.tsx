@@ -1,7 +1,10 @@
 import './global.css';
 import { DocsRoot } from 'docs-kit/root';
 import { Caveat, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { siteTitle, siteUrl } from '@/lib/site';
+import { source } from '@/lib/source';
 
 // IBM Plex, one family for text and code (the maintainer's choice of 2026-10-06).
 //
@@ -35,10 +38,27 @@ const hand = Caveat({
   variable: '--font-hand',
 });
 
-export const metadata = {
-  title: 'Motherload',
-  description: 'Import a TOML, YAML, JSON5, JSONC, CSV, TSV, Markdown, text or .env file and get a typed module. Import a JSON Schema and get its type and a validator.',
-};
+// The page's metadata, as Reylo's site gives it: the title, the frontmatter's description, and the
+// link previews, whose image is app/opengraph-image.tsx. It lives here rather than on the page
+// because Next.js replaces an inherited `openGraph` or `alternates` whole: a page that set its own
+// would drop the image Next.js attaches at this level. The icons are app/icon.svg, app/favicon.ico
+// and app/apple-icon.png, which Next.js links itself; the showcase (app/showcase/page.tsx) sets its
+// own title and asks not to be indexed.
+export function generateMetadata(): Metadata {
+  const description = source.getPage([])?.data.description;
+  return {
+    metadataBase: new URL(siteUrl),
+    title: siteTitle,
+    description,
+    applicationName: 'Motherload',
+    authors: [{ name: 'Colin McDonnell', url: 'https://github.com/colinhacks' }],
+    creator: 'Colin McDonnell',
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 } },
+    alternates: { canonical: '/', types: { 'text/markdown': '/llms.txt' } },
+    openGraph: { type: 'website', url: '/', siteName: 'Motherload', locale: 'en_US', title: siteTitle, description },
+    twitter: { card: 'summary_large_image', creator: '@colinhacks', title: siteTitle, description },
+  };
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   return <DocsRoot className={`${sans.variable} ${mono.variable} ${hand.variable}`}>{children}</DocsRoot>;
