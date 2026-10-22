@@ -968,54 +968,18 @@ code {
   margin-bottom: 0;
 }
 
-/* ── The agent card, `<AgentPrompt>` (components/agent-prompt.tsx) ─────────────
-   A plain card in the page's own greys, like a code block's, with one Copy button over the
-   instructions, an ordinary code block. It carries no accent: in
-   the accent's border and fill it read as a warning ("It looks scary and awful", the maintainer
-   on Reylo's yellow card, 2026-10-20). */
-
-#nd-page .dk-agent {
-  margin-block: 1.5rem 2rem;
-  border: 1px solid var(--color-fd-border);
-  border-radius: 12px;
-  background: var(--color-fd-card);
-  overflow: hidden;
+/* ── The agent prompt, `<AgentPrompt>` (components/agent-prompt.tsx) ─────────────
+   A standard callout, its title and a note over the instructions, an ordinary code block copied with
+   its own copy icon (the maintainer, 2026-10-21: "You should just use a standard callout
+   component"; it was a card of its own). The code block shows six lines and scrolls (the
+   maintainer, 2026-10-21: "set a max height of 6 lines on that big agent prompt"): Fumadocs' scroll
+   box, the code block's one `overflow-auto` child, sets each line at 1.7em of its 13px and pads
+   14px above and below. */
+#nd-page .dk-agent .dk-callout-body figure {
+  margin-bottom: 0;
 }
 
-#nd-page .dk-agent-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-}
-
-#nd-page .dk-agent-title {
-  margin: 0;
-  font-weight: 600;
-  color: var(--color-fd-headings);
-}
-
-#nd-page .dk-agent-note {
-  margin: 0.125rem 0 0;
-  font-size: 0.9375rem;
-  color: var(--color-fd-muted-foreground);
-}
-
-/* The instructions are an ordinary code block under the head, copied with its own copy icon; no
-   fold, no fade and no control to open it (the maintainer, 2026-10-20: "it should just be a regular
-   scrollable code block"). It shows six lines and scrolls (the maintainer, 2026-10-21: "set a max
-   height of 6 lines on that big agent prompt"): Fumadocs' scroll box, the code block's one
-   `overflow-auto` child, sets each line at 1.7em of its 13px and pads 14px above and below. */
-#nd-page .dk-agent-body {
-  padding: 0 1.25rem 1.25rem;
-}
-
-#nd-page .dk-agent-body figure {
-  margin: 0;
-}
-
-#nd-page .dk-agent-body figure > .overflow-auto {
+#nd-page .dk-agent .dk-callout-body figure > .overflow-auto {
   max-height: calc(6 * 1.7em + 1.75rem);
 }
 

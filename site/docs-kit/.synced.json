@@ -1,11 +1,11 @@
 {
-  "from": "/Users/colin/Documents/docs-kit",
-  "commit": "114313e",
+  "from": "/Users/colin/Documents/docs-kit/.frizz/worktrees/clean-sync",
+  "commit": "4451d8c",
   "files": {
     "package.json": "76f8d44da08785898565422d0d53c698acf23b84357ecf9cc814befd7f910905",
     "README.md": "d617dd65f3175f6a845a119be0c002ab5e3dcdb7c78e77ffb76eef5d1f0ae59e",
     "src/components/accordion.tsx": "67bbfd69ffcb8d984d39364197309eecc8d3a75c57b06ec8faecf707f33e73ae",
-    "src/components/agent-prompt.tsx": "742210664acc0786994b1640d96bb2430a99aa69b82c89157d312c641bf66422",
+    "src/components/agent-prompt.tsx": "105e457f4fed342aa0403b8bff93b1e20b4cea1577751cce28ccae1ea5d917b2",
     "src/components/callout.tsx": "72f230cea574965609654479835c8fbcc355ae882a875ea02546597af1672943",
     "src/components/chrome.tsx": "2406305d9db24be97199d4cc774425e596e7ea56b4c6f4664d59ffa9c73b2c26",
     "src/components/code-copy.tsx": "96767fbb63e19fbea39b3b5aba9b1b883b6a571afdfc277b82347b18c8eeb2cf",
@@ -27,7 +27,7 @@
     "src/mdx/recma-shared-popups.ts": "b12d67312b9875a469adba9ed4ca77b788f8f7958c0119451a9b4e16638ae427",
     "src/mdx/remark-sections.ts": "b74e170719bd36e951b174720b09b4560bb4c4460dbbceba531454cf5f9e549b",
     "src/mdx/twoslash.ts": "1c1236cabb64d7d05bf005a5a2d864b89f12d34a271bb94de55ca9a7fbd395b1",
-    "src/style.css": "6564d3dd8b88ad31771de73440a905b502dff16943c00844fb41724a0eb8083c",
+    "src/style.css": "a18b957638ab40d8ecfe48a4bb82ff3ff22e3e15a701b06924c9a4eb99775794",
     "src/sync.mjs": "2a1cf5fe7ac181004dcb2859b46003dc55808054cc2711567ee3928304812626",
     "src/vite.ts": "e8f8a6a49951ec991b24872d664efdd46cbb2121802d14279e0ea917f3f6763e"
   }
