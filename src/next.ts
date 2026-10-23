@@ -20,11 +20,17 @@ type AfterCompile = (metadata: { projectDir: string; distDir: string }) => Promi
 
 // The part of Next's config the wrapper reads or sets, so that motherload has no dependency on
 // next. Each field's type admits Next's own, and the rest of the config passes through as it is.
-type NextConfig = {
-  typescript?: { ignoreBuildErrors?: boolean; tsconfigPath?: string };
-  turbopack?: { rules?: Record<string, unknown> };
+// Each level is intersected with `object`, which keeps it from being a weak type (one whose
+// properties are all optional): an object literal that shares none of a weak type's properties
+// fails the constraint, and is then checked against this type for excess properties, so
+// `withMotherload({ reactStrictMode: true })` or `{ turbopack: { root } }` failed the type check
+// of next.config.ts (TS2353). An index signature would admit those too, but not Next's own
+// `NextConfig`, whose nested interfaces have none.
+type NextConfig = object & {
+  typescript?: object & { ignoreBuildErrors?: boolean; tsconfigPath?: string };
+  turbopack?: object & { rules?: Record<string, unknown> };
   webpack?: ((config: any, context: any) => any) | null;
-  compiler?: { runAfterProductionCompile?: AfterCompile };
+  compiler?: object & { runAfterProductionCompile?: AfterCompile };
 };
 
 // Every format but `.env`: Next.js loads `.env` files itself, and a client component's bundle runs
