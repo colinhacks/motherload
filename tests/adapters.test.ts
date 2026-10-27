@@ -143,4 +143,8 @@ test("the Jest transformer's cache key follows the module and how Jest loads it"
 test("ranges convert from UTF-16 code units to UTF-8 bytes", () => {
   assert.deepEqual(utf8Range("é = x", 4, 1), { start: 5, length: 1 });
   assert.deepEqual(utf8Range("a = 😀", 4, 2), { start: 4, length: 4 });
+  // A range that would pass the end of the text ends at it, and one at the end is empty.
+  assert.deepEqual(utf8Range("a = é", 4, 2), { start: 4, length: 2 });
+  assert.deepEqual(utf8Range("a = é", 5, 1), { start: 6, length: 0 });
+  assert.deepEqual(utf8Range("", 0, 1), { start: 0, length: 0 });
 });

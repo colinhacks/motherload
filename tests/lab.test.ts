@@ -31,6 +31,15 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.match(out, /broken\.md\(3,1\): error motherload1: Map keys must be unique/);
   // A broken .md file keeps its default export, so `import md from "./broken.md"` adds no error.
   assert.doesNotMatch(out, /TS1192/);
+  // A syntax error at the very end of a cut-off or empty file is placed there: until 2026-10-26 its
+  // span ran a byte past the end, and TypeScript refused the module (TS18069), then the mapper (TS18070).
+  assert.match(out, /truncated\.toml\(3,8\): error motherload1: Invalid TOML document: invalid value/);
+  assert.match(out, /truncated\.yaml\(3,1\): error motherload1: Flow sequence in block collection must be sufficiently indented/);
+  assert.match(out, /truncated\.jsonc\(3,1\): error motherload1: Close Brace Expected/);
+  assert.match(out, /truncated\.json5\(3,1\): error motherload1: invalid end of input at 3:1/);
+  assert.match(out, /empty\.jsonc\(1,1\): error motherload1: Value Expected/);
+  assert.match(out, /empty\.json5\(1,1\): error motherload1: invalid end of input at 1:1/);
+  assert.doesNotMatch(out, /TS1806[89]|TS18070/);
 });
 
 test("a data file in a package with no \"type\" is an ES module all the same", () => {

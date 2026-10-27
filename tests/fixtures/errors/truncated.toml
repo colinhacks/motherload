@@ -1,0 +1,3 @@
+# A file cut off after a key: a syntax error at its very end.
+port = 8080
+host = 

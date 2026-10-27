@@ -46,6 +46,16 @@ test("the mapper answers the protocol, reports options and places errors in UTF-
     const content = 'name = "é"\nport = nope\n';
     const bad = await mapper.call("transform", { fileName: `${ROOT}x.toml`, content, projectHandle: "p" });
     assert.equal(bad.result.diagnostics[0].start, Buffer.byteLength(content.slice(0, content.indexOf("nope"))));
+    // A syntax error at the end of a cut-off or empty text stays within it: TypeScript refuses a
+    // response whose diagnostic runs past the end (TS18069), so one at the end is empty.
+    for (const [name, text] of [["x.toml", 'name = "é"\nport = '], ["x.yaml", "name: é\nports: [80,\n"], ["x.jsonc", '{ "name": "é",\n'], ["x.json5", "{ name: 'é',\n"], ["x.jsonc", ""], ["x.json5", ""]] as const) {
+      const cut = await mapper.call("transform", { fileName: `${ROOT}${name}`, content: text, projectHandle: "p" });
+      assert.ok(cut.result.diagnostics.length > 0, `${name} ${JSON.stringify(text)}`);
+      for (const diagnostic of cut.result.diagnostics) {
+        assert.equal(diagnostic.code, 1);
+        assert.deepEqual([diagnostic.start, diagnostic.length], [Buffer.byteLength(text), 0], `${name} ${JSON.stringify(text)}: ${diagnostic.messageText}`);
+      }
+    }
     const unknown = await mapper.call("transform", { fileName: `${ROOT}x.ini`, content: "", projectHandle: "p" });
     assert.match(unknown.result.diagnostics[0].messageText, /Motherload reads/);
   } finally {

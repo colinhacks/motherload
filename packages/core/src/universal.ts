@@ -286,11 +286,19 @@ function commonJs(plugin: LoaderPlugin, path: string, code: string): string {
 
 // ---- TypeScript 7.1 content mapper ------------------------------------------------------------
 
-/** A UTF-16 range of `source` as UTF-8 bytes. */
+/**
+ * A UTF-16 range of `source` as UTF-8 bytes, at least one byte long and within the text. TypeScript
+ * refuses a whole transform response whose diagnostic runs past the end of the file, with TS18069
+ * ("invalid transform response") in place of every diagnostic, and after five such files stops using
+ * the mapper (TS18070); the TOML, YAML, JSONC and JSON5 parsers place a syntax error at the end of a
+ * cut-off or empty file there, one character long. So a range that would pass the end ends at it,
+ * and one at the end is empty (measured on 2026-10-26, DESIGN.md, Diagnostics).
+ */
 export function utf8Range(source: string, start: number, length: number): { start: number; length: number } {
-  const before = Buffer.byteLength(source.slice(0, start), "utf8");
+  const total = Buffer.byteLength(source, "utf8");
+  const before = Math.min(Buffer.byteLength(source.slice(0, start), "utf8"), total);
   const inside = Buffer.byteLength(source.slice(start, start + length), "utf8");
-  return { start: before, length: Math.max(inside, 1) };
+  return { start: before, length: Math.min(Math.max(inside, 1), total - before) };
 }
 
 type MapperHandlers = Record<string, (params: unknown) => unknown>;

@@ -1,0 +1,2 @@
+# A file cut off inside a list: a syntax error at its very end.
+ports: [80,
