@@ -1,6 +1,6 @@
 {
   "name": "@motherload/toml",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Import .toml files as typed modules: TOML 1.1, read with smol-toml.",
   "license": "MIT",
@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.2.0",
+    "@motherload/core": "0.3.0",
     "smol-toml": "^1.9.0"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "motherload",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Import data files (.toml, .yaml, .jsonc, .json5, .env, .csv, .tsv, .txt, .md) as typed modules. TypeScript 7.1 content mappers.",
   "license": "MIT",

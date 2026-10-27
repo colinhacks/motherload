@@ -1,6 +1,6 @@
 {
   "name": "@motherload/yaml",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Import .yaml and .yml files as typed modules: YAML 1.2, read with yaml.",
   "license": "MIT",
@@ -33,7 +33,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.2.0",
+    "@motherload/core": "0.3.0",
     "yaml": "^2.9.1"
   }
 }
