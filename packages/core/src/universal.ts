@@ -193,6 +193,13 @@ export function toWebpackLoader(plugin: LoaderPlugin): (this: WebpackLoaderConte
 // ---- Vite, Rollup and Rolldown: a Rollup-shaped plugin ---------------------------------------
 
 type RollupContext = { addWatchFile(id: string): void; error(message: string): never };
+/** What Vitest hands a plugin's `configureVitest`, as far as it is used here. */
+type VitestCacheKey = (module: { id: string }) => string | undefined;
+type VitestContext = {
+  vitest: { invalidateFile(file: string): void };
+  defineCacheKeyGenerator?(generate: VitestCacheKey): void;
+  experimental_defineCacheKeyGenerator?(generate: VitestCacheKey): void;
+};
 
 /** The Motherload plugins among a host's plugins (a plugin or a list of them, nested), each plugin object marked as an esbuild plugin object is. */
 const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).flatMap((p) => ((p as Record<symbol, unknown> | null)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
@@ -203,7 +210,14 @@ const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).fl
  * Rolldown, which reads a module's type from its extension, that the code is JavaScript; Rollup
  * ignores both. An id with a query (`./app.toml?raw`) is left to other plugins, as is a file another
  * Motherload plugin in the build claims more strongly: Vite hands its resolved plugins to
- * `configResolved`, and Rollup and Rolldown their input options to `options`.
+ * `configResolved`, and Rollup and Rolldown their input options to `options`. Vitest keeps a module
+ * across runs on disk, keyed by its file's text, its own version, the config and the lockfile it can
+ * find, so `configureVitest` adds the module itself to the key, as the Jest transformer's key is: a
+ * new version of a parser where Vitest sees no lockfile, or a change to a file the module was made
+ * from, then makes it again. The module made for a key is kept for the `load` that follows it, which
+ * Vitest calls only on a miss. In watch mode Vitest keeps each module's key until that module's own
+ * file changes, so a change to another file a module was made from is passed on to Vitest as a
+ * change to the module's file.
  */
 export function toVitePlugin(plugin: LoaderPlugin): {
   name: string;
@@ -211,8 +225,16 @@ export function toVitePlugin(plugin: LoaderPlugin): {
   configResolved(config: { plugins: unknown }): void;
   options(options: { plugins?: unknown }): null;
   load(this: RollupContext, id: string): { code: string; map: null; moduleType: "js" } | null;
+  configureVitest(context: VitestContext): void;
+  watchChange(id: string): void;
 } {
   let siblings: LoaderPlugin[] = [];
+  const handles = (id: string) => !/[?#]/.test(id) && plugin.filter.test(id) && !outranked(plugin, id, siblings);
+  // The module last made for a key, by id, with the text of the file it was made from.
+  const made = new Map<string, { source: string; result: ReturnType<LoaderPlugin["load"]> }>();
+  // Under Vitest: Vitest itself, and the files each module was last made from, by id.
+  let vitest: VitestContext["vitest"] | undefined;
+  const reached = new Map<string, readonly string[]>();
   return {
     name: plugin.name,
     enforce: "pre" as const,
@@ -224,13 +246,34 @@ export function toVitePlugin(plugin: LoaderPlugin): {
       if (options.plugins) siblings = marked(options.plugins);
       return null;
     },
+    configureVitest(context: VitestContext) {
+      vitest = context.vitest;
+      const key: VitestCacheKey = ({ id }) => {
+        if (!handles(id)) return undefined;
+        const source = readFileSync(id, "utf8");
+        const result = plugin.load(source, id);
+        made.set(id, { source, result });
+        reached.set(id, result.watchFiles ?? []);
+        return createHash("sha256").update(result.code).update(JSON.stringify(result.problems)).digest("hex");
+      };
+      // Vitest 5.0.5 keeps the experimental name as a deprecated one, with a warning.
+      if (context.defineCacheKeyGenerator) context.defineCacheKeyGenerator(key);
+      else context.experimental_defineCacheKeyGenerator?.(key);
+    },
     load(this: RollupContext, id: string) {
-      if (/[?#]/.test(id) || !plugin.filter.test(id) || outranked(plugin, id, siblings)) return null;
-      const result = plugin.load(readFileSync(id, "utf8"), id);
+      if (!handles(id)) return null;
+      const source = readFileSync(id, "utf8");
+      const kept = made.get(id);
+      made.delete(id);
+      const result = kept?.source === source ? kept.result : plugin.load(source, id);
       // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
       for (const file of result.watchFiles ?? []) this.addWatchFile(file);
+      if (vitest) reached.set(id, result.watchFiles ?? []);
       if (result.problems.length) this.error(loadError(plugin, id, result.problems));
       return { code: result.code, map: null, moduleType: "js" };
+    },
+    watchChange(id: string) {
+      for (const [module, files] of reached) if (module !== id && files.includes(id)) vitest?.invalidateFile(module);
     },
   } as ReturnType<typeof toVitePlugin>;
 }

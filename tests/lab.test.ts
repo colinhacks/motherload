@@ -4,8 +4,11 @@
 // webpack, on lab/nextjs; and the Jest transformer and the Vite plugin under Vitest, on lab/jest.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 import { ROOT, run, TSC } from "./helpers.ts";
 
@@ -172,4 +175,77 @@ test("lab/jest: Vitest imports lab/basic's files through the Vite plugin", { ski
   const result = spawnSync(`${ROOT}lab/jest/node_modules/.bin/vitest`, ["run"], { cwd: `${ROOT}lab/jest`, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "" } });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(stripVTControlCharacters(result.stdout), /Tests\s+1 passed \(1\)/);
+});
+
+// Vitest keeps each module on disk across runs, keyed by its file's text, its own version, the config
+// and the lockfile it can find, so until 2026-10-26 a module came back from the cache as it was when
+// the loader's output changed under an unchanged file: a new version of the loader where Vitest sees
+// no lockfile, as under nub's layout, and a change to a file the module was made from (`watchFiles`),
+// in one run after another and in watch mode. No Motherload format reads a second file, so a project
+// outside the repository holds a stand-in on the real adapter, installed as a package: a `.tag` file
+// names a file beside it, and its module is the stand-in's version and that file's text.
+function vitestProject(): { dir: string; seen: () => string; version: (v: string) => void; name: (text: string) => void } {
+  const dir = mkdtempSync(join(tmpdir(), "motherload-vitest-"));
+  mkdirSync(join(dir, "node_modules", "@motherload"), { recursive: true });
+  symlinkSync(`${ROOT}packages/core`, join(dir, "node_modules", "@motherload", "core"));
+  mkdirSync(join(dir, "node_modules", "stand-in"));
+  writeFileSync(join(dir, "node_modules", "stand-in", "package.json"), '{ "name": "stand-in", "type": "module", "exports": "./index.mjs" }\n');
+  const version = (v: string) =>
+    writeFileSync(
+      join(dir, "node_modules", "stand-in", "index.mjs"),
+      `import { readFileSync } from "node:fs";\nimport { dirname, join } from "node:path";\nimport { toVitePlugin } from "@motherload/core";\n` +
+        `const load = (source, path) => { const other = join(dirname(path), source.trim()); return { code: \`export default \${JSON.stringify("${v}:" + readFileSync(other, "utf8"))};\`, problems: [], watchFiles: [other] }; };\n` +
+        `export default () => toVitePlugin({ name: "stand-in", extensions: [".tag"], filter: /\\.tag$/, load, types: () => ({ types: "", problems: [] }) });\n`,
+    );
+  const name = (text: string) => writeFileSync(join(dir, "name.txt"), text);
+  writeFileSync(join(dir, "package.json"), '{ "private": true, "type": "module" }\n');
+  writeFileSync(join(dir, "vitest.config.mjs"), 'import standIn from "stand-in";\nexport default { plugins: [standIn()], test: { include: ["tag.test.mjs"], globals: true } };\n');
+  writeFileSync(join(dir, "app.tag"), "name.txt\n");
+  writeFileSync(join(dir, "tag.test.mjs"), 'import { writeFileSync } from "node:fs";\nimport tag from "./app.tag";\ntest("tag", () => writeFileSync(new URL("seen.txt", import.meta.url), tag));\n');
+  version("1");
+  name("a");
+  return { dir, version, name, seen: () => (existsSync(join(dir, "seen.txt")) ? readFileSync(join(dir, "seen.txt"), "utf8") : "") };
+}
+
+test("lab/jest: Vitest makes a module again when the loader's output changes between runs", { skip: jestInstalled !== true && jestInstalled }, () => {
+  const project = vitestProject();
+  try {
+    const seen = [];
+    for (const [version, name] of [["1", "a"], ["1", "b"], ["2", "b"], ["2", "b"]] as const) {
+      project.version(version);
+      project.name(name);
+      const { status, out } = run(`${ROOT}lab/jest/node_modules/.bin/vitest`, ["run"], project.dir);
+      assert.equal(status, 0, out);
+      seen.push(project.seen());
+    }
+    assert.deepEqual(seen, ["1:a", "1:b", "2:b", "2:b"]);
+  } finally {
+    rmSync(project.dir, { recursive: true, force: true });
+  }
+});
+
+test("lab/jest: Vitest's watch mode makes a module again when a file it was made from changes", { skip: jestInstalled !== true && jestInstalled }, async () => {
+  const project = vitestProject();
+  const child = spawn(`${ROOT}lab/jest/node_modules/.bin/vitest`, ["watch"], { cwd: project.dir, env: { ...process.env, NODE_OPTIONS: "" } });
+  let out = "";
+  child.stdout.on("data", (chunk) => (out += chunk));
+  child.stderr.on("data", (chunk) => (out += chunk));
+  // Waits for what a run writes, up to 30 seconds.
+  const seen = async (expected: string) => {
+    for (const end = Date.now() + 30_000; Date.now() < end; await new Promise((resolve) => setTimeout(resolve, 100))) if (project.seen() === expected) return;
+    assert.fail(`never ${expected}, the last ${project.seen() || "none"}:\n${out}`);
+  };
+  try {
+    await seen("1:a");
+    // Vitest watches files once it has run, so the change comes after the first run's summary.
+    for (const end = Date.now() + 30_000; !/Waiting for file changes/.test(out) && Date.now() < end; ) await new Promise((resolve) => setTimeout(resolve, 100));
+    project.name("b");
+    await seen("1:b");
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill();
+      await once(child, "exit");
+    }
+    rmSync(project.dir, { recursive: true, force: true });
+  }
 });
