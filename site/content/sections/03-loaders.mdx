@@ -268,9 +268,22 @@ A missing file fails the type check and the build. To load nothing in its place,
 }
 ```
 
+A bundle reads no `.env` file, since it runs wherever it is deployed. It takes its variables from the environment there, and stops at startup if one the file declares is unset:
+
+```sh
+$ node dist/main.mjs
+Error: Motherload: .env declares DATABASE_URL, PORT, which the environment does not set. A bundle does not read .env: set them where it runs, or start it with node --env-file=.env.
+```
+
+To run a bundle with the file on your own machine, pass the file to Node:
+
+```sh
+node --env-file=.env dist/main.mjs
+```
+
 <Details summary="How the .env file is loaded" id="env-loading">
 
-A variable the environment already sets keeps its value. A bundle holds none of the file's values: it reads the file from the working directory when it runs, and loads nothing if the file is absent.
+A variable the environment already sets keeps its value. A bundle holds the names the file declares and none of its values.
 
 With `strict` off, a missing file still fails in webpack, Rspack and Jest, which look for the file before Motherload's loader runs.
 

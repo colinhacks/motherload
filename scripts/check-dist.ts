@@ -81,8 +81,8 @@ project("basic", ["motherload"], [
   [process.execPath, ["--import", "motherload/register", "main.ts"], BASIC],
   [process.execPath, ["--import", "motherload/register", "main.ts"], TABLES],
   [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=11 node_modules=0"],
-  [process.execPath, ["dist/main.mjs"], BASIC],
-  [process.execPath, ["dist/main.mjs"], TABLES],
+  [process.execPath, ["--env-file=.env", "dist/main.mjs"], BASIC],
+  [process.execPath, ["--env-file=.env", "dist/main.mjs"], TABLES],
 ]);
 project("packages", ["@motherload/toml", "@motherload/jsonc"], [
   [process.execPath, ["--import", "@motherload/jsonc/register", "--import", "@motherload/toml/register", "main.ts"], PACKAGES],
@@ -90,12 +90,13 @@ project("packages", ["@motherload/toml", "@motherload/jsonc"], [
   [process.execPath, ["dist/main.mjs"], PACKAGES],
 ]);
 // lab/bundlers reads lab/basic's files, copied beside it above; the bundlers come from the registry.
+// A bundle reads no .env file, so each run takes lab/basic's through Node's `--env-file`.
 const BUNDLED = '"greeting":"hello world"';
 const bundle = (bundler: string, file: string): [string, string[], string][] => [
   [process.execPath, ["build.mjs", bundler], "errors=0 warnings=0 node_modules=0"],
-  [process.execPath, [`dist/${bundler}/${file}`], BASIC],
-  [process.execPath, [`dist/${bundler}/${file}`], TABLES],
-  [process.execPath, [`dist/${bundler}/${file}`], BUNDLED],
+  [process.execPath, ["--env-file=../basic/.env", `dist/${bundler}/${file}`], BASIC],
+  [process.execPath, ["--env-file=../basic/.env", `dist/${bundler}/${file}`], TABLES],
+  [process.execPath, ["--env-file=../basic/.env", `dist/${bundler}/${file}`], BUNDLED],
 ];
 project("bundlers", ["motherload"], [...bundle("webpack", "main.cjs"), ...bundle("rspack", "main.cjs"), ...bundle("vite", "main.mjs"), ...bundle("rollup", "main.mjs"), ...bundle("rolldown", "main.mjs")], {
   extra: { webpack: "^5.112.0", "@rspack/core": "^2.2.9", vite: "^8.3.0", rollup: "^4.64.0", rolldown: "^1.2.0" },

@@ -43,6 +43,7 @@ The maintainer's, on 2026-10-28:
 
 - **A second `.env` file is named so that it ends in `.env`,** such as `local.env`, which the `.env` entry already reaches; the docs show adding any other name, such as `.env.local`, to `extensions` in full. The default is `.env` alone: "we should recommend naming it something that ends in .env, but we should also give instructions in the docs for users to add support for additional files ... We shouldn't have that be the default behavior. default is just ".env"" ([DESIGN.md](./DESIGN.md#the-env-module)).
 - **A missing `.env` file fails the type check and the build unless `strict` is off:** "I think it should definitely fail a type check and a build ... Add a strict setting, and it should be on by default." The setting is `"options": { "strict": false }` on the tsconfig entry, paired in the docs with TypeScript's `noUncheckedSideEffectImports: false` ([DESIGN.md](./DESIGN.md#the-env-module)).
+- **A bundle reads no `.env` file, and every `.env` module checks its names at startup:** the maintainer's answer of 2026-10-28, "Type the file, check at startup, never read it from a bundle", after a bundle was found to look for its file by the build machine's paths. Under the preload, Vitest and Jest the module still loads its own file; a bundle takes its variables from the environment where it runs, and the module throws naming each variable its file declares that is unset ([DESIGN.md](./DESIGN.md#the-env-module)).
 
 ## Names
 

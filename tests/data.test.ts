@@ -3,21 +3,22 @@ import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { loader as toml } from "../packages/toml/src/loader.ts";
 import { loader as yaml } from "../packages/yaml/src/loader.ts";
 import { loader as env } from "../packages/env/src/loader.ts";
 import { loader as csv } from "../packages/csv/src/loader.ts";
 import { loader as txt } from "../packages/txt/src/loader.ts";
 import { loader as md } from "../packages/md/src/loader.ts";
-import type { LoaderPlugin } from "../packages/core/src/universal.ts";
+import type { LoaderPlugin, LoadHost } from "../packages/core/src/universal.ts";
 import { evaluate } from "./helpers.ts";
 
 const LOADERS: Record<string, LoaderPlugin> = { toml, yaml, env, csv, tsv: csv, txt, md };
 
 /** A data file's module, both texts, from its format's package. Every data format types synchronously. */
-function dataModule(format: string, source: string, path: string) {
+function dataModule(format: string, source: string, path: string, host?: LoadHost) {
   const loader = LOADERS[format]!;
-  const { code } = loader.load(source, path);
+  const { code } = loader.load(source, path, host);
   const { types, problems } = loader.types(source, path) as { types: string; problems: { message: string; start: number; length: number; code: number }[] };
   return { code, types, problems };
 }
@@ -32,28 +33,36 @@ test("a data module exports the data, typed as `as const` would type it", async 
   assert.equal(types, 'declare const data: { readonly name: "demo"; readonly port: 8080 };\nexport default data;\n');
 });
 
-test("a .env module loads the file into process.env when it runs, and its types hold no value", async () => {
+test("a .env module loads its own file into process.env when it runs, and its types hold no value", async () => {
   const dir = mkdtempSync(join(tmpdir(), "motherload-env-"));
   const path = join(dir, ".env");
   writeFileSync(path, "MOTHERLOAD_TEST_TOKEN=secret\nMOTHERLOAD_TEST_SET=from-file\n");
   process.env.MOTHERLOAD_TEST_SET = "from-environment";
-  const { code, types, problems } = dataModule("env", "MOTHERLOAD_TEST_TOKEN=secret\nMOTHERLOAD_TEST_SET=from-file\n", path);
+  const { code, types, problems } = dataModule("env", "MOTHERLOAD_TEST_TOKEN=secret\nMOTHERLOAD_TEST_SET=from-file\n", path, { bundle: false });
   assert.deepEqual(problems, []);
   assert.doesNotMatch(code, /secret|from-file/);
   assert.doesNotMatch(types, /secret|from-file/);
   assert.match(types, /^declare global \{\n {2}namespace NodeJS \{\n {4}interface ProcessEnv \{\n/);
   assert.match(types, /^ {6}MOTHERLOAD_TEST_TOKEN: string;$/m);
   assert.match(types, /^ {6}MOTHERLOAD_TEST_SET: string;$/m);
-  // Evaluated from a data: URL, the module is not the file, so it reads the path from the working directory.
-  const mod = await evaluate(code);
+  // Under the preload the module's URL is the file's.
+  const mod = await evaluate(code.replaceAll("import.meta.url", JSON.stringify(pathToFileURL(path).href)));
   assert.deepEqual(Object.keys(mod), []);
   assert.equal(process.env.MOTHERLOAD_TEST_TOKEN, "secret");
   assert.equal(process.env.MOTHERLOAD_TEST_SET, "from-environment");
 });
 
-test("a .env module whose file is gone loads nothing", async () => {
-  const { code } = dataModule("env", "A=1\n", join(tmpdir(), "motherload-missing", ".env"));
-  await evaluate(code);
+test("a .env module throws naming each variable its file declares that is still unset, and a bundle's says it reads no file", async () => {
+  const path = join(tmpdir(), "motherload-missing", ".env");
+  const source = "MOTHERLOAD_TEST_A=1\nMOTHERLOAD_TEST_B=2\n";
+  process.env.MOTHERLOAD_TEST_B = "set";
+  await assert.rejects(evaluate(dataModule("env", source, path, { bundle: false }).code), { message: "Motherload: .env declares MOTHERLOAD_TEST_A, which the environment does not set." });
+  await assert.rejects(evaluate(dataModule("env", source, path, { bundle: true }).code), { message: /^Motherload: \.env declares MOTHERLOAD_TEST_A, which the environment does not set\. A bundle does not read \.env/ });
+  // An empty value is set. The comment makes the module a new one, which the module cache has not seen fail.
+  process.env.MOTHERLOAD_TEST_A = "";
+  await evaluate(`${dataModule("env", source, path, { bundle: true }).code}// set\n`);
+  // The module of a missing file that `strict: false` lets through declares, loads and checks nothing.
+  assert.equal(dataModule("env", "", path, { bundle: true }).code, "export {};\n");
 });
 
 test("a file that does not parse has quiet types and its problems", () => {

@@ -2,7 +2,7 @@
 // built from the formats: each Motherload package is one or more formats behind one loader.
 import { literal, toJs } from "./serialize.ts";
 import { CODES, type Parsed, type Problem } from "./problems.ts";
-import { ownerOf, type LoaderPlugin } from "./universal.ts";
+import { ownerOf, type LoaderPlugin, type LoadHost } from "./universal.ts";
 
 export type ModuleText = { code: string; types: string; problems: Problem[] };
 
@@ -20,14 +20,14 @@ export function valueModule(parsed: Parsed): ModuleText {
   };
 }
 
-/** A loader from a function that makes a file's whole module. */
-export function moduleLoader(name: string, extensions: readonly string[], filter: RegExp, make: (source: string, path: string) => ModuleText): LoaderPlugin {
+/** A loader from a function that makes a file's whole module; only its code may depend on where it runs. */
+export function moduleLoader(name: string, extensions: readonly string[], filter: RegExp, make: (source: string, path: string, host?: LoadHost) => ModuleText): LoaderPlugin {
   return {
     name,
     extensions,
     filter,
-    load(source, path) {
-      const { code, problems } = make(source, path);
+    load(source, path, host) {
+      const { code, problems } = make(source, path, host);
       return { code, problems };
     },
     types(source, path) {
@@ -62,9 +62,9 @@ export function combine(name: string, product: string, plugins: readonly LoaderP
     extensions,
     ...optional,
     filter: new RegExp(plugins.map((p) => `(?:${p.filter.source})`).join("|")),
-    load(source, path) {
+    load(source, path, host) {
       const owner = ownerOf(plugins, path);
-      return owner ? owner.load(source, path) : { code: "export default undefined;\n", problems: [unknown(path)] };
+      return owner ? owner.load(source, path, host) : { code: "export default undefined;\n", problems: [unknown(path)] };
     },
     types(source, path) {
       const owner = ownerOf(plugins, path);

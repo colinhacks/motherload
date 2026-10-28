@@ -52,8 +52,10 @@ test("a data file in a package with no \"type\" is an ES module all the same", (
 });
 
 const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';
-// lab/basic/.env, loaded into process.env when `import "./.env"` runs.
+// lab/basic/.env, loaded into process.env when `import "./.env"` runs under the preload; a bundle
+// takes it from the environment, here Node's `--env-file`, and fails without it.
 const GREETING = '"greeting":"hello world"';
+const UNSET = /Motherload: \.env declares DATABASE_URL, GREETING, PORT, which the environment does not set\./;
 // lab/basic/users.csv, scores.tsv, notes.txt and post.md: strings as written ("02134" keeps its zero), a quoted field with a comma, and the frontmatter and the body apart.
 const TABLES = '"zip":"02134","grace":"Hopper, Grace","score":"37","notes":"Notes from the lab.","title":"Hello, Motherload","body":"# Hello"';
 test("lab/basic runs under the preload", () => {
@@ -69,9 +71,12 @@ test("lab/basic bundles with the esbuild plugin and runs with nothing installed"
   const built = run(process.execPath, ["build-esbuild.ts"], `${ROOT}lab/basic`);
   assert.equal(built.status, 0, built.out);
   assert.match(built.out, /errors=0 inputs=11 node_modules=0/);
-  // The bundle reads .env when it runs; no value from the file is in it.
-  assert.doesNotMatch(readFileSync(`${ROOT}lab/basic/dist/main.mjs`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
-  const ran = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/basic`);
+  // The bundle holds no value from .env and reads no file: its variables come from where it runs.
+  assert.doesNotMatch(readFileSync(`${ROOT}lab/basic/dist/main.mjs`, "utf8"), /postgres:\/\/localhost\/app|hello world|file:\/\/|readFileSync/);
+  const unset = run(process.execPath, ["dist/main.mjs"], `${ROOT}lab/basic`);
+  assert.notEqual(unset.status, 0);
+  assert.match(unset.out, UNSET);
+  const ran = run(process.execPath, ["--env-file=.env", "dist/main.mjs"], `${ROOT}lab/basic`);
   assert.equal(ran.status, 0, ran.out);
   assert.ok(ran.out.includes(EXPECTED), ran.out);
   assert.ok(ran.out.includes(GREETING), ran.out);
@@ -110,8 +115,11 @@ for (const [bundler, through, file] of [["webpack", "the webpack loader", "main.
     const built = run(process.execPath, ["build.mjs", bundler], `${ROOT}lab/bundlers`);
     assert.equal(built.status, 0, built.out);
     assert.match(built.out, /errors=0 warnings=0 node_modules=0/);
-    assert.doesNotMatch(readFileSync(`${ROOT}lab/bundlers/dist/${bundler}/${file}`, "utf8"), /postgres:\/\/localhost\/app|hello world/);
-    const ran = run(process.execPath, [`dist/${bundler}/${file}`], `${ROOT}lab/bundlers`);
+    assert.doesNotMatch(readFileSync(`${ROOT}lab/bundlers/dist/${bundler}/${file}`, "utf8"), /postgres:\/\/localhost\/app|hello world|file:\/\/|readFileSync/);
+    const unset = run(process.execPath, [`dist/${bundler}/${file}`], `${ROOT}lab/bundlers`);
+    assert.notEqual(unset.status, 0);
+    assert.match(unset.out, UNSET);
+    const ran = run(process.execPath, ["--env-file=../basic/.env", `dist/${bundler}/${file}`], `${ROOT}lab/bundlers`);
     assert.equal(ran.status, 0, ran.out);
     assert.ok(ran.out.includes(EXPECTED), ran.out);
     assert.ok(ran.out.includes(GREETING), ran.out);

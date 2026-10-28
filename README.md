@@ -225,6 +225,12 @@ A missing file fails the type check and the build. To load nothing in its place,
 }
 ```
 
+A bundle reads no `.env` file, since it runs wherever it is deployed. It takes its variables from the environment there, and stops at startup if one the file declares is unset, so on your own machine it runs with the file passed to Node:
+
+```sh
+node --env-file=.env dist/main.mjs
+```
+
 ### `.csv`
 
 The header names the columns, and every value is a string, as written.

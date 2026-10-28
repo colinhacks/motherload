@@ -23,9 +23,11 @@ export interface LoaderPlugin {
   /**
    * JavaScript for runtimes and bundlers. Synchronous, because Node's `registerHooks` is.
    * `watchFiles` are the other files the code was made from, if any, which a bundler
-   * watches so that a change to one rebuilds the module.
+   * watches so that a change to one rebuilds the module. `host` is where the module runs: each
+   * adapter here passes it, and a caller that does not, such as an older copy of the adapters,
+   * leaves the module to find out for itself.
    */
-  load(source: string, path: string): { code: string; problems: Problem[]; watchFiles?: string[] };
+  load(source: string, path: string, host?: LoadHost): { code: string; problems: Problem[]; watchFiles?: string[] };
   /** TypeScript for the type checker. */
   types(source: string, path: string): Promise<{ types: string; problems: Problem[] }> | { types: string; problems: Problem[] };
   /**
@@ -35,6 +37,15 @@ export interface LoaderPlugin {
    */
   optional?(path: string): boolean;
 }
+
+/**
+ * Where a module runs. A bundler's module is in a bundle (`bundle: true`), which runs wherever it is
+ * deployed, so the files beside its source are not there; a runtime's module, the preload's, Vitest's
+ * or Jest's, is made as it runs, where its file is.
+ */
+export type LoadHost = { bundle: boolean };
+const RUNTIME: LoadHost = { bundle: false };
+const BUNDLE: LoadHost = { bundle: true };
 
 /** Every diagnostic is shown as `motherload<code>`, whichever Motherload package reports it. */
 export const DIAGNOSTIC_SOURCE = "motherload";
@@ -106,7 +117,7 @@ function read(path: string): string {
 }
 
 function runtimeModule(plugin: LoaderPlugin, path: string): string {
-  const result = plugin.load(read(path), path);
+  const result = plugin.load(read(path), path, RUNTIME);
   if (result.problems.length) throw new Error(loadError(plugin, path, result.problems));
   return result.code;
 }
@@ -222,7 +233,7 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
         if (outranked(plugin, args.path, siblings)) return undefined;
         if (args.suffix) return undefined;
         // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
-        const result = plugin.load(read(args.path), args.path);
+        const result = plugin.load(read(args.path), args.path, BUNDLE);
         const watchFiles = result.watchFiles ?? [];
         if (result.problems.length) {
           const text = loadError(plugin, args.path, result.problems);
@@ -259,7 +270,7 @@ export function toWebpackLoader(plugin: LoaderPlugin): (this: WebpackLoaderConte
   function loader(this: WebpackLoaderContext, source: string): string {
     const siblings = (this.loaders ?? []).flatMap((l) => ((l.normal as Record<symbol, unknown> | undefined)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
     if (outranked(plugin, this.resourcePath, siblings) || this.resourceQuery) return source;
-    const result = plugin.load(source, this.resourcePath);
+    const result = plugin.load(source, this.resourcePath, BUNDLE);
     // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
     for (const file of result.watchFiles ?? []) this.addDependency(file);
     if (result.problems.length) throw new Error(loadError(plugin, this.resourcePath, result.problems));
@@ -301,7 +312,7 @@ const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).fl
 export function toVitePlugin(plugin: LoaderPlugin): {
   name: string;
   enforce: "pre";
-  configResolved(config: { plugins: unknown }): void;
+  configResolved(config: { plugins: unknown; command?: string }): void;
   options(options: { plugins?: unknown }): null;
   resolveId(this: RollupResolveContext, source: string, importer: string | undefined, options?: object): Promise<string | null>;
   load(this: RollupContext, id: string): { code: string; map: null; moduleType: "js" } | null;
@@ -315,12 +326,15 @@ export function toVitePlugin(plugin: LoaderPlugin): {
   // Under Vitest: Vitest itself, and the files each module was last made from, by id.
   let vitest: VitestContext["vitest"] | undefined;
   const reached = new Map<string, readonly string[]>();
+  // Rollup and Rolldown bundle; Vite bundles too unless it serves, as its dev server and Vitest do.
+  let host = BUNDLE;
   return {
     name: plugin.name,
     enforce: "pre" as const,
     [PLUGIN]: plugin,
-    configResolved(config: { plugins: unknown }) {
+    configResolved(config: { plugins: unknown; command?: string }) {
       siblings = marked(config.plugins);
+      host = config.command === "serve" ? RUNTIME : BUNDLE;
     },
     options(options: { plugins?: unknown }) {
       if (options.plugins) siblings = marked(options.plugins);
@@ -331,7 +345,7 @@ export function toVitePlugin(plugin: LoaderPlugin): {
       const key: VitestCacheKey = ({ id }) => {
         if (!handles(id)) return undefined;
         const source = read(id);
-        const result = plugin.load(source, id);
+        const result = plugin.load(source, id, host);
         made.set(id, { source, result });
         reached.set(id, result.watchFiles ?? []);
         return createHash("sha256").update(result.code).update(JSON.stringify(result.problems)).digest("hex");
@@ -352,7 +366,7 @@ export function toVitePlugin(plugin: LoaderPlugin): {
       const source = read(id);
       const kept = made.get(id);
       made.delete(id);
-      const result = kept?.source === source ? kept.result : plugin.load(source, id);
+      const result = kept?.source === source ? kept.result : plugin.load(source, id, host);
       // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
       for (const file of result.watchFiles ?? []) this.addWatchFile(file);
       if (vitest) reached.set(id, result.watchFiles ?? []);
@@ -380,7 +394,7 @@ type JestOptions = { supportsStaticESM?: boolean; configString?: string };
  */
 export function toJestTransformer(plugin: LoaderPlugin) {
   const make = (source: string, path: string, options: JestOptions): string => {
-    const result = plugin.load(source, path);
+    const result = plugin.load(source, path, RUNTIME);
     if (result.problems.length) throw new Error(loadError(plugin, path, result.problems));
     return options.supportsStaticESM ? result.code : commonJs(plugin, path, result.code);
   };
