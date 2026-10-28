@@ -17,14 +17,11 @@ export function agentPromptText(card: Element): string {
 }
 
 /**
- * The instructions a coding agent follows to set the product up in a project, as the maintainer
- * asked on 2026-10-20 for Reylo's Setup: "some kind of complete, copyable instruction block for
- * agents that's visually obvious". A standard callout (./callout.tsx) titled for the product, a note,
+ * The instructions a coding agent follows to set the product up in a project: a complete,
+ * copyable instruction block that is visually obvious. A standard callout (./callout.tsx) titled for the product, a note,
  * then the prompt, an ordinary code block, copied with the code block's own copy icon or with
  * `<CopyAgentPrompt>` at the top of the page; the code block shows six lines and scrolls (style.css).
- * It was a card of its own until the maintainer, 2026-10-21: "this prompt for the agent ... doesn't
- * look like a normal callout. Is this a custom component? You should just use a standard callout
- * component." The wrapper carries `data-agent-prompt`, by which `<CopyAgentPrompt>` finds it.
+ * It was a card of its own until 2026-10-21. The wrapper carries `data-agent-prompt`, by which `<CopyAgentPrompt>` finds it.
  */
 export function AgentPrompt({
   title,

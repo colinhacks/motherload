@@ -1,7 +1,6 @@
 // The one copy icon and the one check every copy button of the page draws: the heading's, the code
 // block's and "Copy agent prompt" (Lucide's copy and check). The code blocks drew Fumadocs'
-// clipboard and the headings this copy, two icons for one act (the maintainer, 2026-10-21: "It's
-// also quite weird that we have two different copy icons").
+// clipboard and the headings this copy, two icons for one act.
 
 const ICON = { viewBox: '0 0 24 24', width: 16, height: 16, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const;
 

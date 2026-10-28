@@ -25,8 +25,9 @@ export type DocsMdxOptions = {
  * The MDX options of a docs page: Fumadocs' defaults plus each section's Markdown on its heading,
  * written again after Twoslash with what each query shows (./remark-sections.ts), the site's remark
  * plugins, Twoslash with its cache and the `@hover`
- * directive (./twoslash.ts), the hanging indent of wrapped code lines (./hanging-indent.ts), and
- * each distinct Twoslash popup built once (./recma-shared-popups.ts).
+ * directive (./twoslash.ts), a block's errors under their lines (./diagnostics.ts), the hanging
+ * indent of wrapped code lines (./hanging-indent.ts), and each distinct Twoslash popup built once
+ * (./recma-shared-popups.ts).
  *
  * Call it from a `mdxOptions` of `fumadocs-mdx/macro`'s `defineDocs`, through a dynamic import, so
  * the app never bundles it or TypeScript:
@@ -39,6 +40,7 @@ export async function docsMdxOptions(environment: Environment, options: DocsMdxO
   const { rehypeSections, remarkQueryBlocks, remarkSections } = await import('./remark-sections.ts');
   const { recmaSharedPopups } = await import('./recma-shared-popups.ts');
   const { hangingIndent } = await import('./hanging-indent.ts');
+  const { diagnosticsTransformer } = await import('./diagnostics.ts');
   const langs: Langs = ['js', 'jsx', 'ts', 'tsx'];
   for (const lang of options.langs ?? []) if (!langs.includes(lang)) langs.push(lang);
   const twoslash = options.twoslash === false ? [] : [(await import('./twoslash.ts')).docsTwoslash(options.twoslash)];
@@ -48,7 +50,7 @@ export async function docsMdxOptions(environment: Environment, options: DocsMdxO
     recmaPlugins: [recmaSharedPopups],
     rehypeCodeOptions: {
       ...rehypeCodeDefaultOptions,
-      transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), ...twoslash, hangingIndent],
+      transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), diagnosticsTransformer, ...twoslash, hangingIndent],
       langs,
       ...(options.colorReplacements && { colorReplacements: options.colorReplacements }),
     },

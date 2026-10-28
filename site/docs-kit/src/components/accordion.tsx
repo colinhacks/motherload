@@ -11,8 +11,7 @@ import { flushSync } from 'react-dom';
  * closed item's content is in the HTML. Fumadocs renders it only once the item opens (Radix's
  * collapsible leaves it out until then), so the prerendered page had the headings of Motherload's
  * Setup accordions and nothing under them, which a coding agent that fetches the page, a search
- * engine and the browser's find-in-page all saw as empty (the maintainer, 2026-10-21: "We
- * definitely should be servicing the HTML for closed accordions. That's a huge problem").
+ * engine and the browser's find-in-page all saw as empty.
  *
  * Every item's content is rendered (`forceMount`), and a closed one is hidden in two ways:
  * 1. Until the page hydrates, by `[data-dk-accordion-panel][data-state=closed]:not([data-dk-ready])`
@@ -33,16 +32,25 @@ const ItemsContext = createContext<{ value: Value; open: (item: string) => void 
 
 const isOpen = (value: Value, item: string) => (typeof value === 'string' ? value === item : value.includes(item));
 
-/** A list of items, one open at a time (`type="single"`, the default) or any number (`type="multiple"`). */
+/** A list of items, any number open at once (`type="multiple"`, the default) or one at a time (`type="single"`). */
 export function Accordions({
-  type = 'single',
+  type = 'multiple',
   defaultValue,
   ref,
   children,
   ...props
 }: { type?: 'single' | 'multiple'; defaultValue?: Value; children?: ReactNode } & Omit<ComponentProps<'div'>, 'defaultValue' | 'dir'>) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const [value, setValue] = useState<Value>(() => (type === 'single' ? (defaultValue ?? '') : (defaultValue ?? [])));
+  // Items the reader opened before the page hydrated (the head script's, ./head-scripts.ts) start
+  // open, as the head script already shows them, so they neither close nor animate again.
+  const [value, setValue] = useState<Value>(() => {
+    const opened = typeof window === 'undefined' ? [] : [...((window as { __dkAccordionPending?: Map<string, boolean> }).__dkAccordionPending ?? [])].filter(([, isOpen]) => isOpen).map(([item]) => item);
+    if (type === 'single') return opened.at(-1) ?? defaultValue ?? '';
+    return [...new Set([...((defaultValue as string[] | undefined) ?? []), ...opened])];
+  });
+  useEffect(() => {
+    (window as { __dkAccordionPending?: Map<string, boolean> }).__dkAccordionPending?.clear();
+  }, []);
   const open = useCallback((item: string) => setValue((prev) => (typeof prev === 'string' ? item : prev.includes(item) ? prev : [...prev, item])), []);
   // As Fumadocs' do: an address whose fragment names an item's heading opens that item.
   useEffect(() => {
@@ -61,7 +69,7 @@ export function Accordions({
     : { type, value: value as string[], onValueChange: (next: string[]) => setValue(next) };
   return (
     <ItemsContext value={useMemo(() => ({ value, open }), [value, open])}>
-      <Root ref={setRef} {...props} {...(root as ComponentProps<typeof Root>)}>
+      <Root ref={setRef} {...props} className={['dk-accordions', props.className].filter(Boolean).join(' ')} {...(root as ComponentProps<typeof Root>)}>
         {children}
       </Root>
     </ItemsContext>

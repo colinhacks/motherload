@@ -37,8 +37,7 @@ export function TocHeader({ brand }: { brand: ReactNode }) {
  * The note is drawn over the footer's bottom padding, which ends 8px above the window's edge. 48px
  * of padding would hold the note alone and leave it just above that edge, where the address bubble
  * Chrome shows in the window's bottom-left corner while a link is hovered (about 24px tall) covered
- * it; the 40px beyond those 48 keep the note clear of the bubble at every window height (the
- * maintainer, 2026-10-20).
+ * it; the 40px beyond those 48 keep the note clear of the bubble at every window height.
  */
 export function TocFooter({ github }: { github: string }) {
   // The row holds the theme switch's 36px from the first paint: on a slow connection the browser

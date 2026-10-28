@@ -4,6 +4,7 @@ import path from 'node:path';
 import { defaultHoverInfoProcessor } from '@shikijs/twoslash';
 import { transformerTwoslash } from 'fumadocs-twoslash';
 import { createFileSystemTypesCache } from 'fumadocs-twoslash/cache-fs';
+import { errorCard, insertCards } from './diagnostics.ts';
 import { recordQueries } from './remark-sections.ts';
 
 /**
@@ -92,8 +93,8 @@ function lockfile(site: string): string {
 }
 
 /**
- * Fumadocs' Twoslash transformer with the site's options, a cache on disk, the `@hover` directive
- * and shorter popups.
+ * Fumadocs' Twoslash transformer with the site's options, a cache on disk, the `@hover` directive,
+ * shorter popups, and each error's message in a pinned card under its line.
  *
  * Each block's result is kept on disk under a hash of its code, which holds its hidden setup, so
  * the dev server checks again only the blocks an edit changed: without it every compile checked every
@@ -138,6 +139,18 @@ export function docsTwoslash(options: DocsTwoslashOptions = {}) {
     const meta = this.meta.twoslash;
     if (id && meta) recordQueries(id, variant, meta.nodes.flatMap((node) => (node.type === 'query' ? [processHoverInfo(node.text)] : [])));
     if (names && meta) meta.nodes = meta.nodes.filter((node) => node.type !== 'hover' || names.has(node.target));
+    return result;
+  };
+  // An error (`// @errors: 2322`) keeps Twoslash's squiggle under its range, and its message goes in
+  // the pinned card every block's errors take (./diagnostics.ts), with `ts(2322)` after it as the
+  // editor writes it, in place of Twoslash's line of red text under the line.
+  const code = transformer.code!;
+  transformer.code = function (codeEl) {
+    const result = code.call(this, codeEl) ?? codeEl;
+    const errors = (this.meta.twoslash?.nodes ?? []).flatMap((node) => (node.type === 'error' ? [node] : []));
+    if (!errors.length) return result;
+    result.children = result.children.filter((child) => !(child.type === 'element' && String(child.properties?.class ?? '').split(' ').includes('twoslash-error-line')));
+    insertCards(result as never, this.lines as never, errors.map((error) => ({ line: error.line, card: errorCard(error.character, error.text, `ts(${error.code})`) as never })));
     return result;
   };
   return transformer;

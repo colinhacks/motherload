@@ -20,8 +20,7 @@ import { Heading } from './heading';
  * over these (its variant tabs, its agent card with its title, its figures).
  *
  * No content of the page is left out of its HTML for being folded away, in a closed accordion, an
- * inactive tab or a closed `<Details>` (the maintainer, 2026-10-21: "We definitely should be
- * servicing the HTML for closed accordions. That's a huge problem"). Radix renders only the active
+ * inactive tab or a closed `<Details>`. Radix renders only the active
  * tab's panel, so a reader of the HTML (a coding agent, a search engine) saw one of Reylo's ten
  * Setup tabs; every `<Tab>` is now rendered (`forceMount`) and an inactive one hidden by
  * `[role=tabpanel][data-state=inactive]` in style.css.

@@ -11,8 +11,7 @@
 /* The left table of contents shows from 64rem (1024px), not Fumadocs' 80rem: Fumadocs' docs layout
    switches the table of contents, its popover and the article's padding at `xl`, and the page with
    its table of contents is now only `--dk-column` + 20.75rem (60.75rem at 40rem), so at 80rem a
-   window that is not full width, or zoomed to 110%, fell to the tablet layout with room to spare
-   (the maintainer, 2026-10-20: "zooming in to 110% causes a layout shift to the tablet layout").
+   window that is not full width, or zoomed to 110%, fell to the tablet layout with room to spare.
    Nothing else on the page uses `xl`. */
 @theme {
   --breakpoint-xl: 64rem;
@@ -23,8 +22,8 @@
    and `.dark`), and `--dk-accent`, the brand colour that marks links, the open Twoslash name
    and the selection. Inline code and the table of contents' code chips are a
    wash of the text's own grey (`--dk-code-tint`), and the washes are variables too, for a palette
-   that wants them lighter or stronger. Everything else here is the maintainer's rules for the docs
-   sites, from the reviews of Reylo's site (Reylo's wiki/docs-site.md): the layout follows zod.dev
+   that wants them lighter or stronger. Everything else here is the docs sites' shared rules
+   (Reylo's wiki/docs-site.md): the layout follows zod.dev
    (ruled h1 and h2, borderless inline code, mono tab labels), with a reading measure, quiet
    collapsibles, code that never scrolls sideways and one cursor per kind of thing. */
 
@@ -35,8 +34,8 @@
      carries text, so a light theme can darken it for contrast on white. */
   --dk-accent: hsl(46, 97%, 52%);
   /* Inline code, the table of contents' code chips and code in a summary are a wash of this colour,
-     the text's own grey, not of the accent: on the accent's 13% wash, the maintainer found inline
-     code hard to read (2026-10-20: "the readability isn't very good right now"); a murky olive
+     the text's own grey, not of the accent: on the accent's 13% wash, inline code was hard to read:
+     a murky olive
      chip on the dark page, and a size too small. The washes are shares of it. */
   --dk-code-tint: var(--color-fd-foreground);
   --dk-wash-code: 9%;
@@ -47,9 +46,7 @@
   --dk-wash-selection: 35%;
   /* Body text is the text's colour a step toward the background, so headings, bold lead phrases and
      inline code, in the headings' colour, stand above it; quieter text (a collapsible's body, the
-     lede, the subheader) takes the muted grey, the third step. The maintainer, 2026-10-20, of the
-     page's "walls of text": "I like the dimmer body and the bright headings ... The three contrast
-     steps also look good." On Reylo's greys the body is 78% on 5.5% by night (11.4:1) and 24% on
+     lede, the subheader) takes the muted grey, the third step. On Reylo's greys the body is 78% on 5.5% by night (11.4:1) and 24% on
      white by day (10.7:1), and the muted grey 63% and 40% (7.4:1 and 5.7:1), all WCAG AA. */
   --dk-prose-share: 90%;
   --dk-prose: color-mix(in srgb, var(--color-fd-foreground) var(--dk-prose-share), var(--color-fd-background));
@@ -95,7 +92,7 @@
 /* The subheader under the title, the page's first element (`<p className="dk-subheader">`, which
    can hold inline code where the frontmatter's description cannot): Fumadocs' description size
    and colour, with 2rem under it before the first paragraph, where it had 1.25rem, the gap
-   between two paragraphs (the maintainer, 2026-10-20: "Let's add more spacing underneath" it). */
+   between two paragraphs. */
 #nd-page .prose .dk-subheader {
   font-size: 1.125rem;
   line-height: 1.6;
@@ -129,21 +126,17 @@ html .prose {
     font-size: 1.75rem;
     font-weight: 650;
     line-height: 1.25;
-    /* 5rem above, where it was 4rem: "There should definitely be some more space above H3s and
-       above H2s, for that matter" (the maintainer, 2026-10-20). */
+    /* 5rem above, where it was 4rem. */
     @apply py-3;
     margin-top: 5rem;
     letter-spacing: -0.02em;
   }
 
   /* An h3 is a step inside a section: smaller than an h2, and ruled across the column by a hairline
-     fainter than the h2's rule (the maintainer, 2026-10-20: "I kind of feel like h3s should have
-     an underline. It may not need to go full width, but some indication that they're an h3"). A
-     short bar of the accent under the first letters came first, chosen from seven marks; that
-     evening, on Motherload's page, he called it "absolute trash" and, from ten treatments mocked
-     there (a leader line, an accent underline, a gold bar, section numbers, a bar in the margin, a
-     highlighter, a fading rule, amber text, heavier type, this hairline), said: "Honestly, the
-     hairline is fine." The rule hangs below the heading's box, which keeps its height, so the
+     fainter than the h2's rule. A short bar of the accent under the first letters came first; the
+     hairline was chosen over it from ten treatments (a leader line, an accent underline, a gold bar,
+     section numbers, a bar in the margin, a highlighter, a fading rule, amber text, heavier type,
+     this hairline). The rule hangs below the heading's box, which keeps its height, so the
      link icon and the copy button stay centred on its text; the margin under the heading makes
      room for it. */
   & > h3 {
@@ -174,15 +167,16 @@ html .prose {
   }
 
   /* A heading that names a code token (a member of an API, a key of a config file, an extension)
-     sets it as inline code, wash and all, as the maintainer asked on 2026-10-20. */
+     sets it as inline code, wash and all. */
   h2 code,
   h3 code {
     font-size: 0.86em;
     font-weight: 600;
   }
 
-  /* The link icon sits in the margin to the left of the heading, always visible; the button that
-     copies the section as Markdown sits at the right end of its line, as on Motherload's docs. */
+  /* The link icon sits in the margin to the left of the heading, shown while the heading is
+     hovered (below); the button that copies the section as Markdown sits at the right end of its
+     line, always visible, as on Motherload's docs. */
   .dk-heading {
     position: relative;
     display: flex;
@@ -212,7 +206,7 @@ html .prose {
 
   /* The icon's centre sits on the centre of the heading's lowercase letters (its x-height), not on
      the centre of its box or of its capitals: a heading is mostly lowercase, and an icon centred on
-     the capitals read as sitting high (the maintainer, 2026-10-20). The offset is in the heading's
+     the capitals read as sitting high. The offset is in the heading's
      em, and one value holds for both sizes: measured, it puts the icon within 0.05px of the
      x-height's centre in an h2 (28px, its rule's padding below the text included) and an h3
      (19.2px), and within a pixel of the centre of an inline-code heading's chip. */
@@ -225,15 +219,33 @@ html .prose {
     padding: 0.25rem;
     border-radius: 0.25rem;
     color: color-mix(in oklab, var(--color-fd-muted-foreground) 55%, transparent);
-    transition: color 120ms;
+    opacity: 0;
+    transition: color 120ms, opacity 150ms;
   }
 
   .dk-anchor:hover {
     color: var(--color-fd-muted-foreground);
   }
 
+  /* The icon is hidden until the reader hovers anywhere on the heading's row (the icon itself
+     included), and shown while the button has keyboard focus, so Tab still reaches it. Opacity
+     alone hides it: the button keeps its place and stays focusable, and nothing moves when it
+     fades in. A device without hover (a phone) shows it always, since nothing there could reveal
+     it. */
+  .dk-heading:hover .dk-anchor,
+  .dk-anchor:focus-visible {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .dk-anchor {
+      opacity: 1;
+    }
+  }
+
   /* Below md the page's margin is narrower than the icon, which would be cut off at the window's
-     edge: the icon joins the copy button at the right end of the line, still always visible. */
+     edge: the icon joins the copy button at the right end of the line, still shown on hover and
+     focus, and always on a device without hover. */
   @media (width < 48rem) {
     .dk-anchor {
       position: static;
@@ -297,9 +309,7 @@ html .prose {
 
 /* Its entries are half a point larger than Fumadocs' 14px, in the same 20px line, so the list keeps
    its height: each entry is still 32px from the next (Fumadocs' `py-1.5`), and the half point comes
-   out of the leading around the text (the maintainer, 2026-10-20: "make the font size in the
-   sidebar half a point bigger and account for it in the spacing so that it takes up the same total
-   height"). A line height that grew with the text would add 0.71px per entry, which the padding
+   out of the leading around the text, so the sidebar takes the same total height. A line height that grew with the text would add 0.71px per entry, which the padding
    could take back only to within a fraction of a pixel, as Fumadocs pads the first entry only below
    and the last only above. */
 #nd-toc > .overflow-auto a {
@@ -445,10 +455,11 @@ html .prose {
   text-indent: 0;
 }
 
-/* A pinned `^?` popup keeps clear of the lines around it: the maintainer found the next line
-   "cramped" 4px under its card. The card sits 8px under the name it points at (Fumadocs' gap, which
-   its arrow spans) and 14px above the next line. */
-.twoslash .twoslash-query-line {
+/* A pinned `^?` popup keeps clear of the lines around it: the next line was cramped 4px under
+   its card. The card sits 8px under the name it points at (Fumadocs' gap, which
+   its arrow spans) and 14px above the next line. A pinned error card (below) does the same. */
+.twoslash .twoslash-query-line,
+figure.shiki .dk-error-line {
   padding-bottom: 0.875rem;
 }
 
@@ -461,7 +472,7 @@ html .prose {
 /* A `^?` query shows the hover's card inline, under the line it asks about. The card is as wide as
    its type, up to the block's width, not the hover popup's fixed 20rem, which cut a long type off
    at the card's edge; the type wraps inside it (above). */
-.twoslash-query-line .twoslash-popup-container {
+:is(.twoslash-query-line, .dk-error-line) .twoslash-popup-container {
   width: fit-content;
   max-width: 100%;
   margin-right: 0;
@@ -470,16 +481,62 @@ html .prose {
 
 /* A query is the last line of its block, and Twoslash leaves the empty line its `^?` comment was
    on below the card: hide that line, so the block ends at the card plus its padding. */
-figure.shiki code > .twoslash-query-line + .line:last-child:not(:has(span:not(:empty))) {
+figure.shiki code > :is(.twoslash-query-line, .dk-error-line) + .line:last-child:not(:has(span:not(:empty))) {
   display: none;
+}
+
+/* ── Pinned error cards ──────────────────────────────────────────────────────
+   An error in a code block is drawn as the editor draws it, a red squiggle under
+   its exact range, and its message, with its source after it (`reylo(6)`,
+   `ts(2339)`), in the `^?` card, pinned under the range's last line in space it
+   opens there (mdx/diagnostics.ts). The card never covers the code, and every
+   line of the block stays readable. It replaces Twoslash's line of red text
+   under the line. */
+
+/* The squiggle: Twoslash's red, wavy, under the range's own characters, leading spaces included. */
+#nd-page figure.shiki :is(.twoslash-error, .dk-error) {
+  text-decoration: wavy underline var(--color-twoslash-error-foreground);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+  padding-bottom: 0;
+}
+
+/* The card's line starts where the code does, so its spaces put the arrow under the range's column;
+   the card stops at the block's right edge, and its message wraps inside it, between words. */
+#nd-page figure.shiki .dk-error-line {
+  padding-inline: var(--padding-left, 1rem) var(--padding-right, 1rem);
+}
+
+#nd-page figure.shiki .dk-error-line > span:first-child {
+  flex-shrink: 0;
+}
+
+#nd-page figure.shiki .dk-error-line .twoslash-popup-container {
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+#nd-page figure.shiki .dk-error-text {
+  display: block;
+  font-size: var(--dk-code-size, 13px);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* The message in the code's own colour, its source quieter, as the editor's hover writes them. */
+#nd-page figure.shiki .dk-error-text .dk-error-message {
+  color: var(--color-fd-popover-foreground);
+}
+
+#nd-page figure.shiki .dk-error-text .dk-error-source {
+  color: var(--color-fd-muted-foreground);
 }
 
 /* ── Twoslash completions ────────────────────────────────────────────────────
    A `^|` query shows the editor's suggestions at the caret. Fumadocs draws them
    as a 20rem card with 8px of padding, which opened a 50px gap under a line for
-   one name, and the list took the colour of the token it sits in. The
-   maintainer, 2026-10-20, of Motherload's `.env` example: "the autocomplete ...
-   looks kind of weird ... Can we make it prettier". It is drawn as an editor's
+   one name, and the list took the colour of the token it sits in. It is drawn as an editor's
    suggestion list instead: as wide as its names, close under the caret, with
    the first name selected and the typed letters in the accent. */
 
@@ -727,11 +784,22 @@ code {
 /* A followed panel's blocks (a `.sql` file and the TypeScript that imports it) are separate cards,
    with the page's 1rem between code blocks; and the tab group above a followed block is its own
    card too. They were drawn as one card, the tabs and the code under them sharing a rule with no
-   corners where they met, until the maintainer, 2026-10-20: "You still have these horrible combo
-   code blocks. I hate these, dude. You can't, and never use these anywhere." The follow behaviour
+   corners where they met, until 2026-10-20: a combined block is never used. The follow behaviour
    stays: the block under the tabs still shows the tab chosen above. */
 #nd-page .dk-variant-follow > .dk-variant-panel > figure.shiki + figure.shiki {
   margin-top: 1rem;
+}
+
+/* A followed group whose chosen panel opens or ends with a paragraph (a sentence that differs per
+   variant, between two code blocks) sits as a paragraph does there: the panel's paragraphs lose their
+   margins to Fumadocs' `prose-no-margin`, and the group's 1rem left them 4px and 6px tighter to the
+   blocks around them than the page's other paragraphs. */
+#nd-page .dk-variant-follow:has(> .dk-variant-panel:not([data-state='inactive']) > p:first-child) {
+  margin-top: 1.25em;
+}
+
+#nd-page .dk-variant-follow:has(> .dk-variant-panel:not([data-state='inactive']) > p:last-child) {
+  margin-bottom: 1.375em;
 }
 
 /* ── Phones ──────────────────────────────────────────────────────────────────
@@ -762,18 +830,23 @@ code {
   /* A pinned `^?` card takes the code block's width on a phone, less 8px on each side so its border
      stays clear of the block's. It sat under the queried name and kept only what was left of the
      line (on Reylo's page a type 168px wide in a 358px block, wrapping every property). The spaces before it, which line it
-     up under the name, go, and so does its arrow, which would point at the wrong column. */
-  #nd-page .twoslash-query-line > span:first-child:not(.twoslash-popup-container) {
+     up under the name, go, and so does its arrow, which would point at the wrong column. A pinned
+     error card does the same. */
+  #nd-page figure.shiki .dk-error-line {
+    padding-inline: 0;
+  }
+
+  #nd-page :is(.twoslash-query-line, .dk-error-line) > span:first-child:not(.twoslash-popup-container) {
     display: none;
   }
 
-  #nd-page .twoslash-query-line .twoslash-popup-container {
+  #nd-page :is(.twoslash-query-line, .dk-error-line) .twoslash-popup-container {
     width: calc(100% - 1rem);
     max-width: none;
     margin-inline: 0.5rem;
   }
 
-  #nd-page .twoslash-query-line .twoslash-popup-arrow {
+  #nd-page :is(.twoslash-query-line, .dk-error-line) .twoslash-popup-arrow {
     display: none;
   }
 
@@ -784,7 +857,7 @@ code {
 }
 
 /* A table of two columns (Reylo's Data types tables, "SQL type | TypeScript") splits the width in
-   halves, as the maintainer asked; its columns once came out 197px beside 603px and then, sized by
+   halves; its columns once came out 197px beside 603px and then, sized by
    their content, the other way round. A wider table shares its width by its content. */
 #nd-page .prose table:has(tr > :nth-child(2):last-child):has(th:not(:empty)) {
   table-layout: fixed;
@@ -970,9 +1043,7 @@ code {
 
 /* ── The agent prompt, `<AgentPrompt>` (components/agent-prompt.tsx) ─────────────
    A standard callout, its title and a note over the instructions, an ordinary code block copied with
-   its own copy icon (the maintainer, 2026-10-21: "You should just use a standard callout
-   component"; it was a card of its own). The code block shows six lines and scrolls (the
-   maintainer, 2026-10-21: "set a max height of 6 lines on that big agent prompt"): Fumadocs' scroll
+   its own copy icon (it was a card of its own). The code block shows six lines and scrolls: Fumadocs' scroll
    box, the code block's one `overflow-auto` child, sets each line at 1.7em of its 13px and pads
    14px above and below. */
 #nd-page .dk-agent .dk-callout-body figure {
@@ -984,8 +1055,7 @@ code {
 }
 
 /* ── "Copy agent prompt" on the title's row (components/copy-agent-prompt.tsx) ──
-   The call to action at the very top of the page (the maintainer, 2026-10-20: "It can just be a
-   button"), chosen from seven options mocked on Reylo's page: at the right end of the title's
+   The call to action at the very top of the page, a plain button, chosen from seven options mocked on Reylo's page: at the right end of the title's
    row, above its rule, it is the first thing a reader sees and moves nothing below the title. It
    is the agent card's outlined button in the page's greys (no accent: the accent read as a
    warning on the card), with a clipboard. The row carries the title's rule; the button is shorter
@@ -1010,19 +1080,24 @@ code {
 #nd-page .dk-cta {
   display: inline-grid;
   flex: none;
-  padding: 0.5rem 0.875rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-fd-border);
-  font-size: 0.875rem;
+  padding: 0.62rem 1.15rem;
+  border-radius: 999px;
+  border: 0;
+  font-size: 0.9375rem;
   line-height: 1.25rem;
-  font-weight: 500;
+  font-weight: 550;
   white-space: nowrap;
-  background: var(--color-fd-background);
+  background: color-mix(in oklab, var(--color-fd-foreground) 7%, var(--color-fd-background));
   color: var(--color-fd-headings);
 }
 
 #nd-page .dk-cta:hover {
-  background: var(--color-fd-accent);
+  background: color-mix(in oklab, var(--color-fd-foreground) 11%, var(--color-fd-background));
+}
+
+/* Its mark, sparkles, and the check that replaces it, in the accent. */
+#nd-page .dk-cta svg {
+  color: var(--dk-accent);
 }
 
 /* Its two labels share one grid cell, the one not shown hidden, so "Copied" keeps the width. */
@@ -1031,7 +1106,7 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 #nd-page .dk-cta > span:not([data-shown]) {
@@ -1045,7 +1120,7 @@ code {
 }
 
 /* ── No layout shift ─────────────────────────────────────────────────────────
-   "Hovers open fast, with no layout shift" (the maintainer, 2026-10-11). Measured on Reylo's page
+   Hovers open fast, with no layout shift. Measured on Reylo's page
    with Chrome's Layout Instability API on 2026-10-20; the head scripts of
    components/head-scripts.ts do the rest (a saved tab choice from the first paint, a pressed tab
    kept under the pointer). */
@@ -1080,6 +1155,66 @@ code {
   background: var(--dk-switch-on);
 }
 
+/* An accordion is a list of questions on the page itself: no box, no rules between them, each
+   question a row of its own with the chevron at its right end and its link icon in the margin to
+   its left, shown on hover as a heading's is, and an open item's answer in a lighter rounded panel
+   under it. */
+#nd-page .dk-accordions {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+#nd-page .dk-accordions > * {
+  border-top-width: 0;
+  border-bottom-width: 0;
+}
+#nd-page .dk-accordions > [data-state] {
+  margin-bottom: 0.15rem;
+}
+#nd-page .dk-accordions > [data-state] > h3 {
+  position: relative;
+}
+#nd-page .dk-accordions > [data-state] > h3 > button[aria-expanded] {
+  padding-left: 0;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+}
+#nd-page .dk-accordions > [data-state] > h3 > button:not([aria-expanded]) {
+  position: absolute;
+  left: -2.1rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: color-mix(in oklab, var(--color-fd-muted-foreground) 55%, transparent);
+  opacity: 0;
+  transition: color 120ms, opacity 150ms;
+}
+/* As a heading's: shown while the question's row is hovered or the button has keyboard focus, and
+   always on a device without hover. */
+#nd-page .dk-accordions > [data-state] > h3:hover > button:not([aria-expanded]),
+#nd-page .dk-accordions > [data-state] > h3 > button:not([aria-expanded]):focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  #nd-page .dk-accordions > [data-state] > h3 > button:not([aria-expanded]) {
+    opacity: 1;
+  }
+}
+#nd-page .dk-accordions [data-dk-accordion-panel] > div {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.6rem;
+  background: color-mix(in oklab, var(--color-fd-foreground) 4.5%, var(--color-fd-background));
+}
+/* Below md the margin is narrower than the icon: it joins the chevron at the right end. */
+@media (width < 48rem) {
+  #nd-page .dk-accordions > [data-state] > h3 > button:not([aria-expanded]) {
+    position: static;
+    translate: none;
+    order: 2;
+  }
+}
+
 /* A closed accordion item's content is in the HTML too (components/accordion.tsx), hidden until
    the page hydrates and then by `hidden="until-found"`, which find-in-page searches. */
 [data-dk-accordion-panel][data-state='closed']:not([data-dk-ready]) {
@@ -1088,8 +1223,8 @@ code {
 
 /* ── Cursors ─────────────────────────────────────────────────────────────────
    Everything that responds to a click shows a pointer, and a code block shows one steady text
-   cursor from edge to edge, the names with a Twoslash popup included (the maintainer, 2026-10-20,
-   reversing an earlier pointer on those names). Every cursor rule of the page is in this block, so
+   cursor from edge to edge, the names with a Twoslash popup included (an earlier pointer on those
+   names was reversed). Every cursor rule of the page is in this block, so
    that no rule elsewhere contradicts it. Its selectors are all in `:where()`, of no specificity, so
    that the order of the rules below decides and nothing else: a later rule overrides an earlier
    one, and being unlayered, every one of them overrides Tailwind's and Fumadocs' layers. */
@@ -1140,9 +1275,7 @@ code {
    percentile 88) in Geist at 16.5px, and the same in IBM Plex Sans, measured per rendered line on
    Reylo's and Motherload's pages; a code block holds about 78 characters of mono at 13px. Reylo's
    column of 2026-10-20 morning ran to 103; a version that afternoon stopped prose at 36rem and let
-   code and headings run to 49.5rem, and the maintainer rejected the ragged edges ("we made the
-   content column smaller for the paragraphs, but not for the code blocks or for the headings. It
-   looks like trash"); one column of 46rem ran to a median of 94. The page is the column plus
+   code and headings run to 49.5rem, and its ragged edges were rejected; one column of 46rem ran to a median of 94. The page is the column plus
    Fumadocs' 2rem of padding on each side; `--fd-layout-width` in components/shell.tsx is that plus
    the 268px table of contents. */
 #nd-page {
@@ -1168,12 +1301,11 @@ code {
 }
 
 /* The body is 16px in Geist at 380, with 1.75 leading, 0.004em of tracking and 22px between
-   paragraphs, where it was 16.5px at 400 with 1.7 and 20.6px: the maintainer, 2026-10-20, found the
-   "walls of text look very wally", and of eight treatments mocked for him liked the dimmer body,
-   "the lighter weight", "the size down with more air", "the three contrast steps" and "soft and
-   compact". The weight is the lighter options' 380 (370 to 380); the leading is 1.75, on which the
+   paragraphs, where it was 16.5px at 400 with 1.7 and 20.6px, which read as walls of text; of eight
+   treatments, the dimmer body, the lighter weight, the size down with more air, the three contrast
+   steps and the soft, compact one were kept. The weight is the lighter options' 380 (370 to 380); the leading is 1.75, on which the
    airy and the compact options agree; the size is 16px, the "size down" option's, since the compact
-   one's 15.5px would undo the "more air" he asked for; the paragraph gap sits between theirs (1.4em
+   one's 15.5px would undo the more air; the paragraph gap sits between theirs (1.4em
    and 1.3em); the tracking between theirs (0.003em and 0.005em). Code keeps its own spacing. */
 #nd-page .prose {
   font-size: 1rem;
@@ -1215,8 +1347,8 @@ html #nd-page .prose > h3 {
 
 /* Code at 13px with room between lines (it was 13px at 1.43), in the blocks and the type popups.
    The size is `--dk-code-size`, so a page that sets its code larger sets its popups' to match:
-   Motherload's screenshot page draws its code at 17px, and its popups' types stayed at 13px (the
-   maintainer, 2026-10-21: "the popovers in the showcase page are the same size as the code"). */
+   Motherload's screenshot page draws its code at 17px, and its popups' types stayed at 13px, as large
+   as the code. */
 #nd-page figure.shiki pre,
 #nd-page figure.shiki pre code,
 .fd-twoslash-popover pre,
@@ -1241,7 +1373,7 @@ html:not(.dark) .shiki span[style*='--shiki-light:#D73A49' i] {
 
 /* Inline code is a grey chip in the headings' colour, a size up from the 0.85em it was (15px
    beside 16.5px prose), padded in ems so it scales with the text around it; chosen on 2026-10-20
-   from seven treatments mocked for the maintainer (the accent's wash, crisp or faint; grey, with a
+   from seven treatments (the accent's wash, crisp or faint; grey, with a
    hairline or without; plain mono; accent text; an outline): the grey chip reads best on both
    themes and leaves the accent to links. A table cell's code is the same chip: until 2026-10-21 it
    was plain mono in cells a size smaller again, 11.3px beside 18px prose in Reylo's Data types
@@ -1262,3 +1394,74 @@ html #nd-page .prose :where(code):not(:where(pre code, [class~='not-prose'], [cl
 html #nd-page .prose table {
   font-size: 0.9375rem;
 }
+
+/* ── Steps ──────────────────────────────────────────────────────────────────
+   `<div className="dk-steps">` around a sequence of h3s makes them numbered steps: each h3 takes
+   its number in a disc on a rail down the left, and the content runs beside the rail. The h3s
+   are not the prose's direct children there, so their own rules are repeated for them. In a step
+   the number takes the margin, so the link icon joins the copy button at the right end of the
+   line, as on a narrow window. */
+#nd-page .prose .dk-steps {
+  counter-reset: dk-step;
+  position: relative;
+  padding-left: 2.75rem;
+  margin-top: 2rem;
+}
+#nd-page .prose .dk-steps::before {
+  content: '';
+  position: absolute;
+  left: calc(0.875rem - 0.5px);
+  top: 0.5rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--color-fd-border);
+}
+#nd-page .prose .dk-steps > h3 {
+  position: relative;
+  color: var(--color-fd-headings);
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  margin-top: 3.25rem;
+  margin-bottom: calc(0.6em + 0.5rem);
+}
+#nd-page .prose .dk-steps > h3:first-child { margin-top: 0; }
+#nd-page .prose .dk-steps > h3::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.5rem;
+  height: 1px;
+  background-color: color-mix(in oklab, var(--color-fd-border) 80%, transparent);
+  pointer-events: none;
+}
+#nd-page .prose .dk-steps > h3::before {
+  counter-increment: dk-step;
+  content: counter(dk-step);
+  position: absolute;
+  left: -2.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-fd-background);
+  background: var(--dk-accent);
+}
+/* In a step, the number takes the margin, so the link icon joins the copy button at the right end
+   of the line, as on a narrow window. */
+#nd-page .prose .dk-steps > h3 .dk-anchor {
+  position: static;
+  translate: none;
+  order: 2;
+  margin-inline-end: -0.5rem;
+  padding: 0.3125rem;
+}
+#nd-page .prose .dk-steps > h3 .dk-copy-section { order: 3; }

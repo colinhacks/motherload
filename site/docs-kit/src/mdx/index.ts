@@ -7,3 +7,4 @@ export { docsTwoslash, mountPackage, twoslashOptions, type DocsTwoslashOptions, 
 export { blockId, pageMarkdown, rehypeSections, remarkQueryBlocks, remarkSections, toAgentMarkdown } from './remark-sections.ts';
 export { recmaSharedPopups } from './recma-shared-popups.ts';
 export { hangingIndent } from './hanging-indent.ts';
+export { diagnosticDirective, diagnosticsTransformer, errorCard, readDiagnostics, type Diagnostic, type Position } from './diagnostics.ts';

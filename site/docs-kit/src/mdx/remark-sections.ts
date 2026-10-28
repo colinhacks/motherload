@@ -140,13 +140,16 @@ function cleanProse(text: string): string {
     text
       // MDX comments.
       .replace(/\{\/\*[\s\S]*?\*\/\}\n?/g, '')
+      // A heading's custom id (`### Name [#id]`), which only the HTML anchor reads.
+      .replace(/^(#{1,6}[ \t].*?)[ \t]+\[#[^\]\s]+\][ \t]*$/gm, '$1')
       // A callout as a quote, its title in bold.
       .replace(/<Callout[^>]*?title="([^"]*)"[^>]*>\s*([\s\S]*?)\s*<\/Callout>/g, (_, title: string, body: string) => `> **${title}.** ${body.replace(/\n/g, '\n> ')}`)
       .replace(/<Callout[^>]*>\s*([\s\S]*?)\s*<\/Callout>/g, (_, body: string) => `> ${body.replace(/\n/g, '\n> ')}`)
       // A component's opening tag alone on its line that names a value, a title or a summary (a tab,
       // a variant's panel, an accordion item, a `<Details>`) becomes that label in bold; any other
-      // line holding only a component's tag (a tab group, a figure, a card) goes.
-      .replace(/^[ \t]*<[A-Z]\w*\b[^>]*?\s(?:value|title|summary)="([^"]*)"[^>]*>[ \t]*$/gm, '**$1**')
+      // line holding only a component's tag (a tab group, a figure, a card, or an empty panel such
+      // as `<Variant value="…" />`, which holds nothing) goes.
+      .replace(/^[ \t]*<[A-Z]\w*\b[^>]*?\s(?:value|title|summary)="([^"]*)"[^>]*(?<!\/)>[ \t]*$/gm, '**$1**')
       .replace(/^[ \t]*<\/?[A-Z]\w*\b[^>]*>[ \t]*\n?/gm, '')
       // HTML written for its class: a `<div>` line goes, a `<p>` is its text.
       .replace(/^[ \t]*<\/?div\b[^>]*>[ \t]*\n?/gm, '')

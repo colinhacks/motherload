@@ -20,8 +20,8 @@ const LEFT_TOC = {
 
 /**
  * The table of contents without the h3s (and deeper) of the h2s whose anchors are in `fold`: a
- * site that wants the whole table on one screen (a window 900px tall, at Fumadocs' spacing; the
- * maintainer rejected squeezing the entries closer) leaves out the h3s of its longest sections.
+ * site that wants the whole table on one screen (a window 900px tall, at Fumadocs' spacing, without
+ * squeezing the entries closer) leaves out the h3s of its longest sections.
  * The headings stay on the page, with their anchors.
  */
 export function foldToc(toc: TOCItemType[], fold: readonly string[] = []): TOCItemType[] {
