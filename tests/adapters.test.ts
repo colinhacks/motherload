@@ -51,7 +51,7 @@ test("esbuild watches the other files a loader names, and still does when the mo
   writeFileSync(join(dir, "good.ref"), "tag.txt");
   writeFileSync(join(dir, "lost.ref"), "gone.txt");
   let onLoad: ((args: { path: string; suffix?: string }) => any) | undefined;
-  toEsbuildPlugin(reader).setup({ onLoad: (_options, callback) => void (onLoad = callback) });
+  toEsbuildPlugin(reader).setup({ onResolve: () => {}, onLoad: (_options, callback) => void (onLoad = callback) });
   const good = onLoad!({ path: join(dir, "good.ref") });
   assert.equal(good.loader, "js");
   assert.deepEqual(good.watchFiles, [join(dir, "tag.txt")]);
@@ -59,7 +59,7 @@ test("esbuild watches the other files a loader names, and still does when the mo
   assert.match(lost.errors[0].text, /gone\.txt does not exist\./);
   assert.deepEqual(lost.watchFiles, [join(dir, "gone.txt")]);
   let data: ((args: { path: string; suffix?: string }) => any) | undefined;
-  toEsbuildPlugin(plugin).setup({ onLoad: (_options, callback) => void (data = callback) });
+  toEsbuildPlugin(plugin).setup({ onResolve: () => {}, onLoad: (_options, callback) => void (data = callback) });
   assert.deepEqual(data!({ path: join(dir, "app.toml") }).watchFiles, []);
 });
 

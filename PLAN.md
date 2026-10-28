@@ -39,6 +39,11 @@ The maintainer's, on 2026-10-21:
 
 - **JSON Schema leaves Motherload for a package of its own, dotschema** (`~/Documents/dotschema`): "I'm trying to decide whether to extract the JSON schema into its own package, something like `dotschema`. I think it's cleaner to extract it personally. It's not really the same as the data loading that we do in the other stuff. Let's go ahead and do it." Then: "The new package doesn't need a documentation site. It can just have a README." And: "We could always add support into Motherload later and give Motherload a dependency on dotschema, but not right now." So Motherload is eight data formats with no dependency on dotschema; the docs page points a `.schema.jsonc` import at dotschema, as it points a `.sql` import at Reylo, and the README does too; and the schema decisions and their Open items moved to dotschema's PLAN.md. It replaces the answer of earlier that day, "Keep it in `motherload`" ([DESIGN.md](./DESIGN.md#json-schema-left-for-dotschema)).
 
+The maintainer's, on 2026-10-28:
+
+- **A second `.env` file is named so that it ends in `.env`,** such as `local.env`, which the `.env` entry already reaches; the docs show adding any other name, such as `.env.local`, to `extensions` in full. The default is `.env` alone: "we should recommend naming it something that ends in .env, but we should also give instructions in the docs for users to add support for additional files ... We shouldn't have that be the default behavior. default is just ".env"" ([DESIGN.md](./DESIGN.md#the-env-module)).
+- **A missing `.env` file fails the type check and the build unless `strict` is off:** "I think it should definitely fail a type check and a build ... Add a strict setting, and it should be on by default." The setting is `"options": { "strict": false }` on the tsconfig entry, paired in the docs with TypeScript's `noUncheckedSideEffectImports: false` ([DESIGN.md](./DESIGN.md#the-env-module)).
+
 ## Names
 
 On npm, held by the maintainer as 0.0.0 placeholders: `motherload`, `motherlode`, the scope `@motherload`, and the per-format names `dottoml`, `dotjson5`, `dotjsonc`, `dot-csv`, `dot-tsv`, `dotgraphql`, `dotgql`, `dotmdx`, `dotxml`, `dotproto`, `dotschema` (the schema loader's own product since 2026-10-21), `dotsvg`, `dottxt`, `dotprisma`, `dotimport`, `dotimports`, `dotloads`, `dot-any`, `dot-ext`.
@@ -90,7 +95,7 @@ Run `nub install`, at the root and in [lab/nextjs](./lab/nextjs) and [lab/jest](
 
 - **Next.js's type check:** since 2026-10-21 `withMotherload` (`motherload/next`) runs the check with `--runExternalCode` inside `next build` itself, in `compiler.runAfterProductionCompile`, with Next.js's own check off ([DESIGN.md](./DESIGN.md#the-webpack-loader)). The maintainer's vercel/next.js#99544, open since 2026-10-01, passes the flag to the `tsc` that `next build` runs when the project's TypeScript is 7.1 or newer; once a Next.js release carries it, `withMotherload` can leave Next.js's check on there and keep only the loader.
 - **Per-import types:** microsoft/TypeScript#64912, the maintainer's, filed on 2026-10-21, asks TypeScript to pass an import's query or its import attributes to a content mapper, so that `./app.yaml?widened` could be typed widened beside the `as const` default. Until then a file's type is chosen by its format alone ([DESIGN.md](./DESIGN.md#how-an-import-chooses)).
-- **`.env` files:** whether to expand `${VAR}` as nub does; how a project claims `.env.local` and `.env.production`, whose suffixes are not `.env`.
+- **`.env` files:** whether to expand `${VAR}` as nub does.
 - **TOML date-times:** local dates and times are ISO strings and offset date-times are `Date`s; Temporal types (`Temporal.PlainDate` and the rest) are the alternative once every target runtime has Temporal.
 - **JSONC trailing commas:** allowed today; whether a `.jsonc` file should be refused for them.
 - **CSV quoting in TSV:** a `.tsv` file follows the IANA registration, with no quoting; whether the TSV that spreadsheets export puts quotes around a field that holds a tab or a line break, and so needs CSV quoting, is unverified.

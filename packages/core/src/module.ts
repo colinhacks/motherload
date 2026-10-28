@@ -55,9 +55,12 @@ export function combine(name: string, product: string, plugins: readonly LoaderP
     length: 1,
     code: CODES.unknownFormat,
   });
+  // A missing file may load only as the format that claims it allows, so `.env.toml` never does.
+  const optional = plugins.some((p) => p.optional) ? { optional: (path: string) => ownerOf(plugins, path)?.optional?.(path) ?? false } : {};
   return {
     name,
     extensions,
+    ...optional,
     filter: new RegExp(plugins.map((p) => `(?:${p.filter.source})`).join("|")),
     load(source, path) {
       const owner = ownerOf(plugins, path);

@@ -7,9 +7,11 @@
 // in. The two global keys, `Symbol.for("motherload.registered")` and `Symbol.for("motherload.plugin")`,
 // are the protocol: dotschema joins it through them to claim `.schema.jsonc` from `@motherload/jsonc`.
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Problem } from "./problems.ts";
+import { isStrict } from "./tsconfig.ts";
 
 export interface LoaderPlugin {
   /** The package's name, as `@motherload/toml`; also the esbuild plugin's name. */
@@ -26,6 +28,12 @@ export interface LoaderPlugin {
   load(source: string, path: string): { code: string; problems: Problem[]; watchFiles?: string[] };
   /** TypeScript for the type checker. */
   types(source: string, path: string): Promise<{ types: string; problems: Problem[] }> | { types: string; problems: Problem[] };
+  /**
+   * Whether `path`, if it does not exist, may load as the module of an empty file when the project
+   * turns `strict` off: a `.env` file's module reads the file when it runs and loads nothing when it
+   * is absent. A loader without it reads no option, and a missing file of its formats always fails.
+   */
+  optional?(path: string): boolean;
 }
 
 /** Every diagnostic is shown as `motherload<code>`, whichever Motherload package reports it. */
@@ -64,8 +72,41 @@ const REGISTERED: Set<LoaderPlugin> = ((globalThis as Record<symbol, unknown>)[S
 /** What a load error says: the plugin, the file and every problem. */
 const loadError = (plugin: LoaderPlugin, path: string, problems: Problem[]) => `${plugin.name}: ${path}: ${problems.map((p) => p.message).join("; ")}`;
 
+/** The files a resolve step let through though they do not exist, because the project turned `strict` off. */
+const ABSENT = new Set<string>();
+
+/** Whether `path` does not exist and is a file `plugin` loads, of the plugins in its host, in a format that may be missing. */
+const optionalFile = (plugin: LoaderPlugin, path: string, others: Iterable<LoaderPlugin>) =>
+  plugin.filter.test(path) && !outranked(plugin, path, others) && (plugin.optional?.(path) ?? false) && !existsSync(path);
+
+/**
+ * Whether an import of a missing `path` that `optionalFile` takes resolves to it all the same: when
+ * the project's tsconfig, found from the importer's directory, turns `strict` off. Only an import
+ * that fails reaches this, so no other import reads tsconfig.
+ */
+function letThrough(path: string, importer: string | undefined): boolean {
+  if (isStrict(dirname(importer ?? path))) return false;
+  ABSENT.add(path);
+  return true;
+}
+
+const absent = (plugin: LoaderPlugin, path: string, importer: string | undefined, others: Iterable<LoaderPlugin>) => optionalFile(plugin, path, others) && letThrough(path, importer);
+
+/** The file a relative or absolute specifier names from its importer's directory, or undefined for any other specifier, such as a package's file, which is left to the host. */
+const pathOf = (specifier: string, directory: string) => (/^\.\.?(?:[\\/]|$)/.test(specifier) || isAbsolute(specifier) ? resolve(directory, specifier) : undefined);
+
+/** A file's text, and an empty text for one a resolve step let through as missing. */
+function read(path: string): string {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT" && ABSENT.has(path)) return "";
+    throw error;
+  }
+}
+
 function runtimeModule(plugin: LoaderPlugin, path: string): string {
-  const result = plugin.load(readFileSync(path, "utf8"), path);
+  const result = plugin.load(read(path), path);
   if (result.problems.length) throw new Error(loadError(plugin, path, result.problems));
   return result.code;
 }
@@ -74,9 +115,29 @@ function runtimeModule(plugin: LoaderPlugin, path: string): string {
 
 type NodeHooks = Parameters<typeof import("node:module").registerHooks>[0];
 
-/** `registered` is every Motherload plugin in the process; a file one of them claims more strongly goes on to the next hook, which is that plugin's or reaches it. */
+/**
+ * `registered` is every Motherload plugin in the process; a file one of them claims more strongly
+ * goes on to the next hook, which is that plugin's or reaches it. The `resolve` hook only steps in
+ * when the hooks after it fail to find a file of a format that may be missing (`optional`).
+ */
 export function toNodeHooks(plugin: LoaderPlugin, registered: Iterable<LoaderPlugin> = REGISTERED): NodeHooks {
+  // An import's error carries the URL it looked for; a `require()`'s carries none, so the path is
+  // the specifier's from the importer's directory.
+  const resolveMissing: NodeHooks["resolve"] = (specifier, context, nextResolve) => {
+    try {
+      return nextResolve(specifier, context);
+    } catch (error) {
+      const { code, url } = error as { code?: string; url?: string };
+      if (code !== "ERR_MODULE_NOT_FOUND" && code !== "MODULE_NOT_FOUND") throw error;
+      if (/[?#]/.test(url ?? specifier) || (url && !url.startsWith("file:"))) throw error;
+      const importer = context.parentURL?.startsWith("file:") ? fileURLToPath(context.parentURL) : undefined;
+      const path = url ? fileURLToPath(url) : importer && pathOf(specifier, dirname(importer));
+      if (!path || !absent(plugin, path, importer, registered)) throw error;
+      return { url: pathToFileURL(path).href, format: "module", shortCircuit: true };
+    }
+  };
   return {
+    ...(plugin.optional && { resolve: resolveMissing }),
     load(url, context, nextLoad) {
       if (!url.startsWith("file:")) return nextLoad(url, context);
       const { search, hash } = new URL(url);
@@ -91,12 +152,22 @@ export function toNodeHooks(plugin: LoaderPlugin, registered: Iterable<LoaderPlu
 
 // ---- Bun runtime and Bun.build: Bun.plugin ---------------------------------------------------
 
-type BunBuild = { onLoad(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string }) => { loader: "js"; contents: string }): void };
+type BunBuild = {
+  onResolve(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string; importer: string }) => { path: string } | undefined): void;
+  onLoad(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string }) => { loader: "js"; contents: string }): void;
+};
 
 export function toBunPlugin(plugin: LoaderPlugin, registered: Iterable<LoaderPlugin> = REGISTERED): { name: string; setup(build: BunBuild): void } {
   return {
     name: plugin.name,
     setup(build) {
+      // A missing file is let through only where Bun would not find it: one that exists is Bun's to resolve.
+      if (plugin.optional) {
+        build.onResolve({ filter: plugin.filter }, (args) => {
+          const path = pathOf(args.path, dirname(args.importer));
+          return path && absent(plugin, path, args.importer, registered) ? { path } : undefined;
+        });
+      }
       // The filter must be exact: Bun's runtime throws when onLoad returns undefined (oven-sh/bun#5303),
       // so a file another registered plugin claims more strongly is loaded with that plugin here.
       build.onLoad({ filter: plugin.filter }, (args) => ({ loader: "js", contents: runtimeModule(ownerOf([plugin, ...registered], args.path) ?? plugin, args.path) }));
@@ -125,6 +196,7 @@ export async function register(plugin: LoaderPlugin): Promise<void> {
 type EsbuildModule = { contents: string; loader: "js"; watchFiles?: string[] };
 type EsbuildBuild = {
   initialOptions?: { plugins?: readonly unknown[] };
+  onResolve(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string; importer: string; resolveDir?: string }) => { path: string } | undefined): void;
   onLoad(options: { filter: RegExp; namespace?: string }, callback: (args: { path: string; suffix?: string }) => EsbuildModule | undefined): void;
 };
 
@@ -139,12 +211,18 @@ export function toEsbuildPlugin(plugin: LoaderPlugin): { name: string; setup(bui
       const siblings = (build.initialOptions?.plugins ?? []).flatMap((p) => ((p as Record<symbol, unknown>)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
       // esbuild resolves `./app.toml?url` to app.toml and keeps `?url` in `suffix`; as in the Node
       // hook, a suffix is left to other plugins, as is a file another Motherload plugin in the
-      // build claims more strongly.
+      // build claims more strongly. A missing file is let through as the Bun plugin lets it through.
+      if (plugin.optional) {
+        build.onResolve({ filter: plugin.filter, namespace: "file" }, (args) => {
+          const path = pathOf(args.path, args.resolveDir ?? dirname(args.importer));
+          return path && absent(plugin, path, args.importer || undefined, siblings) ? { path } : undefined;
+        });
+      }
       build.onLoad({ filter: plugin.filter, namespace: "file" }, (args) => {
         if (outranked(plugin, args.path, siblings)) return undefined;
         if (args.suffix) return undefined;
         // The files a module was made from are watched even when it fails, so fixing one rebuilds it.
-        const result = plugin.load(readFileSync(args.path, "utf8"), args.path);
+        const result = plugin.load(read(args.path), args.path);
         const watchFiles = result.watchFiles ?? [];
         if (result.problems.length) {
           const text = loadError(plugin, args.path, result.problems);
@@ -193,6 +271,7 @@ export function toWebpackLoader(plugin: LoaderPlugin): (this: WebpackLoaderConte
 // ---- Vite, Rollup and Rolldown: a Rollup-shaped plugin ---------------------------------------
 
 type RollupContext = { addWatchFile(id: string): void; error(message: string): never };
+type RollupResolveContext = { resolve(source: string, importer: string | undefined, options: { skipSelf: boolean }): Promise<unknown> };
 /** What Vitest hands a plugin's `configureVitest`, as far as it is used here. */
 type VitestCacheKey = (module: { id: string }) => string | undefined;
 type VitestContext = {
@@ -224,6 +303,7 @@ export function toVitePlugin(plugin: LoaderPlugin): {
   enforce: "pre";
   configResolved(config: { plugins: unknown }): void;
   options(options: { plugins?: unknown }): null;
+  resolveId(this: RollupResolveContext, source: string, importer: string | undefined, options?: object): Promise<string | null>;
   load(this: RollupContext, id: string): { code: string; map: null; moduleType: "js" } | null;
   configureVitest(context: VitestContext): void;
   watchChange(id: string): void;
@@ -250,7 +330,7 @@ export function toVitePlugin(plugin: LoaderPlugin): {
       vitest = context.vitest;
       const key: VitestCacheKey = ({ id }) => {
         if (!handles(id)) return undefined;
-        const source = readFileSync(id, "utf8");
+        const source = read(id);
         const result = plugin.load(source, id);
         made.set(id, { source, result });
         reached.set(id, result.watchFiles ?? []);
@@ -260,9 +340,16 @@ export function toVitePlugin(plugin: LoaderPlugin): {
       if (context.defineCacheKeyGenerator) context.defineCacheKeyGenerator(key);
       else context.experimental_defineCacheKeyGenerator?.(key);
     },
+    // A missing file is let through only when nothing else resolves it, as in the other hosts.
+    async resolveId(this: RollupResolveContext, source: string, importer: string | undefined, options?: object) {
+      if (!plugin.optional || /[?#]/.test(source) || !plugin.filter.test(source)) return null;
+      const path = pathOf(source, importer ? dirname(importer.replace(/[?#].*$/, "")) : process.cwd());
+      if (!path || !optionalFile(plugin, path, siblings) || (await this.resolve(source, importer, { ...options, skipSelf: true }))) return null;
+      return letThrough(path, importer) ? path : null;
+    },
     load(this: RollupContext, id: string) {
       if (!handles(id)) return null;
-      const source = readFileSync(id, "utf8");
+      const source = read(id);
       const kept = made.get(id);
       made.delete(id);
       const result = kept?.source === source ? kept.result : plugin.load(source, id);
@@ -354,9 +441,16 @@ export function toMapperHandlers(plugin: LoaderPlugin): MapperHandlers {
       return { protocolVersion: protocolVersion ?? 1, positionEncoding: "utf-8", diagnosticSource: DIAGNOSTIC_SOURCE };
     },
     openProject(params) {
-      // Motherload takes no options; a key in a tsconfig entry's `options` is a mistake worth showing.
+      // A loader whose files may be missing takes `strict`, which the preload and the plugins read
+      // from tsconfig themselves; any other key in a tsconfig entry's `options` is a mistake worth showing.
       const { options } = (params ?? {}) as { options?: Record<string, unknown> | null };
-      const optionDiagnostics = Object.keys(options ?? {}).map((key) => ({ path: [key], messageText: `Motherload takes no options; remove "${key}".`, code: 5 }));
+      const optionDiagnostics = Object.entries(options ?? {}).flatMap(([key, value]) => {
+        if (key !== "strict" || !plugin.optional) {
+          const messageText = plugin.optional ? `Motherload takes one option, "strict"; remove "${key}".` : `Motherload takes no options; remove "${key}".`;
+          return [{ path: [key], messageText, code: 5 }];
+        }
+        return typeof value === "boolean" ? [] : [{ path: [key], messageText: `Motherload's "strict" option is true or false, not ${JSON.stringify(value)}.`, code: 5 }];
+      });
       return { optionDiagnostics };
     },
     async transform(params) {

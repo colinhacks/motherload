@@ -63,6 +63,32 @@ test("the mapper answers the protocol, reports options and places errors in UTF-
   }
 });
 
+test("the mapper takes `strict` as true or false and reports any other option; a package that reads no .env file takes none", async () => {
+  const open = async (mapper: ReturnType<typeof client>, options: Record<string, unknown>) =>
+    (await mapper.call("openProject", { configFileName: `${ROOT}tsconfig.json`, projectHandle: "p", compilerOptions: {}, options })).result.optionDiagnostics.map((d: any) => [d.path[0], d.messageText]);
+  for (const cwd of [ROOT, `${ROOT}packages/env`]) {
+    const mapper = client(cwd);
+    try {
+      await mapper.call("initialize", { protocolVersion: 1 });
+      assert.deepEqual(await open(mapper, { strict: false }), []);
+      assert.deepEqual(await open(mapper, { strict: true }), []);
+      assert.deepEqual(await open(mapper, { strict: "no", literal: true }), [
+        ["strict", 'Motherload\'s "strict" option is true or false, not "no".'],
+        ["literal", 'Motherload takes one option, "strict"; remove "literal".'],
+      ]);
+    } finally {
+      mapper.close();
+    }
+  }
+  const toml = client(`${ROOT}packages/toml`);
+  try {
+    await toml.call("initialize", { protocolVersion: 1 });
+    assert.deepEqual(await open(toml, { strict: false }), [["strict", 'Motherload takes no options; remove "strict".']]);
+  } finally {
+    toml.close();
+  }
+});
+
 test("a format package's own mapper reads its format and names it for any other extension", async () => {
   const mapper = client(`${ROOT}packages/toml`);
   try {

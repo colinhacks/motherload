@@ -203,6 +203,28 @@ process.env.PORT;         // string
 
 A variable the environment already sets keeps its value, and a bundle holds none of the file's values.
 
+A file whose name ends in `.env`, such as `local.env`, needs no setup. Imported first, its values win over `.env`'s:
+
+```ts
+import "./local.env";
+import "./.env";
+```
+
+Any other name, such as `.env.local`, goes in `extensions` in full:
+
+```jsonc
+{ "package": "motherload", "extensions": [".env", ".env.local" /* ... */] }
+```
+
+A missing file fails the type check and the build. To load nothing in its place, turn off `strict` and TypeScript's check of side-effect imports:
+
+```jsonc
+{
+  "compilerOptions": { "noUncheckedSideEffectImports": false },
+  "contentMappers": [{ "package": "motherload", "extensions": [/* ... */], "options": { "strict": false } }]
+}
+```
+
 ### `.csv`
 
 The header names the columns, and every value is a string, as written.

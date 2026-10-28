@@ -115,7 +115,7 @@ test("Bun: a file the JSONC or JSON5 package's plugin is asked for is loaded wit
   try {
     for (const ours of [JSONC, JSON5]) {
       const loads: ((args: { path: string }) => { contents: string })[] = [];
-      toBunPlugin(ours).setup({ onLoad: (_options, callback) => void loads.push(callback) });
+      toBunPlugin(ours).setup({ onResolve: () => {}, onLoad: (_options, callback) => void loads.push(callback) });
       const ext = ours === JSONC ? "jsonc" : "json5";
       assert.equal(loads[0]!({ path: join(dir, `user.schema.${ext}`) }).contents, 'export default "stand-in";\n');
       assert.match(loads[0]!({ path: join(dir, `app.${ext}`) }).contents, /const data = \{"a": 1\};/);

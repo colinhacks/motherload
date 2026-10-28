@@ -219,9 +219,60 @@ import "./.env";
 const url = new URL(process.env.DATABSE_URL);
 ```
 
+A file whose name ends in `.env`, such as `local.env`, needs no setup. Imported first, its values win over `.env`'s:
+
+```ts twoslash tab="main.ts"
+import "./local.env";
+import "./.env";
+```
+
+```sh tab="local.env"
+DATABASE_URL=postgres://localhost/mine
+```
+
+```sh tab=".gitignore"
+local.env
+```
+
+Any other name, such as `.env.local`, goes in `extensions` in full:
+
+```jsonc title="tsconfig.json"
+{
+  "contentMappers": [
+    {
+      "package": "motherload",
+      "extensions": [
+        ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env",
+        ".env.local", // [!code ++]
+        ".csv", ".tsv", ".txt", ".md"
+      ]
+    }
+  ]
+}
+```
+
+A missing file fails the type check and the build. To load nothing in its place, turn off `strict` and TypeScript's check of side-effect imports:
+
+```jsonc title="tsconfig.json"
+{
+  "compilerOptions": {
+    "noUncheckedSideEffectImports": false // [!code ++]
+  },
+  "contentMappers": [
+    {
+      "package": "motherload",
+      "extensions": [/* ... */],
+      "options": { "strict": false } // [!code ++]
+    }
+  ]
+}
+```
+
 <Details summary="How the .env file is loaded" id="env-loading">
 
 A variable the environment already sets keeps its value. A bundle holds none of the file's values: it reads the file from the working directory when it runs, and loads nothing if the file is absent.
+
+With `strict` off, a missing file still fails in webpack, Rspack and Jest, which look for the file before Motherload's loader runs.
 
 </Details>
 
