@@ -266,7 +266,7 @@ node --env-file=.env dist/main.mjs
 
 <Details summary="How the .env file is loaded" id="env-loading">
 
-A variable the environment already sets keeps its value. A bundle holds the names the file declares and none of its values.
+A variable the environment already sets keeps its value. A bundle holds the names the file declares and none of its values, and Vite's dev server sends no `.env` file, whatever its name.
 
 </Details>
 

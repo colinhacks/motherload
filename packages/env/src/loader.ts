@@ -54,5 +54,9 @@ export function envModule(source: string, path: string, host?: LoadHost): Module
   };
 }
 
-/** `.env` files are matched by name, `.env`, `.env.local`, or by suffix, `prod.env`; a tsconfig entry reaches `.env.local` only if it lists `.env.local` in full. */
-export const loader = moduleLoader("@motherload/env", [".env"], /(?:(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/, envModule);
+/**
+ * `.env` files are matched by name, `.env`, `.env.local`, or by suffix, `prod.env`; a tsconfig entry
+ * reaches `.env.local` only if it lists `.env.local` in full. Every one may hold secrets, so the Vite
+ * plugin keeps Vite's dev server from sending it.
+ */
+export const loader = { ...moduleLoader("@motherload/env", [".env"], /(?:(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/, envModule), secret: () => true };

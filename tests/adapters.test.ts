@@ -1,12 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { plugin } from "../src/plugin.ts";
+import { createServer } from "vite";
+import motherloadVite from "../src/vite.ts";
+import envVite from "../packages/env/src/vite.ts";
 import { evaluate } from "./helpers.ts";
 import { toEsbuildPlugin, toJestTransformer, toNodeHooks, toVitePlugin, toWebpackLoader, utf8Range, type LoaderPlugin } from "../packages/core/src/universal.ts";
 
@@ -105,6 +108,39 @@ test("the Vite plugin loads a data file as JavaScript and leaves an id with a qu
   assert.equal(viteLoad(join(dir, "app.ts")).result, null);
   writeFileSync(join(dir, "bad.toml"), "name = \n");
   assert.throws(() => viteLoad(join(dir, "bad.toml")), /motherload: .*bad\.toml: Invalid TOML document/);
+});
+
+/** Vite's dev server on `root` with one plugin, and a GET of each path from it. */
+async function viteDevServer(root: string, vitePlugin: ReturnType<typeof toVitePlugin>, paths: string[]) {
+  const server = await createServer({ root, configFile: false, logLevel: "silent", plugins: [vitePlugin], server: { port: 0, host: "127.0.0.1" } });
+  await server.listen();
+  try {
+    const base = server.resolvedUrls!.local[0]!;
+    return await Promise.all(paths.map(async (path) => {
+      const res = await fetch(new URL(path, base));
+      return { path, status: res.status, body: await res.text() };
+    }));
+  } finally {
+    await server.close();
+  }
+}
+
+test("Vite's dev server sends no .env file, whatever its name and however it is asked for, and still serves the other formats", async () => {
+  // Vite alone sends local.env and prod.env as they are: its own list refuses only .env and .env.*.
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "motherload-vite-dev-")));
+  const names = [".env", "local.env", "prod.env", ".env.local"];
+  for (const name of names) writeFileSync(join(root, name), `SECRET=sentinel-${name}\n`);
+  writeFileSync(join(root, "app.toml"), 'name = "x"\n');
+  const paths = names.flatMap((name) => [`/${name}`, `/${name}?import`, `/${name}?import&v=1`, `/${name}?raw`, `/${name.toUpperCase()}`, `/${name}/`, `/${encodeURIComponent(name)}`, `/@fs${root}/${name}`]);
+  for (const vitePlugin of [motherloadVite(), envVite()]) {
+    for (const { path, status, body } of await viteDevServer(root, vitePlugin, paths)) {
+      assert.equal(status, 403, `${vitePlugin.name} ${path}: ${body}`);
+      assert.doesNotMatch(body, /sentinel/, path);
+    }
+  }
+  const [toml] = await viteDevServer(root, motherloadVite(), ["/app.toml?import"]);
+  assert.equal(toml!.status, 200, toml!.body);
+  assert.match(toml!.body, /"name": "x"/);
 });
 
 const jest = toJestTransformer(plugin);

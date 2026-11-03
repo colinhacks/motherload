@@ -28,6 +28,11 @@ export interface LoaderPlugin {
   load(source: string, path: string, host?: LoadHost): { code: string; problems: Problem[]; watchFiles?: string[] };
   /** TypeScript for the type checker. */
   types(source: string, path: string): Promise<{ types: string; problems: Problem[] }> | { types: string; problems: Problem[] };
+  /**
+   * Whether `path` may hold secrets, which a dev server must never send as they are: Vite's refuses
+   * `.env` and `.env.*` by itself, and the Vite plugin refuses the rest, such as `local.env`.
+   */
+  secret?(path: string): boolean;
 }
 
 /**
@@ -211,6 +216,10 @@ type VitestContext = {
   defineCacheKeyGenerator?(generate: VitestCacheKey): void;
   experimental_defineCacheKeyGenerator?(generate: VitestCacheKey): void;
 };
+/** What Vite hands a plugin's `configureServer`, as far as it is used here: its Connect app. */
+type ViteServer = {
+  middlewares: { use(handle: (req: { url?: string }, res: { statusCode: number; end(text: string): void }, next: () => void) => void): void };
+};
 
 /** The Motherload plugins among a host's plugins (a plugin or a list of them, nested), each plugin object marked as an esbuild plugin object is. */
 const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).flatMap((p) => ((p as Record<symbol, unknown> | null)?.[PLUGIN] as LoaderPlugin | undefined) ?? []);
@@ -228,13 +237,19 @@ const marked = (plugins: unknown): LoaderPlugin[] => [plugins].flat(Infinity).fl
  * from, then makes it again. The module made for a key is kept for the `load` that follows it, which
  * Vitest calls only on a miss. In watch mode Vitest keeps each module's key until that module's own
  * file changes, so a change to another file a module was made from is passed on to Vitest as a
- * change to the module's file.
+ * change to the module's file. Vite's dev server sends any file under its root as it is unless its
+ * `server.fs.deny` names it, which by default takes `.env` and `.env.*` but not `local.env`, and a
+ * plugin cannot add to that list without replacing it; so `configureServer` refuses every request for
+ * a file the plugin calls `secret`, a module import too: a query Vite keeps, such as `?import&v=1`,
+ * takes the request past `load` to Vite's own loader, which sends the file as it is, and a `.env`
+ * module cannot run in a browser.
  */
 export function toVitePlugin(plugin: LoaderPlugin): {
   name: string;
   enforce: "pre";
   configResolved(config: { plugins: unknown; command?: string }): void;
   options(options: { plugins?: unknown }): null;
+  configureServer(server: ViteServer): void;
   load(this: RollupContext, id: string): { code: string; map: null; moduleType: "js" } | null;
   configureVitest(context: VitestContext): void;
   watchChange(id: string): void;
@@ -259,6 +274,23 @@ export function toVitePlugin(plugin: LoaderPlugin): {
     options(options: { plugins?: unknown }) {
       if (options.plugins) siblings = marked(options.plugins);
       return null;
+    },
+    configureServer(server: ViteServer) {
+      if (!plugin.secret) return;
+      const secret = (path: string) => plugin.filter.test(path) && !outranked(plugin, path, siblings) && (plugin.secret?.(path) ?? false);
+      server.middlewares.use((req, res, next) => {
+        const { pathname } = new URL(req.url ?? "/", "http://vite");
+        let decoded = pathname;
+        try {
+          decoded = decodeURIComponent(pathname);
+        } catch {}
+        // The path as sent and as decoded, without a trailing slash, and in lower case, as Vite's own
+        // list matches it, since macOS's file system ignores case.
+        const paths = [pathname, decoded, decoded.split("?")[0]!].map((path) => path.replace(/\/+$/, "").toLowerCase());
+        if (!paths.some(secret)) return next();
+        res.statusCode = 403;
+        res.end(`${plugin.name}: ${pathname} may hold secrets, so the dev server does not send it.`);
+      });
     },
     configureVitest(context: VitestContext) {
       vitest = context.vitest;

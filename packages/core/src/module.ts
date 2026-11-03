@@ -55,9 +55,12 @@ export function combine(name: string, product: string, plugins: readonly LoaderP
     length: 1,
     code: CODES.unknownFormat,
   });
+  // A file may hold secrets as the format that claims it says, so `.env.toml` does not.
+  const secret = plugins.some((p) => p.secret) ? { secret: (path: string) => ownerOf(plugins, path)?.secret?.(path) ?? false } : {};
   return {
     name,
     extensions,
+    ...secret,
     filter: new RegExp(plugins.map((p) => `(?:${p.filter.source})`).join("|")),
     load(source, path, host) {
       const owner = ownerOf(plugins, path);
