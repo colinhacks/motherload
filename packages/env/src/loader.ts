@@ -54,9 +54,5 @@ export function envModule(source: string, path: string, host?: LoadHost): Module
   };
 }
 
-/**
- * `.env` files are matched by name, `.env`, `.env.local`, or by suffix, `prod.env`; a tsconfig entry
- * reaches `.env.local` only if it lists `.env.local` in full. A missing one may load, under `strict: false`, as
- * the module of an empty file, which declares, loads and checks nothing.
- */
-export const loader = { ...moduleLoader("@motherload/env", [".env"], /(?:(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/, envModule), optional: () => true };
+/** `.env` files are matched by name, `.env`, `.env.local`, or by suffix, `prod.env`; a tsconfig entry reaches `.env.local` only if it lists `.env.local` in full. */
+export const loader = moduleLoader("@motherload/env", [".env"], /(?:(?:^|[\\/])\.env(?:\.[^\\/]+)?|\.env)$/, envModule);

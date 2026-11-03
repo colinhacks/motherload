@@ -61,8 +61,6 @@ test("a .env module throws naming each variable its file declares that is still 
   // An empty value is set. The comment makes the module a new one, which the module cache has not seen fail.
   process.env.MOTHERLOAD_TEST_A = "";
   await evaluate(`${dataModule("env", source, path, { bundle: true }).code}// set\n`);
-  // The module of a missing file that `strict: false` lets through declares, loads and checks nothing.
-  assert.equal(dataModule("env", "", path, { bundle: true }).code, "export {};\n");
 });
 
 test("a file that does not parse has quiet types and its problems", () => {

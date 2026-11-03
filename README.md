@@ -216,15 +216,6 @@ Any other name, such as `.env.local`, goes in `extensions` in full:
 { "package": "motherload", "extensions": [".env", ".env.local" /* ... */] }
 ```
 
-A missing file fails the type check and the build. To load nothing in its place, turn off `strict` and TypeScript's check of side-effect imports:
-
-```jsonc
-{
-  "compilerOptions": { "noUncheckedSideEffectImports": false },
-  "contentMappers": [{ "package": "motherload", "extensions": [/* ... */], "options": { "strict": false } }]
-}
-```
-
 A bundle reads no `.env` file, since it runs wherever it is deployed. It takes its variables from the environment there, and stops at startup if one the file declares is unset, so on your own machine it runs with the file passed to Node:
 
 ```sh
