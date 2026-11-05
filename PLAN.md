@@ -48,6 +48,7 @@ The maintainer's, on 2026-10-28:
 The maintainer's, on 2026-11-03:
 
 - **A missing `.env` file always fails the type check and the build, with no `strict` option:** "drop this option entirely and always operate in strict mode, which I think is clearly the best idea". It replaces the option of 2026-10-28, which no release carried. The docs' `local.env`, listed in `.gitignore`, is missing from every fresh clone, so a project that imports it fails in CI and any other new checkout, which the maintainer accepted the same day: "I think it's kind of inevitable. I think we should keep things strict. This is honestly kind of just intended for development scripts, I feel like." The docs keep the example as it is ([DESIGN.md](./DESIGN.md#the-env-module)).
+- **Importing a `.env` file is for scripts, and the docs never tell anyone to commit one:** the maintainer's answer of 2026-11-04, to a proposal that the docs say `.env` is committed and holds no secrets, since a build from a fresh clone needs the file: "We should not be telling people to commit their environment files ... If anything, the callout should say that this is better for scripting than for applications: for writing scripts, where you know that the local environment file is always going to exist. It may not exist in built environments." The docs page and the README carry it as a callout under the `.env` section's first example ([DESIGN.md](./DESIGN.md#the-env-module)).
 
 ## Names
 

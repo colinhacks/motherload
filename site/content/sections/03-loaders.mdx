@@ -201,6 +201,8 @@ DATABASE_URL=postgres://localhost/app
 PORT=3000
 ```
 
+<Callout title="Best for scripts">Importing a `.env` file suits a script you run where the file is, such as a seed or a migration on your own machine. An application is often built where the file is not, in CI or on a host, and a missing file fails the build.</Callout>
+
 The editor completes their names:
 
 ```ts twoslash title="main.ts"

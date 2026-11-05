@@ -201,6 +201,9 @@ process.env.DATABASE_URL; // string
 process.env.PORT;         // string
 ```
 
+> [!NOTE]
+> Importing a `.env` file suits a script you run where the file is, such as a seed or a migration on your own machine. An application is often built where the file is not, in CI or on a host, and a missing file fails the build.
+
 A variable the environment already sets keeps its value, and a bundle holds none of the file's values.
 
 A file whose name ends in `.env`, such as `local.env`, needs no setup. Imported first, its values win over `.env`'s:
