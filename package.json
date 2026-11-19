@@ -28,6 +28,18 @@
         "node",
         "src/mapper.ts"
       ],
+      "extensions": [
+        ".toml",
+        ".yaml",
+        ".yml",
+        ".jsonc",
+        ".json5",
+        ".env",
+        ".csv",
+        ".tsv",
+        ".txt",
+        ".md"
+      ],
       "compilerOptions": []
     }
   },
@@ -61,7 +73,7 @@
     "motherload": "link:.",
     "rolldown": "^1.2.0",
     "rollup": "^4.64.0",
-    "typescript": "7.1.0-dev.20261002.1",
+    "typescript": "7.1.0-dev.20261118.1",
     "universal-toml": "link:lab/universal/plugin",
     "universal-toml-2": "link:lab/universal/plugin",
     "unplugin": "^3.4.0",

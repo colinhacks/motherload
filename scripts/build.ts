@@ -65,6 +65,8 @@ function emit(dir: string, from: string, pkg: Record<string, any>, dependencies:
   if (sources.length) throw new Error(`dist/${dir} holds TypeScript sources: ${sources.join(", ")}`);
   const named = [...Object.values(built.exports as Record<string, Record<string, string>>).flatMap((e) => Object.values(e)), ...((built.typescript as any)?.contentMapper.exec.slice(1) ?? [])];
   for (const file of named) if (!existsSync(join(to, file))) throw new Error(`dist/${dir}: ${file} is named in package.json and missing`);
+  // A tsconfig entry that names the package alone takes these.
+  if (built.typescript && !(built.typescript as any).contentMapper.extensions?.length) throw new Error(`dist/${dir}: the content mapper names no extensions`);
   console.log(`dist/${dir}: ${built.name}@${built.version}, ${files.length} files, dependencies ${Object.entries(dependencies).map(([d, v]) => `${d}@${v}`).join(" ") || "none"}`);
 }
 

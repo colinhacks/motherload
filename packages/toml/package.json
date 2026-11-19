@@ -29,6 +29,9 @@
         "node",
         "src/mapper.ts"
       ],
+      "extensions": [
+        ".toml"
+      ],
       "compilerOptions": []
     }
   },

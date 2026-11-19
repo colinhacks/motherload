@@ -10,7 +10,7 @@
     "resolveJsonModule": true
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env", ".csv", ".tsv", ".txt", ".md"] }
+    { "package": "motherload" }
   ],
   "include": ["main.ts"]
 }

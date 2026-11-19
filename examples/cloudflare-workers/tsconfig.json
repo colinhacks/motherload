@@ -11,7 +11,7 @@
     "allowImportingTsExtensions": true
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".csv", ".md"] }
+    { "package": "motherload" }
   ],
   "include": ["site.ts", "src", "test", "vite.config.ts", "vitest.config.ts"]
 }

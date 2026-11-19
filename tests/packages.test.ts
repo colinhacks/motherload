@@ -54,6 +54,19 @@ test("motherload reads every format package's extensions", () => {
   assert.deepEqual(plugin.extensions, loaders.flatMap((l) => l.extensions));
 });
 
+// A tsconfig entry naming the package alone takes the manifest's list, so it must be what the loader reads.
+test("each manifest names its loader's extensions, as the docs' table of packages lists them", () => {
+  const sorted = (list: readonly string[]) => [...list].sort();
+  assert.deepEqual(sorted(root.typescript.contentMapper.extensions), sorted(plugin.extensions));
+  const table = readFileSync(`${ROOT}site/content/sections/02-setup.mdx`, "utf8");
+  FORMATS.forEach((name, i) => {
+    const extensions: string[] = manifest(name).typescript.contentMapper.extensions;
+    assert.deepEqual(extensions, loaders[i]!.extensions, name);
+    const row = new RegExp(`^\\| \`@motherload/${name}\` \\| (.+) \\|$`, "m").exec(table);
+    assert.deepEqual(row?.[1]!.split(", ").map((ext) => ext.replaceAll("`", "")), extensions, name);
+  });
+});
+
 const dir = mkdtempSync(join(tmpdir(), "motherload-packages-"));
 writeFileSync(join(dir, "user.schema.jsonc"), '{ "type": "string" }\n');
 writeFileSync(join(dir, "user.schema.json5"), "{ type: 'string' }\n");

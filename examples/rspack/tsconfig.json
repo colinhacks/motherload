@@ -9,7 +9,7 @@
     "skipLibCheck": true
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".csv", ".md"] }
+    { "package": "motherload" }
   ],
   "include": ["main.ts", "site.ts"]
 }

@@ -20,7 +20,7 @@
     ]
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml", ".jsonc", ".json5", ".csv", ".tsv", ".txt", ".md"] }
+    { "package": "motherload" }
   ],
   "include": [
     "next-env.d.ts",

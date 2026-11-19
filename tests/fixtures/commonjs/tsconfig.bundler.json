@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "module": "preserve", "moduleResolution": "bundler" },
+  "include": ["main.ts", "esm.mts"]
+}

@@ -22,30 +22,22 @@ It's powered by TypeScript's [_content mappers_](https://github.com/microsoft/ty
 
 Motherload needs:
 
-- **TypeScript 7.1 beta or later**, the first release with content mappers.
+- **A TypeScript 7.1 nightly from 2026-11-12 or later**, the first builds that read Motherload's extensions from its package.
 - **Node 24 or later, Bun or nub.**
 
 ```sh
-npm install -D motherload typescript@beta
+npm install -D motherload typescript@next
 ```
 
 An app that runs under the preload, not as a bundle, loads its data files at run time, so it installs Motherload as a dependency: `npm install motherload`.
 
-Name Motherload in `tsconfig.json`, with the extensions it should own, and type-check with `--runExternalCode`, the flag that lets `tsc` run content mappers:
+Name Motherload in `tsconfig.json`, and type-check with `--runExternalCode`, the flag that lets `tsc` run content mappers:
 
 ```jsonc
 // tsconfig.json
 {
   "compilerOptions": { /* ... */ },
-  "contentMappers": [
-    {
-      "package": "motherload",
-      "extensions": [
-        ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env",
-        ".csv", ".tsv", ".txt", ".md"
-      ]
-    }
-  ]
+  "contentMappers": [{ "package": "motherload" }]
 }
 ```
 
@@ -213,7 +205,7 @@ import "./local.env";
 import "./.env";
 ```
 
-Any other name, such as `.env.local`, goes in `extensions` in full:
+Any other name, such as `.env.local`, goes in `extensions` in full, beside every format the project reads, since the entry's list replaces Motherload's:
 
 ```jsonc
 { "package": "motherload", "extensions": [".env", ".env.local" /* ... */] }

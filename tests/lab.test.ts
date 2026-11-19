@@ -18,6 +18,33 @@ test("lab/basic type-checks through the content mapper", () => {
   assert.equal(status, 0);
 });
 
+test("an entry's own extensions take the place of the manifest's", () => {
+  // lab/basic's entry names the package alone; this one lists `.toml` and leaves `.yaml` to nobody.
+  const dir = mkdtempSync(join(tmpdir(), "motherload-entry-"));
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "entry", private: true, type: "module" }));
+  writeFileSync(join(dir, "app.toml"), "port = 8080\n");
+  writeFileSync(join(dir, "app.yaml"), "port: 8080\n");
+  writeFileSync(join(dir, "main.ts"), 'import toml from "./app.toml";\nimport yaml from "./app.yaml";\nexport const ports: [8080, number] = [toml.port, yaml.port];\n');
+  writeFileSync(
+    join(dir, "tsconfig.json"),
+    JSON.stringify({
+      compilerOptions: { target: "esnext", module: "nodenext", types: [], strict: true, noEmit: true, skipLibCheck: true },
+      contentMappers: [{ package: "motherload", extensions: [".toml"] }],
+      include: ["main.ts"],
+    }),
+  );
+  mkdirSync(join(dir, "node_modules"));
+  symlinkSync(ROOT, join(dir, "node_modules", "motherload"));
+  try {
+    const { status, out } = run(TSC, ["-p", join(dir, "tsconfig.json"), "--noEmit", "--runExternalCode"]);
+    assert.equal(status, 2);
+    assert.equal(out.trim().split("\n").length, 1, out);
+    assert.match(out, /main\.ts\(2,18\): error TS2307: Cannot find module '\.\/app\.yaml'/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("control: without --runExternalCode the imports do not resolve", () => {
   const { status, out } = run(TSC, ["-p", "lab/basic/tsconfig.json", "--noEmit"]);
   assert.equal(status, 2);
@@ -45,10 +72,18 @@ test("a broken file is a diagnostic at its place in the file", () => {
   assert.doesNotMatch(out, /TS1806[89]|TS18070/);
 });
 
-test("a data file in a package with no \"type\" is an ES module all the same", () => {
-  const { status, out } = run(TSC, ["-p", "tests/fixtures/commonjs/tsconfig.json", "--noEmit", "--runExternalCode"]);
-  assert.equal(out, "");
-  assert.equal(status, 0);
+test("a data file in a package with no \"type\" takes the package's format, as a .ts file does", () => {
+  // A CommonJS importer under nodenext, and any importer under bundler resolution, reads the data.
+  for (const config of ["tsconfig.json", "tsconfig.bundler.json"]) {
+    const { status, out } = run(TSC, ["-p", `tests/fixtures/commonjs/${config}`, "--noEmit", "--runExternalCode"]);
+    assert.equal(out, "", config);
+    assert.equal(status, 0, config);
+  }
+  // An ES module importer under nodenext gets the CommonJS module, and TypeScript refuses no module
+  // for its format (TS18125, which a mapper's `.mts` gets in this package since microsoft/TypeScript#65432).
+  const { out } = run(TSC, ["-p", "tests/fixtures/commonjs/tsconfig.esm.json", "--noEmit", "--runExternalCode"]);
+  assert.match(out, /esm\.mts\(5,27\): error TS2339: Property 'port' does not exist/);
+  assert.doesNotMatch(out, /TS18125/);
 });
 
 const EXPECTED = '"port":8080,"big":"9007199254740993","started":"1979-05-27T07:32:00.000Z","day":"1979-05-27","tags":2';

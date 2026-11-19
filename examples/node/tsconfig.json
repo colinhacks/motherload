@@ -9,6 +9,6 @@
     "skipLibCheck": true
   },
   "contentMappers": [
-    { "package": "motherload", "extensions": [".toml", ".csv", ".md"] }
+    { "package": "motherload" }
   ]
 }

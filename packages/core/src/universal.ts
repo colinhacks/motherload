@@ -409,9 +409,10 @@ export function toMapperHandlers(plugin: LoaderPlugin): MapperHandlers {
       const { fileName, content } = params as { fileName: string; content: string };
       const result = await plugin.types(content, fileName);
       return {
-        // An ES module whatever the nearest package.json says, as the preload and the plugins load it:
-        // TypeScript takes a `.ts` module in a package with no "type" for CommonJS.
-        extension: ".mts",
+        // A module in its package's format, as a `.ts` file is: TypeScript refuses a module whose format
+        // differs from the declaration file it would write for the data file (TS18125), so `.mts` fails
+        // in every package without "type": "module".
+        extension: ".ts",
         text: result.types,
         diagnostics: result.problems.map((p) => ({ messageText: p.message, code: p.code, ...utf8Range(content, p.start, p.length) })),
       };

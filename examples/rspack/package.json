@@ -13,6 +13,6 @@
     "@rspack/core": "2.2.9",
     "@types/node": "26.6.5",
     "motherload": "link:../..",
-    "typescript": "7.1.0-beta"
+    "typescript": "7.1.0-dev.20261118.1"
   }
 }

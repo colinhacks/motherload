@@ -29,6 +29,10 @@
         "node",
         "src/mapper.ts"
       ],
+      "extensions": [
+        ".yaml",
+        ".yml"
+      ],
       "compilerOptions": []
     }
   },

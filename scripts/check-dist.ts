@@ -3,10 +3,11 @@
 // resolves to the repository's own links), then type-checked through the installed mappers, run
 // under the installed preloads, bundled with the installed esbuild plugins, webpack loader and Vite
 // plugin, and tested with the installed Jest transformer.
-// Five projects: a copy of lab/basic on `motherload`, a copy of lab/packages on two format packages
-// alone, and copies of lab/bundlers (webpack, Rspack, Vite, Rollup and Rolldown), lab/nextjs (Next.js
-// with Turbopack and with webpack) and lab/jest (Jest and Vitest) on `motherload`. Needs the npm
-// registry for TypeScript, the bundlers, Next.js, Jest and the parsers. Run `nub run build` first.
+// Five projects: a copy of lab/basic on `motherload`, which also type-checks a broken file, a copy
+// of lab/packages on two format packages alone, and copies of lab/bundlers (webpack, Rspack, Vite,
+// Rollup and Rolldown), lab/nextjs (Next.js with Turbopack and with webpack) and lab/jest (Jest and
+// Vitest) on `motherload`. Needs the npm registry for TypeScript, the bundlers, Next.js, Jest and
+// the parsers. Run `nub run build` first.
 import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,7 +53,7 @@ function project(lab: string, dependencies: string[], commands: [string, string[
     private: true,
     type: "module",
     dependencies: Object.fromEntries(dependencies.map((name) => [name, tarball(name === "motherload" ? name : name.slice("@motherload/".length))])),
-    devDependencies: { typescript: "7.1.0-dev.20261002.1", "@types/node": "^26.6.1", esbuild: "^0.28.2", ...labDependencies(lab), ...extra },
+    devDependencies: { typescript: "7.1.0-dev.20261118.1", "@types/node": "^26.6.1", esbuild: "^0.28.2", ...labDependencies(lab), ...extra },
     overrides,
   };
   writeFileSync(join(dir, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
@@ -84,6 +85,14 @@ project("basic", ["motherload"], [
   [process.execPath, ["--env-file=.env", "dist/main.mjs"], BASIC],
   [process.execPath, ["--env-file=.env", "dist/main.mjs"], TABLES],
 ]);
+// The installed mapper places a broken file's error in that file, through lab/basic's entry, which
+// names the package alone.
+writeFileSync(join(work, "basic", "broken.toml"), "port = \n");
+writeFileSync(join(work, "basic", "broken.ts"), 'import broken from "./broken.toml";\nexport { broken };\n');
+writeFileSync(join(work, "basic", "tsconfig.broken.json"), JSON.stringify({ extends: "./tsconfig.json", include: ["broken.ts"] }));
+const broken = spawnSync(join(work, "basic/node_modules/.bin/tsc"), ["-p", "tsconfig.broken.json", "--noEmit", "--runExternalCode"], { cwd: join(work, "basic"), encoding: "utf8" });
+if (broken.status !== 2 || !broken.stdout.includes("broken.toml(1,8): error motherload1: Invalid TOML document")) throw new Error(`basic: a broken file's type check printed\n${broken.stdout}${broken.stderr}`);
+console.log("basic: a broken file's error is placed in it");
 project("packages", ["@motherload/toml", "@motherload/jsonc"], [
   [process.execPath, ["--import", "@motherload/jsonc/register", "--import", "@motherload/toml/register", "main.ts"], PACKAGES],
   [process.execPath, ["build-esbuild.ts"], "errors=0 inputs=3 node_modules=0"],

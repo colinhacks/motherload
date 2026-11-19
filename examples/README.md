@@ -22,12 +22,12 @@ Every example imports the same files: `config.toml` (a title and a `[server]` ta
 Open the example for your setup and read its README's "How Motherload is wired in": every line Motherload needs, file by file, with the reason for each. Copy those lines, and install the packages from npm instead of copying the example's dependencies, which link this repository:
 
 ```sh
-npm install -D motherload typescript@beta   # a dependency, not -D, in an app that runs under the preload
+npm install -D motherload typescript@next   # a dependency, not -D, in an app that runs under the preload
 ```
 
 Each README's "In your own project" lists anything else that exists only because the example lives in this repository, such as Next.js's Turbopack root.
 
-The examples pin TypeScript to `7.1.0-beta` exactly: a range such as `^7.1.0-beta`, which `npm install -D typescript@beta` writes, also takes the 7.1 nightlies, which sort above the beta.
+The examples pin TypeScript to one nightly, `7.1.0-dev.20261118.1`, exactly: content mappers change from one nightly to the next, so each example runs on the build it was checked with.
 
 ## Running one here
 

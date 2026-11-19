@@ -9,7 +9,7 @@
     "skipLibCheck": true
   },
   "contentMappers": [
-    { "package": "@motherload/toml", "extensions": [".toml"] },
+    { "package": "@motherload/toml" },
     { "package": "@motherload/jsonc", "extensions": [".jsonc"] }
   ],
   "include": ["main.ts"]

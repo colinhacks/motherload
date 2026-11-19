@@ -11,8 +11,8 @@ Set up Motherload in this project. Motherload lets TypeScript import data files 
 
 Each setup has a complete, working example project to copy, whose README's "How Motherload is wired in" lists every line Motherload needs. Install from npm, since the examples link the repository: https://github.com/colinhacks/motherload/tree/main/examples
 
-1. Check the requirements and install Motherload and TypeScript 7.1 (currently in beta), Motherload as a devDependency in a bundled app and as a dependency in one that runs under the preload: https://motherload.dev/#install
-2. Add Motherload to tsconfig.json as a content mapper, listing the extensions the project imports (all of them when it imports none yet, and on Next.js all but .env), and add a typecheck script that runs tsc --noEmit --runExternalCode (after next typegen on Next.js): https://motherload.dev/#typescript
+1. Check the requirements and install Motherload and TypeScript 7.1 (currently a nightly, typescript@next), Motherload as a devDependency in a bundled app and as a dependency in one that runs under the preload: https://motherload.dev/#install
+2. Add Motherload to tsconfig.json as a content mapper, "contentMappers": [{ "package": "motherload" }], and add a typecheck script that runs tsc --noEmit --runExternalCode (after next typegen on Next.js): https://motherload.dev/#typescript
 3. Make data-file imports load wherever the project runs code, with Node's --import or the plugin for its runtime, bundler or framework: https://motherload.dev/#plugins
    The example for that setup shows it end to end (node, nub, bun, vite, nextjs, esbuild, webpack, rspack, jest or cloudflare-workers): https://github.com/colinhacks/motherload/tree/main/examples/<name>
    If the project runs on anything else, Motherload has no plugin for it yet: say so, and do not write one.
@@ -29,36 +29,28 @@ Install Motherload, then add it to TypeScript and to each tool that loads your c
 
 You'll need:
 
-- **TypeScript 7.1 (currently in beta).** The first release with content mappers.
+- **TypeScript 7.1 (currently a nightly).** A nightly from 2026-11-12 or later, the first builds that read Motherload's extensions from its package.
 - **Node 24 or later.**
 
 ```sh
-npm install -D motherload typescript@beta
+npm install -D motherload typescript@next
 ```
 
 If your app runs under the preload, not as a bundle, Motherload loads your data files at run time, so install it as a dependency:
 
 ```sh
 npm install motherload
-npm install -D typescript@beta
+npm install -D typescript@next
 ```
 
 ### TypeScript
 
-Add Motherload to `tsconfig.json`, listing the extensions you import:
+Add Motherload to `tsconfig.json`:
 
 ```jsonc title="tsconfig.json"
 {
   "compilerOptions": { /* ... */ },
-  "contentMappers": [ // [!code ++]
-    { // [!code ++]
-      "package": "motherload", // [!code ++]
-      "extensions": [ // [!code ++]
-        ".toml", ".yaml", ".yml", ".jsonc", ".json5", ".env", // [!code ++]
-        ".csv", ".tsv", ".txt", ".md" // [!code ++]
-      ] // [!code ++]
-    } // [!code ++]
-  ] // [!code ++]
+  "contentMappers": [{ "package": "motherload" }] // [!code ++]
 }
 ```
 
@@ -69,6 +61,16 @@ Then type-check with `--runExternalCode`, which lets `tsc` run content mappers:
   "scripts": {
     "typecheck": "tsc --noEmit --runExternalCode" // [!code ++]
   }
+}
+```
+
+Motherload claims every format it reads. To claim only some, list their extensions:
+
+```jsonc title="tsconfig.json"
+{
+  "contentMappers": [
+    { "package": "motherload", "extensions": [".toml", ".yaml", ".yml"] } // [!code ++]
+  ]
 }
 ```
 
@@ -377,8 +379,8 @@ npm install -D @motherload/yaml @motherload/toml
 ```jsonc title="tsconfig.json"
 {
   "contentMappers": [ // [!code ++]
-    { "package": "@motherload/yaml", "extensions": [".yaml", ".yml"] }, // [!code ++]
-    { "package": "@motherload/toml", "extensions": [".toml"] } // [!code ++]
+    { "package": "@motherload/yaml" }, // [!code ++]
+    { "package": "@motherload/toml" } // [!code ++]
   ] // [!code ++]
 }
 ```

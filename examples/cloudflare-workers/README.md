@@ -24,17 +24,17 @@ The built `dist/motherload_example/index.js` holds the three files' values as pl
 
 ## How Motherload is wired in
 
-- In `package.json`, `motherload` is a development dependency: the plugin builds each data file into a module at build time, and the Worker's bundle carries the values alone. TypeScript 7.1 beta, Vite, the Cloudflare Vite and Vitest plugins, `@cloudflare/workers-types`, `@types/node` (for the config files) and wrangler are development dependencies too. The `typecheck` script is `tsc --noEmit --runExternalCode`, the flag that lets `tsc` run the content mapper, and `build` runs it before `vite build`, which strips types without checking them.
+- In `package.json`, `motherload` is a development dependency: the plugin builds each data file into a module at build time, and the Worker's bundle carries the values alone. A TypeScript 7.1 nightly, Vite, the Cloudflare Vite and Vitest plugins, `@cloudflare/workers-types`, `@types/node` (for the config files) and wrangler are development dependencies too. The `typecheck` script is `tsc --noEmit --runExternalCode`, the flag that lets `tsc` run the content mapper, and `build` runs it before `vite build`, which strips types without checking them.
 - In `vite.config.ts`, `motherload()` sits beside `cloudflare()` and turns each data import into a module, in the dev server, the build and the preview.
 - In `vitest.config.ts`, `motherload()` sits beside `cloudflareTest()`, which runs the tests inside workerd with the Worker of `wrangler.jsonc`.
-- In `tsconfig.json`, `contentMappers` names `motherload` for `.toml`, `.csv` and `.md`, the three formats the Worker imports. The `types` are Workers' (`@cloudflare/workers-types`), the Vitest plugin's (`cloudflare:test`) and Node's. The option `allowImportingTsExtensions` exists only because Motherload is linked from this repository (below).
+- In `tsconfig.json`, `contentMappers` names `motherload` alone, which claims every format Motherload reads. The `types` are Workers' (`@cloudflare/workers-types`), the Vitest plugin's (`cloudflare:test`) and Node's. The option `allowImportingTsExtensions` exists only because Motherload is linked from this repository (below).
 - In `wrangler.jsonc`, the Worker sets no `compatibility_flags`: the data files' modules use no Node API, so the Worker needs no `nodejs_compat`.
 - The module `site.ts` imports `config.toml`, `users.csv` and `post.md` and reads a value from each; `src/worker.ts` answers every request with it as JSON, and `test/site.test.ts` checks it, directly and through the Worker's `fetch`, with a `@ts-expect-error` on a key `config.toml` does not have. The file `src/env.d.ts` declares the Worker's module, the type of `exports` in the tests.
 - The `.vscode/` and `.zed/` directories hold the editor settings from [Editors](https://motherload.dev/#editors).
 
 ## In your own project
 
-- Run `npm install -D motherload typescript@beta vite @cloudflare/vite-plugin @cloudflare/vitest-plugin @cloudflare/workers-types @types/node vitest wrangler` instead of the `link:` dependency on `../..`.
+- Run `npm install -D motherload typescript@next vite @cloudflare/vite-plugin @cloudflare/vitest-plugin @cloudflare/workers-types @types/node vitest wrangler` instead of the `link:` dependency on `../..`.
 - Drop `allowImportingTsExtensions` from `tsconfig.json`. The `link:` dependency is Motherload's TypeScript source, whose files import each other by their `.ts` names, and the type check reaches it through `vite.config.ts`; the published package is compiled.
 
 ## Notes
