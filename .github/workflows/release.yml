@@ -70,10 +70,13 @@ jobs:
           nub-version: "0.9.6"
           registry-url: https://registry.npmjs.org/
 
-      # `npm stage publish` landed in npm 11.15, later than the npm bundled with the Node the action provisions may be. setup-nub fronts that Node's bin dir on PATH, so the global install lands in the same prefix the `npm` below resolves from; the echo proves which one.
+      # `npm stage publish` landed in npm 11.15, later than the npm on the runner may be. It is installed into a prefix of the job's own and put first on PATH, for this step and the later ones: the runner's global prefix, /usr/local, is not writable (EACCES in run 45082947892 of 2026-11-22). The echo proves which npm the job uses.
       - name: Install an npm CLI that can stage
         run: | # zizmor: ignore[adhoc-packages] the npm CLI itself, pinned to the major that carries `npm stage`
-          npm install -g npm@11
+          prefix="$RUNNER_TEMP/npm-cli"
+          npm install -g --prefix "$prefix" npm@11
+          echo "$prefix/bin" >> "$GITHUB_PATH"
+          export PATH="$prefix/bin:$PATH"
           v="$(npm --version)"
           # `sort -V | head -1` yields the smaller of the two; it has to be the floor.
           [ "$(printf '%s\n11.15.0\n' "$v" | sort -V | head -1)" = "11.15.0" ] \
