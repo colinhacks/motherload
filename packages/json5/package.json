@@ -1,6 +1,6 @@
 {
   "name": "@motherload/json5",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "description": "Import .json5 files as typed modules, read with the JSON5 project's own parser.",
   "license": "MIT",
@@ -36,7 +36,7 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.4.1",
+    "@motherload/core": "0.5.0",
     "json5": "^2.2.3"
   }
 }

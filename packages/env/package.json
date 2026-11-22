@@ -1,6 +1,6 @@
 {
   "name": "@motherload/env",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "description": "Import a .env file to load its variables into process.env and type them there.",
   "license": "MIT",
@@ -36,6 +36,6 @@
     }
   },
   "dependencies": {
-    "@motherload/core": "0.4.1"
+    "@motherload/core": "0.5.0"
   }
 }
