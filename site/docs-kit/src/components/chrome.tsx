@@ -1,5 +1,6 @@
 import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
 import type { ReactNode } from 'react';
+import { SearchButton } from './search-trigger';
 
 /*
  * The page has no bar that stays on screen, as on nub's docs: the name sits at the top of the left
@@ -10,7 +11,7 @@ import type { ReactNode } from 'react';
  * top of the page) is the site's own; it is passed in as an element.
  */
 
-function GitHubIcon({ className }: { className?: string }) {
+export function GitHubIcon({ className }: { className?: string }) {
   // The GitHub mark, as nub's site draws it.
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
@@ -44,34 +45,86 @@ export function TocFooter({ github }: { github: string }) {
   // painted the row before the switch had streamed in, and the switch then grew it by 9px.
   return (
     <div className="mt-6 border-t pt-3 pb-[88px]">
-      <div className="flex min-h-9 items-center justify-between gap-3">
-        <div className="relative">
-          <a href={github} rel="noreferrer noopener" target="_blank" className={`${linkClass} py-1.5`}>
-            <GitHubIcon className="size-3.5 shrink-0" />
-            GitHub
-          </a>
-          <div aria-hidden className="dk-star pointer-events-none absolute left-0 top-0 select-none">
-            <svg viewBox="0 0 120 100" fill="none" className="absolute left-0 top-0 h-[100px] w-[120px]">
-              <path d="M44 62 C 34 56, 28 48, 32 38" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-              <path d="M26 46 L 32 38 L 39 45" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="absolute left-[50px] top-[62px] block w-fit -rotate-3 whitespace-nowrap font-[family-name:var(--font-hand)] text-lg leading-none">
-              Leave a star!
-            </span>
-          </div>
-        </div>
-        <ThemeSwitch />
+      <ThemeRow>
+        <GitHubStar github={github} />
+      </ThemeRow>
+    </div>
+  );
+}
+
+/** A row with the theme switch at its right end. */
+export function ThemeRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-9 items-center justify-between gap-3">
+      {children}
+      <ThemeSwitch />
+    </div>
+  );
+}
+
+/** The repository's link with its handwritten note (`TocFooter`). */
+export function GitHubStar({ github }: { github: string }) {
+  return (
+    <div className="relative">
+      <a href={github} rel="noreferrer noopener" target="_blank" className={`${linkClass} py-1.5`}>
+        GitHub
+        <span aria-hidden className="dk-pages-out">
+          ↗
+        </span>
+      </a>
+      <div aria-hidden className="dk-star pointer-events-none absolute left-0 top-0 select-none">
+        <svg viewBox="0 0 120 100" fill="none" className="absolute left-0 top-0 h-[100px] w-[120px]">
+          <path d="M44 62 C 34 56, 28 48, 32 38" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          <path d="M26 46 L 32 38 L 39 45" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="absolute left-[50px] top-[62px] block w-fit -rotate-3 whitespace-nowrap font-[family-name:var(--font-hand)] text-lg leading-none">
+          Leave a star!
+        </span>
       </div>
     </div>
   );
 }
 
-/** Below xl, where the left column is hidden: one row above the title, not sticky. */
-export function TopRow({ brand, github }: { brand: ReactNode; github: string }) {
+/**
+ * Under the table of contents, on a site of several pages (`DocsShell`'s `pages`), as nub's docs end
+ * theirs (nub/site/src/components/toc-star-nudge.tsx): a hairline, the repository's mark and name,
+ * and under them the handwritten "Leave a star!", its arrow rising to the link's bottom middle. The
+ * drawing hangs from the link's own box (`.dk-toc-star-note`, style.css), so it lands on the middle
+ * whatever the name's width.
+ */
+export function TocStar({ github }: { github: string }) {
+  const name = github.replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
   return (
-    <div className="[grid-area:header] mx-auto flex w-full max-w-[900px] items-center gap-3 px-4 pt-4 md:px-6 xl:hidden">
+    <div className="dk-toc-star">
+      <span className="dk-toc-star-anchor">
+        <a href={github} rel="noreferrer noopener" target="_blank" className="dk-toc-star-link">
+          <GitHubIcon className="size-3.5 shrink-0" />
+          <span>{name}</span>
+        </a>
+        <span aria-hidden className="dk-star dk-toc-star-note">
+          <svg viewBox="0 0 120 100" fill="none">
+            <path d="M44 62 C 34 56, 28 48, 32 38" />
+            <path d="M26 46 L 32 38 L 39 45" />
+          </svg>
+          <span>Leave a star!</span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Below xl, where the left column is hidden: one row above the title, not sticky. On a `centered`
+ * page, which has no left column, it stays at every width and shares both edges of the page's column.
+ */
+export function TopRow({ brand, github, centered, paged }: { brand: ReactNode; github: string; centered?: boolean; paged?: boolean }) {
+  const shape = paged ? 'max-w-[900px] pb-4 lg:hidden' : centered ? 'max-w-[calc(var(--dk-column)+4rem)] xl:px-8 xl:pt-8' : 'max-w-[900px] xl:hidden';
+  return (
+    <div className={`[grid-area:header] mx-auto flex w-full items-center gap-3 px-4 pt-4 md:px-6 ${shape}`}>
       {brand}
       <div className="flex-1" />
+      {/* A finger's room around the icon, taken back from the row; 2px more on the right, where the glass's handle stops short of its box. */}
+      <SearchButton className={`${linkClass} -my-2 -ml-2 -mr-2.5 p-2`} />
       <a href={github} rel="noreferrer noopener" target="_blank" className={linkClass} aria-label="GitHub">
         <GitHubIcon className="size-4" />
       </a>

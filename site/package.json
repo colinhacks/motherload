@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "react-router dev",
-    "build": "react-router typegen && tsc && react-router build",
+    "build": "react-router typegen && tsc && react-router build && node docs-kit/src/check-routes.mjs build/client --lock routes.lock --vercel vercel.json",
     "start": "vite preview --outDir build/client --port 3312"
   },
   "dependencies": {

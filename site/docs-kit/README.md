@@ -12,9 +12,9 @@ Its source is this repository: `~/Documents/docs-kit` on the maintainer's Mac, p
 | Part | File | What it does |
 | --- | --- | --- |
 | Stylesheet | `src/style.css` | Fumadocs' neutral theme and preset, Twoslash's CSS, and every rule of the docs pages: the reading measure (one 40rem column that prose, headings, code, tab groups and tables share), the type scale, ruled h1 and h2 and a fainter hairline under each h3, the heading icons (the link icon shown on hover), links with an accent underline, inline code as a grey chip (headings included), the table of contents' entries and code chips and its fade, code that never scrolls sideways with a hanging indent, empty code lines that keep their height, WCAG AA colours for Shiki's GitHub tokens, Twoslash's popups and pinned `^?` cards, an error's red squiggle and its pinned card, a `^|` query's completions as an editor's suggestion list, code tabs with the file name in the strip, variant tabs, two-column tables in halves, a table of labels and values without its empty header row, and phone tables, the quiet `<Details>`, the agent card, the rules that keep the layout still (the table of contents' column from the first paint, hidden inactive panels and closed accordion items, a Copy button that keeps its width), and the cursors: a pointer on everything clickable, and one steady text cursor over a code block, its tab strip and its popups |
-| Page shell | `src/components/shell.tsx` | `DocsShell`: Fumadocs' docs grid with the table of contents moved to the left, no top bar, the brand at the top of the left column and the GitHub link, the "Leave a star!" note and the theme switch at its foot (`TopRow` above the title below xl); `titleAside` puts an element at the right end of the title's row, above its rule; `footer` ends the column with a hairline and one quiet line, the licence and the copyright; `fold` leaves the h3s of chosen sections out of the table of contents so it fits one screen |
+| Page shell | `src/components/shell.tsx` | `DocsShell`: Fumadocs' docs grid with the table of contents moved to the left, no top bar, the brand at the top of the left column and the GitHub link, the "Leave a star!" note and the theme switch at its foot (`TopRow` above the title below xl); `pages` lists a site's pages in the left column, in labelled groups, with a page's own `items` a level in under it; `titleAside` puts an element at the right end of the title's row, above its rule; `footer` ends the column with a hairline and one quiet line, the licence and the copyright; `fold` leaves the h3s of chosen sections out of the table of contents so it fits one screen |
 | Chrome | `src/components/chrome.tsx` | `TocHeader`, `TocFooter`, `TopRow`, given the site's brand element and repository URL |
-| Document | `src/components/document.tsx`, `src/components/head-scripts.ts` | `DocsDocument`, for the site's `app/root.tsx`: `<html>`, the charset and viewport, the route's meta and links, Fumadocs' provider for React Router with search off, and three head scripts: `tabsRestoreScript` puts a saved tab choice in a stale spelling right before the tabs read it, `TABS_PREPAINT_SCRIPT` shows every saved tab choice from the first paint, and `KEEP_IN_PLACE_SCRIPT` keeps a pressed tab (or a `[data-keep-in-place]` toggle) under the pointer when the content above it changes height |
+| Document | `src/components/document.tsx`, `src/components/head-scripts.ts` | `DocsDocument`, for the site's `app/root.tsx`: `<html>`, the charset and viewport, the route's meta and links, Fumadocs' provider for React Router, with search off unless the site names its index (`search`, below), and three head scripts: `tabsRestoreScript` puts a saved tab choice in a stale spelling right before the tabs read it, `TABS_PREPAINT_SCRIPT` shows every saved tab choice from the first paint, and `KEEP_IN_PLACE_SCRIPT` keeps a pressed tab (or a `[data-keep-in-place]` toggle) under the pointer when the content above it changes height |
 | Saved tabs from the first paint | `src/components/prepaint.tsx` | A tab group with a `groupId` server-renders every panel and is marked for the head script until it hydrates, so a reader whose saved choice is not the default sees no switch (on Reylo's page, with MySQL saved, 20 of 20 reloads near a group had shifted, up to 0.507) |
 | Headings | `src/components/heading.tsx` | The link icon in the left margin, centred on the heading's lowercase letters, hidden until the heading is hovered or the icon has keyboard focus and always shown on a device without hover, and the copy-as-Markdown button at the right end of the line |
 | Accordions | `src/components/accordion.tsx` | `<Accordions>` and `<Accordion title id>`, in place of Fumadocs' (the same props and look): a closed item's content is in the HTML, hidden by `hidden="until-found"` once the page hydrates, so find-in-page and a link to an `id` inside it open the item, and the opening and closing animation still plays |
@@ -33,6 +33,8 @@ Its source is this repository: `~/Documents/docs-kit` on the maintainer's Mac, p
 | Shared popups | `src/mdx/recma-shared-popups.ts` | Each distinct Twoslash popup built once and referenced at each place it appears (Reylo's page went from 4.66 MB to 3.25 MB) |
 | Hanging indent | `src/mdx/hanging-indent.ts` | A Shiki transformer that writes each line's indent as `--indent` |
 | Vite plugins | `src/vite.ts` | `docsKit(mdxConfig)`: fumadocs-mdx over the site's `source.config.ts`, Tailwind 4, React Router, TypeScript and Twoslash kept out of the server bundle, and three for `vite dev` on a large page: the compiled page made small (Vite gave the server's copy of Reylo's page a 74 MB inline source map, and the server reached 4.4–5.0 GB), one compile per edit shared by the browser's and the server's copy, and each MDX file its own Fast Refresh boundary, so a section edit re-renders that section in under a second, with React Router's refresh handler registered at once so that no update is dropped |
+| Search | `src/search/index.ts` (`docs-kit/search`), `src/search/engine.ts`, `src/components/search.tsx`, `src/components/search-trigger.tsx` | For a site of several pages ([Search](#search)): `searchIndex(pages)` builds the index at build time; the dialog and the search it runs in the browser; the field under the name in the left column, the icon in the top row and the field over the list of pages on a phone, and the `/` key |
+| Build checks | `src/check-links.mjs`, `src/check-headings.mjs`, `src/check-routes.mjs` | Run on the built site, each failing the build: a link to a page or heading the build lacks; a lone subsection, or a page with no sentence before its first h2; an address the site once served that it no longer answers, held in a lockfile (`routes.lock`) that every new page and redirect is added to, which only a redirect to the page that took its place satisfies |
 | Sync | `src/sync.mjs` | Copies this repository into a site, and checks a site's copy |
 
 ## The boundary
@@ -41,7 +43,7 @@ A site keeps:
 
 - its content (`content/docs/index.mdx`);
 - its brand: a `Brand` element (mark and name, a link to `/`), its repository URL, its fonts (its own `@font-face` rules and files, preloaded from `app/root.tsx`, named to the stylesheet as `--font-text`, `--font-code` and `--font-hand`), and its colours (Fumadocs' `--color-fd-*` for `:root` and `.dark`, and `--dk-accent`, plus the washes below if its palette wants them different);
-- its genuinely product-specific pieces: a remark plugin that types its examples (Reylo's SQL capture, Motherload's mapper), Twoslash's options (the package mounted from its source, compiler options, a rewrite of hover text), Shiki colour replacements, its variant groups (Reylo's dialects), figures, and the h2s whose h3s it folds out of the table of contents.
+- its genuinely product-specific pieces: a remark plugin that types its examples (Reylo's SQL capture, Motherload's mapper), Twoslash's options (the package mounted from its source, compiler options, a rewrite of hover text), its Shiki themes or colour replacements, its variant groups (Reylo's dialects), figures, and the h2s whose h3s it folds out of the table of contents.
 
 Everything about how a docs page looks and behaves is here. Nothing folded away is left out of the HTML: a closed accordion's content, every tab's panel and a closed `<Details>`' body are all in the prerendered page, hidden until opened, so a coding agent that fetches the page, a search engine and find-in-page read all of it (the maintainer, 2026-10-21: "We definitely should be servicing the HTML for closed accordions. That's a huge problem"). A rule the maintainer gives for one site's design, chrome, cursors or usability is a rule for all of them, so it lands here and every site gets it by syncing.
 
@@ -147,6 +149,69 @@ That is Reylo's; Motherload's one route sends `/` to `/llms.txt`. A new page joi
 curl -sI -H 'Accept: text/markdown' https://reylo.dev/postgres   # content-type: text/markdown; charset=utf-8, vary: Accept
 curl -sI https://reylo.dev/postgres                               # content-type: text/html; charset=utf-8, vary: Accept
 ```
+
+## Search
+
+A site of several pages gets search by building an index and naming it to `DocsDocument`. The index is one JSON file written at build time and the search runs in the browser, so there is no server and no dependency.
+
+```ts title="app/routes/search.ts"
+import { readFile } from 'node:fs/promises';
+import { searchIndex } from 'docs-kit/search';
+import { source } from '@/lib/source';
+
+export async function loader() {
+  const pages = await Promise.all(
+    // equal results keep this order, so list the pages as a reader takes them
+    source.getPages().map(async (page) => ({
+      url: page.url,
+      title: page.data.title ?? '',
+      description: page.data.description,
+      // a page split into sections passes its files in order
+      source: await readFile(`content/docs/${page.path}`, 'utf8'),
+      toc: page.data.toc,
+    })),
+  );
+  return Response.json(searchIndex(pages));
+}
+```
+
+```ts title="app/routes.ts"
+route('search.json', 'routes/search.ts'),
+```
+
+```ts title="react-router.config.ts"
+export default { ssr: false, prerender: [...pages, '/search.json'] } satisfies Config;
+```
+
+```tsx title="app/root.tsx"
+<DocsDocument search={{ index: '/search.json' }}>{children}</DocsDocument>
+```
+
+A site served under a base path names the index with it (`/docs/search.json`). `DocsShell` then shows what opens the dialog:
+
+| Where | What |
+| --- | --- |
+| Left column, under the name | a field, with the keys beside it |
+| Top row, below 64rem | an icon |
+| List of pages on a phone | the field, at its head |
+| Anywhere | <kbd>⌘K</kbd>, <kbd>Ctrl+K</kbd>, <kbd>/</kbd> |
+
+**What a query finds.** A page's index is its source read as the copy buttons read it, cut at its headings into paragraphs, list items, table rows and code blocks. A result is a page with up to three of its sections, and a section shows the text that matched.
+
+| Typed | Finds | Because |
+| --- | --- | --- |
+| `key` | `keys`, `Key` | one word in any form |
+| `instal` | `install`, `installation` | the last word is still being typed |
+| `automerge` | `auto-merge`, `auto_merge` | a name written apart or together |
+| `bedrok` | `bedrock` | one slip of the keys, when nothing else matches |
+| `how do I pin a version` | pinning, versions | the words a question is asked with are dropped |
+
+A title outranks a heading, a heading the description, the description text, and text code. On Pullfrog's 40 pages the index is 195 KB (60 KB gzipped). Chrome reads it in 15ms when it arrives and answers a keystroke in 2ms at most; with the CPU slowed four times, as on a mid-range phone, 52ms and 10ms.
+
+**In the dialog.** The field keeps the focus. The arrow keys move the mark, Enter follows it (<kbd>⌘</kbd> or <kbd>Ctrl</kbd> with Enter in a new tab), and Escape or a press outside closes. The results are links, and the last query is still there, selected, when the dialog opens again. The dialog's script loads after the page and the index when a reader first reaches for the search.
+
+> [!IMPORTANT]
+> The results and the list of pages are Fumadocs links, which need the site's packages to share one `fumadocs-core`. With more than one, they render as plain anchors that reload the page and drop a base path. Pullfrog's docs resolved three until `lucide-react` and `zod`, peers of `fumadocs-core`, were dependencies of its own.
 
 ## How a third site adopts it
 
