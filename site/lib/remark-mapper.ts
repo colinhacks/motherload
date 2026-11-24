@@ -3,7 +3,7 @@ import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { createProcessor } from '@mdx-js/mdx';
 import { remarkCodeTab } from 'fumadocs-core/mdx-plugins';
-import { pageFiles } from './page-files.ts';
+import { pageFiles } from 'docs-kit/mdx';
 
 // Twoslash runs TypeScript's JavaScript API (6.0, from fumadocs-twoslash), which cannot run a
 // content mapper. So each `ts twoslash` block that imports a file shown on the page (a code block
@@ -62,7 +62,7 @@ export function remarkMapper() {
   // The build runs in site/.
   const site = process.cwd();
   return (tree: Node, file: { path?: string; data?: Record<string, unknown> }) => {
-    // The page is several files, shown in order (lib/page-files.ts): its opening, then a file per
+    // The page is several files, shown in order (docs-kit's `pageFiles`): its opening, then a file per
     // section. Each import is typed from the nearest block above it with the file's name, across
     // all of them, so a page can show a file twice, such as a working config.toml and then a broken
     // one; failing that, from the first one below it, as in a group of tabs whose first tab is

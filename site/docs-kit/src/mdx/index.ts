@@ -8,3 +8,4 @@ export { blockId, pageMarkdown, rehypeSections, remarkQueryBlocks, remarkSection
 export { recmaSharedPopups } from './recma-shared-popups.ts';
 export { hangingIndent } from './hanging-indent.ts';
 export { diagnosticDirective, diagnosticsTransformer, errorCard, readDiagnostics, type Diagnostic, type Position } from './diagnostics.ts';
+export { pageFiles, pageSlugs, sitePages } from './page-files.ts';

@@ -14,7 +14,11 @@
     "./shell": "./src/components/shell.tsx",
     "./document": "./src/components/document.tsx",
     "./components": "./src/components/index.ts",
-    "./chrome": "./src/components/chrome.tsx"
+    "./chrome": "./src/components/chrome.tsx",
+    "./site": "./src/site.ts",
+    "./page": "./src/page.tsx",
+    "./page.server": "./src/page.server.ts",
+    "./routes": "./src/routes.ts"
   },
   "files": [
     "src",

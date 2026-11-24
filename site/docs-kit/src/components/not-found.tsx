@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { isRouteErrorResponse } from 'react-router';
 
 // Next.js's page for a missing address, which the site showed until it left Next.js: "404" and
 // "This page could not be found.", centred, in the system's font, black on white or white on black
@@ -22,4 +23,14 @@ export function NotFound({ status = 404, text = 'This page could not be found.' 
       </div>
     </div>
   );
+}
+
+/**
+ * The root route's error boundary (`export function ErrorBoundary`, in the site's `app/root.tsx`): a
+ * missing page as the 404, and any other error as its status, with the error itself under the dev
+ * server.
+ */
+export function DocsErrorBoundary({ error }: { error: unknown }) {
+  if (isRouteErrorResponse(error)) return <NotFound status={error.status} text={error.status === 404 ? undefined : error.statusText || 'This page could not be shown.'} />;
+  return <NotFound status={500} text={import.meta.env.DEV ? String(error) : 'This page could not be shown.'} />;
 }

@@ -2,13 +2,12 @@ import type { Root } from 'fumadocs-core/page-tree';
 import { use } from 'react';
 import browserCollections from 'collections/browser';
 import { DocsShell } from 'docs-kit/shell';
+import { ogImage, source } from 'docs-kit/page.server';
+import { siteMeta } from 'docs-kit/site';
 import type { Route } from './+types/formats';
 import { Brand } from '@/components/brand';
+import site from '@/docs.config';
 import { getMDXComponents } from '@/components/mdx';
-import { siteMeta } from '@/lib/meta';
-import { ogHash } from '@/lib/og.server';
-import { githubUrl } from '@/lib/site';
-import { source } from '@/lib/source';
 
 /*
  * Every format (content/formats/index.mdx): one main.ts that imports every file type Motherload
@@ -20,11 +19,11 @@ import { source } from '@/lib/source';
 
 /** Run at build time only: the page tree for the shell, and the meta tags' description and link preview. */
 export async function loader() {
-  return { description: source.getPage([])?.data.description ?? '', tree: source.getPageTree(), og: await ogHash() };
+  return { description: source.getPage([])?.data.description ?? '', tree: source.getPageTree(), image: await ogImage() };
 }
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  return loaderData ? siteMeta(loaderData.description, loaderData.og, { title: 'Every format', index: false }) : [];
+  return loaderData ? siteMeta(site, { title: 'Every format', description: loaderData.description, url: site.url, markdown: `${site.url}/llms.txt`, image: loaderData.image, index: false }) : [];
 }
 
 // The page's one file, a module of its own, fetched once; while it loads during hydration, React
@@ -34,7 +33,7 @@ let loading: ReturnType<(typeof browserCollections.formats.raw)[string]> | undef
 export default function Formats({ loaderData }: Route.ComponentProps) {
   const { default: MDX, toc } = use((loading ??= browserCollections.formats.raw['./index.mdx']!()));
   return (
-    <DocsShell tree={loaderData.tree as Root} title="Every format" toc={toc} brand={<Brand />} github={githubUrl}>
+    <DocsShell tree={loaderData.tree as Root} title="Every format" toc={toc} brand={<Brand />} github={site.repo}>
       <MDX components={getMDXComponents()} />
     </DocsShell>
   );

@@ -15,6 +15,11 @@ Its source is this repository: `~/Documents/docs-kit` on the maintainer's Mac, p
 | Page shell | `src/components/shell.tsx` | `DocsShell`: Fumadocs' docs grid with the table of contents moved to the left, no top bar, the brand at the top of the left column and the GitHub link, the "Leave a star!" note and the theme switch at its foot (`TopRow` above the title below xl); `pages` lists a site's pages in the left column, in labelled groups, with a page's own `items` a level in under it; `titleAside` puts an element at the right end of the title's row, above its rule; `footer` ends the column with a hairline and one quiet line, the licence and the copyright; `fold` leaves the h3s of chosen sections out of the table of contents so it fits one screen |
 | Chrome | `src/components/chrome.tsx` | `TocHeader`, `TocFooter`, `TopRow`, given the site's brand element and repository URL |
 | Document | `src/components/document.tsx`, `src/components/head-scripts.ts` | `DocsDocument`, for the site's `app/root.tsx`: `<html>`, the charset and viewport, the route's meta and links, Fumadocs' provider for React Router, with search off unless the site names its index (`search`, below), and three head scripts: `tabsRestoreScript` puts a saved tab choice in a stale spelling right before the tabs read it, `TABS_PREPAINT_SCRIPT` shows every saved tab choice from the first paint, and `KEEP_IN_PLACE_SCRIPT` keeps a pressed tab (or a `[data-keep-in-place]` toggle) under the pointer when the content above it changes height |
+| Site config | `src/site.ts` (`docs-kit/site`) | `defineSite`, for the site's `docs.config.ts` ([A site's config and routes](#a-sites-config-and-routes)): what differs between sites, from the name and address to the footer; `siteMeta`, a page's title, description, canonical and Markdown links, and Open Graph and X tags; `structuredData`, the first page's schema.org data |
+| Page route | `src/page.tsx` (`docs-kit/page`), `src/page.server.ts` (`docs-kit/page.server`) | `<DocsPage>` and `pageMeta`, for the site's `app/routes/page.tsx`, with `pageLoader` as its loader: the page in the shell with its sections after it, its meta tags, its link preview and the address of its Markdown |
+| Routes | `src/routes.ts` (`docs-kit/routes`), `src/routes/` | `docsRoutes`, for the site's `app/routes.ts`: the pages, `/404`, `/llms.txt`, `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest` and each page's `.md`; `docsPrerender`, their paths for `react-router.config.ts` |
+| Not found | `src/components/not-found.tsx` | `NotFound`, the page for a missing address, and `DocsErrorBoundary`, the site root's error boundary |
+| Page files | `src/mdx/page-files.ts` (`docs-kit/mdx`) | `pageSlugs`, `pageFiles` and `sitePages`: a site's pages and each page's MDX files, read from its folder in plain Node, for its remark plugins and scripts |
 | Saved tabs from the first paint | `src/components/prepaint.tsx` | A tab group with a `groupId` server-renders every panel and is marked for the head script until it hydrates, so a reader whose saved choice is not the default sees no switch (on Reylo's page, with MySQL saved, 20 of 20 reloads near a group had shifted, up to 0.507) |
 | Headings | `src/components/heading.tsx` | The link icon in the left margin, centred on the heading's lowercase letters, hidden until the heading is hovered or the icon has keyboard focus and always shown on a device without hover, and the copy-as-Markdown button at the right end of the line |
 | Accordions | `src/components/accordion.tsx` | `<Accordions>` and `<Accordion title id>`, in place of Fumadocs' (the same props and look): a closed item's content is in the HTML, hidden by `hidden="until-found"` once the page hydrates, so find-in-page and a link to an `id` inside it open the item, and the opening and closing animation still plays |
@@ -42,7 +47,8 @@ Its source is this repository: `~/Documents/docs-kit` on the maintainer's Mac, p
 A site keeps:
 
 - its content (`content/docs/index.mdx`);
-- its brand: a `Brand` element (mark and name, a link to `/`), its repository URL, its fonts (its own `@font-face` rules and files, preloaded from `app/root.tsx`, named to the stylesheet as `--font-text`, `--font-code` and `--font-hand`), and its colours (Fumadocs' `--color-fd-*` for `:root` and `.dark`, and `--dk-accent`, plus the washes below if its palette wants them different);
+- its config, `docs.config.ts`: its name, address, repository, titles and footer;
+- its brand: a `Brand` element (mark and name, a link to `/`), its fonts (its own `@font-face` rules and files, preloaded from `app/root.tsx`, named to the stylesheet as `--font-text`, `--font-code` and `--font-hand`), and its colours (Fumadocs' `--color-fd-*` for `:root` and `.dark`, and `--dk-accent`, plus the washes below if its palette wants them different);
 - its genuinely product-specific pieces: a remark plugin that types its examples (Reylo's SQL capture, Motherload's mapper), Twoslash's options (the package mounted from its source, compiler options, a rewrite of hover text), its Shiki themes or colour replacements, its variant groups (Reylo's dialects), figures, and the h2s whose h3s it folds out of the table of contents.
 
 Everything about how a docs page looks and behaves is here. Nothing folded away is left out of the HTML: a closed accordion's content, every tab's panel and a closed `<Details>`' body are all in the prerendered page, hidden until opened, so a coding agent that fetches the page, a search engine and find-in-page read all of it (the maintainer, 2026-10-21: "We definitely should be servicing the HTML for closed accordions. That's a huge problem"). A rule the maintainer gives for one site's design, chrome, cursors or usability is a rule for all of them, so it lands here and every site gets it by syncing.
@@ -89,6 +95,140 @@ Chosen by what a third site needs to adopt the core with the least code and the 
 
 Vite has the same two problems with a `link:`: its dev server serves no file outside the site's root unless told to, and the package's imports would resolve from this directory, not the site, so a second React and Fumadocs would load. The copy keeps every repository self-contained (a site still builds from its own checkout, and a deploy that uploads the repository works), sits inside Turbopack's root (hot reload works, the site's own React and Fumadocs resolve), and is type-checked by each site's `next build` under the site's tsconfig.
 
+## A site's config and routes
+
+A site describes itself in one file and mounts Docs Kit's routes beside its own. Its page route is a few lines.
+
+### The config
+
+The site's root holds `docs.config.ts`, which Docs Kit imports as `@/docs.config`:
+
+```ts title="docs.config.ts"
+import { defineSite } from 'docs-kit/site';
+
+export default defineSite({
+  name: 'Motherload',
+  url: 'https://motherload.dev', // with the path the docs are served under: https://pullfrog.com/docs
+  repo: 'https://github.com/colinhacks/motherload',
+  title: 'Motherload — Import data files into TypeScript, fully typed', // the first page's <title>
+});
+```
+
+Every other field is optional:
+
+```ts title="docs.config.ts"
+export default defineSite({
+  // ...
+  pageTitle: (title) => `${title} | Acme`, // every other page's <title>; `<title> — <name>` by default
+  pages: ['', 'install', 'config'], // reading order for llms.txt and the sitemap; content/docs by name by default
+  description: 'Import data files into TypeScript as typed modules.', // the manifest's
+  author: { name: 'Colin McDonnell', url: 'https://github.com/colinhacks' },
+  x: { creator: '@colinhacks', site: '@pullfrogai' },
+  footer: 'Released under the MIT License. Copyright © 2026 Colin McDonnell.',
+  color: '#0D0E10', // the manifest's background and theme
+  ogAlt: 'Motherload: import data files into TypeScript, fully typed.', // the link preview's alt text, with its type and size
+  // the first page's schema.org data, for a library
+  software: { language: 'TypeScript', platform: 'Node.js', license: 'https://opensource.org/licenses/MIT' },
+});
+```
+
+### The page route
+
+The site's `app/routes/page.tsx` renders `<DocsPage>` with its brand and MDX components:
+
+```tsx title="app/routes/page.tsx"
+import { DocsPage, pageMeta } from 'docs-kit/page';
+import { pageLoader } from 'docs-kit/page.server';
+import type { Route } from './+types/page';
+import { Brand } from '@/components/brand';
+import { getMDXComponents } from '@/components/mdx';
+
+export async function loader(args: Route.LoaderArgs) {
+  return pageLoader(args);
+}
+
+export function meta(args: Route.MetaArgs): Route.MetaDescriptors {
+  return pageMeta(args);
+}
+
+export default function Page({ loaderData }: Route.ComponentProps) {
+  return <DocsPage data={loaderData} brand={<Brand />} components={getMDXComponents()} />;
+}
+```
+
+Any other prop goes to `DocsShell`, such as `fold` or `titleAside`. A page's link preview is the first of these that exists:
+
+- `public/og/<slug>.png`
+- `public/og/index.png`
+- `app/routes/opengraph-image.tsx`, at `/opengraph-image.png?<hash of the file>`
+
+### The routes
+
+The site's `app/routes.ts` spreads Docs Kit's routes beside its own:
+
+```ts title="app/routes.ts"
+import { route, type RouteConfig } from '@react-router/dev/routes';
+import { docsRoutes } from 'docs-kit/routes';
+
+export default [...docsRoutes(), route('opengraph-image.png', 'routes/opengraph-image.tsx')] satisfies RouteConfig;
+```
+
+Its `react-router.config.ts` renders the same paths to files:
+
+```ts title="react-router.config.ts"
+import type { Config } from '@react-router/dev/config';
+import { docsPrerender } from 'docs-kit/routes';
+
+export default { ssr: false, prerender: [...docsPrerender(), '/opengraph-image.png'] } satisfies Config;
+```
+
+Each route has an option:
+
+| Address | Option | Serves |
+| --- | --- | --- |
+| `/`, `/<slug>` | `page` | the site's `routes/page.tsx` |
+| `/<slug>.md`, `/index.md` | `markdown` | each page as Markdown, on a site of several pages |
+| `/llms.txt` | `llms` | every page as Markdown, in reading order |
+| `/404` | `notFound` | the page for a missing address |
+| `/robots.txt` | `robots` | every page open to crawlers, and the sitemap |
+| `/sitemap.xml` | `sitemap` | every page's address |
+| `/manifest.webmanifest` | `manifest` | the name, description and colour, with `public/icon-192.png` and `public/icon-512.png` |
+
+An option names the site's own file in place of Docs Kit's, or leaves the route out with `false`:
+
+```ts
+docsRoutes({ llms: 'routes/llms.ts', manifest: false });
+docsPrerender({ llms: 'routes/llms.ts', manifest: false }); // the same options, so the paths match
+```
+
+The root's error boundary is Docs Kit's too:
+
+```tsx title="app/root.tsx"
+import { DocsErrorBoundary } from 'docs-kit/components';
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <DocsErrorBoundary error={error} />;
+}
+```
+
+### The site's own routes
+
+A route of the site's own builds its meta tags and Markdown from the same pieces:
+
+```ts
+import { markdownOf, ogImage, source } from 'docs-kit/page.server'; // build time only: in a loader
+import { siteMeta } from 'docs-kit/site';
+import { pageFiles, pageSlugs, sitePages } from 'docs-kit/mdx'; // plain node: remark plugins, scripts
+
+source.getPage(['postgres']); // fumadocs' source over content/docs
+await markdownOf('postgres', expandErrors); // a page as markdown, each file rewritten first
+await ogImage('postgres'); // a page's link preview
+siteMeta(site, { title: 'Showcase', description, url, markdown, image, index: false }); // kept out of search
+pageSlugs(); // ['', 'mysql', 'postgres']
+pageFiles(); // content/docs/index.mdx, then content/sections/*.mdx
+sitePages(); // each page's files, the first page first
+```
+
 ## Markdown for agents
 
 A coding agent that fetches a page and asks for Markdown gets the page as Markdown, from the page's own address (the maintainer, 2026-10-21: "we should be actually returning Markdown or MDX or whatever if an agent accesses the page ... We should be doing that in both Reylo and Motherload, and DocsKit in general"). This is HTTP content negotiation: the request's `Accept` header names `text/markdown`, and the answer is `Content-Type: text/markdown; charset=utf-8`, with `Vary: Accept` on both the Markdown and the HTML so that a cache keeps them apart, as Cloudflare's Markdown for Agents answers.
@@ -110,9 +250,9 @@ The rule: serve Markdown when the `Accept` header names `text/markdown` (or `tex
 ^(?!.*text/html.*text/(?:x-)?markdown).*text/(?:x-)?markdown.*$
 ```
 
-A site keeps the `<link rel="alternate" type="text/markdown">` in each page's head, for an agent that reads the HTML first, as Codex does.
+Each page's head names its Markdown with `<link rel="alternate" type="text/markdown">` (`pageMeta`), for an agent that reads the HTML first, as Codex does.
 
-**The Markdown.** Each page's is `pageMarkdown(sources, { site, page })` from `docs-kit/remark-sections`, rendered to a file at build time by a resource route: the page's source files in order (the first holds the frontmatter), read as each heading's copy button reads its section. A one-page site serves its `/llms.txt` as the page's Markdown (Motherload); a site of several pages writes each page's to `/<page>.md`, and `/index.md` for `/`, and joins them for `/llms.txt` (Reylo's `app/routes/markdown.ts` and `lib/markdown.ts`).
+**The Markdown.** Each page's is `pageMarkdown(sources, { site, page })` from `docs-kit/remark-sections`, rendered to a file at build time by Docs Kit's routes: the page's source files in order (the first holds the frontmatter), read as each heading's copy button reads its section. A one-page site serves its `/llms.txt` as the page's Markdown (Motherload); a site of several pages writes each page's to `/<page>.md`, and `/index.md` for `/`, and joins them for `/llms.txt`.
 
 **The types the page shows.** Each Twoslash query (`//    ^?`) keeps its result in the Markdown, after its caret, as Twoslash writes a query in plain text; until 2026-10-21 the Markdown dropped the query line, so an agent that read it never saw the type the page shows, and a fresh agent setting Motherload up from its docs guessed a `.md` file's body was `body` (it is `md`). Twoslash runs in the compile, after the remark plugins, so `remarkQueryBlocks` names each `ts twoslash` block that has a query with a first line, `// @docs-block: <id>` (`blockId`: its file's text, its own and how many identical blocks come before it), the Twoslash transformer takes the line out and records each query's result, as its popup shows it, under the id in `node_modules/.cache/docs-kit/queries/<id>.json`, and `rehypeSections` writes each heading's section Markdown again with them. A resource route rendered at build time runs after every page has compiled, so `pageMarkdown` finds each result there; in the dev server a page compiles when it is opened, so its Markdown has its types once it has. A site that shows a block once per variant writes `// @variant: <name>` into each copy, which the transformer takes out too, and where the variants' results differ, each is written under the names that show it (Reylo's dialects: `^? Postgres: …`, then `MySQL: …`).
 
@@ -157,7 +297,7 @@ A site of several pages gets search by building an index and naming it to `DocsD
 ```ts title="app/routes/search.ts"
 import { readFile } from 'node:fs/promises';
 import { searchIndex } from 'docs-kit/search';
-import { source } from '@/lib/source';
+import { source } from 'docs-kit/page.server';
 
 export async function loader() {
   const pages = await Promise.all(
@@ -180,7 +320,7 @@ route('search.json', 'routes/search.ts'),
 ```
 
 ```ts title="react-router.config.ts"
-export default { ssr: false, prerender: [...pages, '/search.json'] } satisfies Config;
+export default { ssr: false, prerender: [...docsPrerender(), '/search.json'] } satisfies Config;
 ```
 
 ```tsx title="app/root.tsx"
@@ -215,7 +355,12 @@ A title outranks a heading, a heading the description, the description text, and
 
 ## How a third site adopts it
 
-A Fumadocs site on Vite and React Router (`fumadocs-ui`, `fumadocs-core`, `fumadocs-mdx`, `fumadocs-twoslash`, `@shikijs/twoslash`, `react-router`, `@react-router/dev`, `@react-router/node`, `vite`, `@tailwindcss/vite`, Tailwind 4) needs, after `node ~/Documents/docs-kit/src/sync.mjs <site>`, `"docs-kit": "link:./docs-kit"` in its dependencies (then `nub install`), `"allowImportingTsExtensions": true` in its tsconfig (the build-time modules name their `.ts` extensions, since fumadocs-mdx imports them in Node itself), its paths mapping `collections/*` to `./.source/*` (fumadocs-mdx's generated collections), and these files:
+A Fumadocs site on Vite and React Router (`fumadocs-ui`, `fumadocs-core`, `fumadocs-mdx`, `fumadocs-twoslash`, `@shikijs/twoslash`, `react-router`, `@react-router/dev`, `@react-router/node`, `vite`, `@tailwindcss/vite`, Tailwind 4) adopts it in four steps:
+
+1. Write its `docs.config.ts` ([The config](#the-config)), then sync: `node ~/Documents/docs-kit/src/sync.mjs <site>`.
+2. Add `"docs-kit": "link:./docs-kit"` to its dependencies, and run `nub install`.
+3. Set `"allowImportingTsExtensions": true` in its tsconfig, since fumadocs-mdx imports the build-time modules in Node itself, and they name their `.ts` extensions. Map `@/*` to `./*` and `collections/*` to `./.source/*`, fumadocs-mdx's generated collections, in its paths.
+4. Add the page route and routes of [A site's config and routes](#a-sites-config-and-routes), and these files:
 
 ```ts title="vite.config.ts"
 import path from 'node:path';
@@ -229,13 +374,6 @@ export default defineConfig({
 });
 ```
 
-```ts title="react-router.config.ts"
-import type { Config } from '@react-router/dev/config';
-
-// Static files only (build/client): every path is rendered at build time.
-export default { ssr: false, prerender: ['/'] } satisfies Config;
-```
-
 ```ts title="source.config.ts"
 import { defineConfig, defineDocs } from 'fumadocs-mdx/config';
 
@@ -244,12 +382,6 @@ const mdxOptions = async (environment: 'bundler' | 'runtime') => (await import('
 
 export const docs = defineDocs({ dir: 'content/docs', docs: { mdxOptions } });
 export default defineConfig();
-```
-
-```ts title="app/routes.ts"
-import { index, type RouteConfig } from '@react-router/dev/routes';
-
-export default [index('routes/home.tsx')] satisfies RouteConfig;
 ```
 
 ```tsx title="app/root.tsx"
@@ -266,28 +398,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return <Outlet />;
-}
-```
-
-```tsx title="app/routes/home.tsx"
-import { DocsShell } from 'docs-kit/shell';
-import { docsMdxComponents } from 'docs-kit/components';
-import { docs } from 'collections/server';
-import { loader } from 'fumadocs-core/source';
-
-const source = loader({ baseUrl: '/', source: docs.toFumadocsSource() });
-const brand = <a href="/" className="text-lg font-semibold text-fd-headings">Acme</a>;
-
-export const meta = () => [{ title: 'Acme' }];
-
-export default function Home() {
-  const page = source.getPage([])!;
-  const MDX = page.data.body;
-  return (
-    <DocsShell tree={source.getPageTree()} title={page.data.title} toc={page.data.toc} brand={brand} github="https://github.com/acme/acme">
-      <MDX components={docsMdxComponents()} />
-    </DocsShell>
-  );
 }
 ```
 
@@ -310,6 +420,6 @@ export default function Home() {
 
 Give its text and code fonts `font-display: optional` and preload their Latin files from `app/root.tsx`'s `links` (a font that arrives after the first paint rewraps the text, a layout shift), and let the code font fall back to the system's monospace. Link the `@font-face` rules from `links` as a stylesheet of their own, never `@import` them from `global.css`: under `vite dev`, React Router serves imported CSS as a stylesheet it removes once the page hydrates, when Vite injects its own copy, and faces declared again then miss `optional`'s window, so the page drops to its fallback fonts for the rest of the visit (Motherload's page went from IBM Plex to Arial, 2026-10-21). `react-router build` then writes the site to `build/client`, which any static host serves as it is (a `vercel.json` of `{ "framework": null, "outputDirectory": "build/client" }` on Vercel).
 
-A long page splits into one MDX file per h2, so that an edit compiles one section: a second collection (`defineCollections({ type: 'doc', dir: 'content/sections', mdxOptions })`), rendered after the page's own MDX in the order of the files' names, with the table of contents theirs in order (`[...page.data.toc, ...sections.flatMap((s) => s.toc)]`).
+A long page splits into one MDX file per h2, so that an edit compiles one section: a second collection named `sections` (`defineCollections({ type: 'doc', dir: 'content/sections', mdxOptions })`), which `<DocsPage>` renders after the first page's own MDX in the order of the files' names, with their entries in the table of contents.
 
-Reylo's `site/` is the full example: a page split into sections, its own remark plugin and Twoslash options (`lib/mdx-options.ts`), its own components (`components/mdx.tsx`), and the files beside the page (`/llms.txt`, robots, sitemap, manifest, the link preview) rendered at build time by resource routes.
+Reylo's `site/` is the full example: a page split into sections, its own remark plugin and Twoslash options (`lib/mdx-options.ts`), its own components (`components/mdx.tsx`), and its own link preview drawn at build time.

@@ -3,11 +3,11 @@ import browserCollections from 'collections/browser';
 import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import type { ComponentProps } from 'react';
+import { ogImage, source } from 'docs-kit/page.server';
+import { siteMeta } from 'docs-kit/site';
 import type { Route } from './+types/showcase';
 import { Popup, PopupContent, PopupTrigger, ShowcaseRoot, Shot } from '@/components/showcase';
-import { siteMeta } from '@/lib/meta';
-import { ogHash } from '@/lib/og.server';
-import { source } from '@/lib/source';
+import site from '@/docs.config';
 
 /*
  * The showcase: the hero's imports (content/showcase/index.mdx), one split block each, main.ts on
@@ -17,11 +17,11 @@ import { source } from '@/lib/source';
 
 /** Run at build time only: the page's description and the link preview's hash, for the meta tags. */
 export async function loader() {
-  return { description: source.getPage([])?.data.description ?? '', og: await ogHash() };
+  return { description: source.getPage([])?.data.description ?? '', image: await ogImage() };
 }
 
 export function meta({ loaderData }: Route.MetaArgs): Route.MetaDescriptors {
-  return loaderData ? siteMeta(loaderData.description, loaderData.og, { title: 'Showcase', index: false }) : [];
+  return loaderData ? siteMeta(site, { title: 'Showcase', description: loaderData.description, url: site.url, markdown: `${site.url}/llms.txt`, image: loaderData.image, index: false }) : [];
 }
 
 const components = {

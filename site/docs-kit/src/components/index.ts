@@ -4,6 +4,7 @@ export { Callout } from './callout';
 export { CodeTabs } from './code-tabs';
 export { CopyAgentPrompt } from './copy-agent-prompt';
 export { Details } from './details';
+export { DocsErrorBoundary, NotFound } from './not-found';
 export { Heading } from './heading';
 export { docsMdxComponents } from './mdx';
 export { Variant, VariantSwitch, VariantTabs } from './variant-tabs';
